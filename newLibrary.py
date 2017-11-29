@@ -332,7 +332,7 @@ Collect_parser.add_argument('-o', '--odroid', help = 'This is running on an odro
 
 Analyze_parser = subparsers.add_parser('AnalyzeKinect2', help='Collect ')
 Analyze_parser.add_argument('ProjectName', type = str, help = 'Name of the project you would like to collect')
-Collect_parser.add_argument('-o', '--odroid', help = 'This is running on an odroid', action = 'store_true')
+Analyze_parser.add_argument('-o', '--odroid', help = 'This is running on an odroid', action = 'store_true')
 
 args = parser.parse_args()
 if args.command == 'CollectKinect2':
