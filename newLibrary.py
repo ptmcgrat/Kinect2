@@ -20,14 +20,16 @@ class Kinect2Tracker:
         self.background_counter = 1 # Keep track of how many backgrounds are saved
         self.stdev_threshold = 20 # Maximum standard deviation to keep pixel values
         self.max_background_time = datetime.timedelta(seconds = 3600) # Maximum time before calculating new background
+        self.odroid_flag = odroid_flag
         np.seterr(invalid='ignore')
-        self.caff = subprocess.Popen('caffeinate')
         
         # 2: Create master directory and logging files
         if odroid_flag:
             self.master_directory = '/media/odroid/Kinect2/' + project_name + '/'
         else:
             self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
+            self.caff = subprocess.Popen('caffeinate')
+
         if not os.path.exists(self.master_directory):
             os.mkdir(self.master_directory)
         self.logger_file = self.master_directory + 'Logfile.txt'
@@ -51,7 +53,8 @@ class Kinect2Tracker:
         print('ObjectDestroyed: ' + str(datetime.datetime.now()), file = self.lf)
         print('ObjectDestroyed: ' + str(datetime.datetime.now()), file = sys.stderr)
         self.lf.close()
-        self.caff.kill()
+        if not odroid_flag:
+            self.caff.kill()
         
     def start_kinect(self):
         # a: Identify pipeline to use: 1) OpenGL, 2) OpenCL, 3) CPU
