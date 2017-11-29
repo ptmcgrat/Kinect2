@@ -4,6 +4,9 @@ import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from matplotlib import animation
 import matplotlib.pyplot as plt
+from roipoly import roipoly
+import pylab as pl
+import scipy.signal
 
 #import pylibfreenect2 as FN2
 
@@ -281,10 +284,41 @@ class Kinect2Analyzer:
         plt.clf()
         seaborn.heatmap(self.all_data[i] - self.all_data[0], vmin = self.d_min2, vmax = self.d_max2)
 
-            
+    def select_regions(self):
+        background = self.all_data[-1] - self.all_data[0]
+        pl.imshow(self.all_data[-1])
+        pl.colorbar()
+        pl.title('Identify regions with sand')
+        Sand_ROI = roipoly(roicolor='r')
+        
+        pl.imshow(background)
+        pl.colorbar()
+        Sand_ROI.displayROI()
+        pl.title('Identify regions with pit')
+        Pit_ROI = roipoly(roicolor='b')
+
+        pl.imshow(background)
+        pl.colorbar()
+        Sand_ROI.displayROI()
+        Pit_ROI.displayROI()
+        pl.title('Identify regions with Castle')
+        Castle_ROI = roipoly(roicolor='g')
+
+        pl.imshow(Sand_ROI.getMask(background) + Pit_ROI.getMask(background) + Castle_ROI.getMask(background))
+        pl.title('ROI masks')
+        pl.show()
+
+    def smooth_data(self):
+        for i in range(0,self.all_data.shape[1]):
+            print(i)
+            for j in range(0,self.all_data.shape[2]):
+                yhat = scipy.signal.savgol_filter(self.all_data[:,i,j], 51,3)
+        
 kt_obj = Kinect2Analyzer('Test')
 kt_obj.parse_log()
-kt_obj.create_heatmap_video()
+kt_obj.smooth_data()
+#kt_obj.select_regions()
+#kt_obj.create_heatmap_video()
 
     
 #kt_obj = Kinect2Tracker('Test2')
