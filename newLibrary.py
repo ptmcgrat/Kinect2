@@ -59,10 +59,10 @@ class Kinect2Tracker:
     def start_kinect(self):
         # a: Identify pipeline to use: 1) OpenGL, 2) OpenCL, 3) CPU
         try:
-            self.pipeline = FN2.OpenGLPacketPipeline()
+            self.pipeline = FN2.OpenCLPacketPipeline()
         except:
             try:
-                self.pipeline = FN2.OpenCLPacketPipeline()
+                self.pipeline = FN2.OpenGLPacketPipeline()
             except:
                 self.pipeline = FN2.CpuPacketPipeline()
         print('PacketPipeline: ' + type(self.pipeline).__name__, file = self.lf)
