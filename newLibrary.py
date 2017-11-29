@@ -53,7 +53,7 @@ class Kinect2Tracker:
         print('ObjectDestroyed: ' + str(datetime.datetime.now()), file = self.lf)
         print('ObjectDestroyed: ' + str(datetime.datetime.now()), file = sys.stderr)
         self.lf.close()
-        if not odroid_flag:
+        if not self.odroid_flag:
             self.caff.kill()
         
     def start_kinect(self):
