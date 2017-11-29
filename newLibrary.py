@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 from roipoly import roipoly
 import pylab as pl
 import scipy.signal
+import argparse
 
-#import pylibfreenect2 as FN2
+import pylibfreenect2 as FN2
 
 class Kinect2Tracker:
-    def __init__(self, project_name):
+    def __init__(self, project_name, odroid_flag):
 
         # 1: Set parameters
         self.master_start = datetime.datetime.now()
@@ -23,7 +24,10 @@ class Kinect2Tracker:
         self.caff = subprocess.Popen('caffeinate')
         
         # 2: Create master directory and logging files
-        self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
+        if odroid_flag:
+            self.master_directory = '/media/odroid/Kinect2/' + project_name + '/'
+        else:
+            self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
         if not os.path.exists(self.master_directory):
             os.mkdir(self.master_directory)
         self.logger_file = self.master_directory + 'Logfile.txt'
@@ -125,12 +129,12 @@ class Kinect2Tracker:
         print('DiagnoseSpeed: Captured ' + str(counter) + ' frames in ' + str(time) + ' seconds.', file = self.lf)
         print('DiagnoseSpeed: Captured ' + str(counter) + ' frames in ' + str(time) + ' seconds.', file = sys.stderr)
 
-    def create_background(self, num_frames = 3, save = True):
+    def create_background(self, num_frames = 5, save = True):
         print('Capturing Background', file = sys.stderr)
         self.background_time = datetime.datetime.now()
         background_data = np.empty(shape = (5, self.r[3], self.r[2]))
         background_data[:] = np.NAN
-        for i in range(0,5):
+        for i in range(0,num_frames):
             background_data[i] = self.capture_frame(time = 20, delta = 0.2, save = False)
         self.background = np.nanmedian(background_data, axis = 0)
         std = np.nanstd(background_data, axis = 0)
@@ -212,10 +216,13 @@ class Kinect2Tracker:
             self.capture_frame()
 
 class Kinect2Analyzer:
-    def __init__(self, project_name):
+    def __init__(self, project_name, odroid_flag):
 
-        # 1: Set parameters and parse Logger file
-        self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
+        # 1: Set parameters and parse Logger fil
+        if odroid_flag:
+            self.master_directory = '/media/odroid/Kinect2/' + project_name + '/'
+        else:
+            self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
         self.logger_file = self.master_directory + 'Logfile.txt'
         self.lf = open(self.logger_file, 'r')
         
@@ -313,10 +320,29 @@ class Kinect2Analyzer:
             print(i)
             for j in range(0,self.all_data.shape[2]):
                 yhat = scipy.signal.savgol_filter(self.all_data[:,i,j], 51,3)
-        
-kt_obj = Kinect2Analyzer('Test')
-kt_obj.parse_log()
-kt_obj.smooth_data()
+
+#Set up the options for the program (Don't change anything)
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(help='Available Commands', dest='command')
+
+Collect_parser = subparsers.add_parser('CollectKinect2', help='Collect ')
+Collect_parser.add_argument('ProjectName', type = str, help = 'Name of the project you would like to collect')
+Collect_parser.add_argument('Time', type = int, help = 'Number of days you would like to collect data')
+Collect_parser.add_argument('-o', '--odroid', help = 'This is running on an odroid', action = 'store_true')
+
+Analyze_parser = subparsers.add_parser('AnalyzeKinect2', help='Collect ')
+Analyze_parser.add_argument('ProjectName', type = str, help = 'Name of the project you would like to collect')
+Collect_parser.add_argument('-o', '--odroid', help = 'This is running on an odroid', action = 'store_true')
+
+args = parser.parse_args()
+if args.command == 'CollectKinect2':
+    kt_obj = Kinect2Tracker(args.ProjectName, args.odroid)
+    kt_obj.capture_frames(total_time = args.Time * 24 * 60 * 60)
+
+if args.command == 'AnalyzeKinect2':
+    kt_obj = Kinect2Analyzer(args.ProjectName, args.odroid)
+    kt_obj.parse_log()
+    kt_obj.smooth_data()
 #kt_obj.select_regions()
 #kt_obj.create_heatmap_video()
 
