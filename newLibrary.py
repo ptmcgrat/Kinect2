@@ -118,10 +118,12 @@ class Kinect2Tracker:
         print('ROI: Bounding box created, Image: BoundingBox.jpg, Shape: ' + str(self.r), file = sys.stderr)
         
     def diagnose_speed(self, time = 10):
+        print('Diagnosing speed: Start', file = sys.stderr)
         delta = datetime.timedelta(seconds = time)
         start_t = datetime.datetime.now()
         counter = 0
         while True:
+            print('Diagnosing speed: Counter=' + str(counter), file = sys.stderr)
             frames = self.listener.waitForNewFrame()
             depth = frames["depth"]
             data = depth.asarray()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
