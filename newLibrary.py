@@ -190,6 +190,8 @@ class Kinect2Tracker:
                     counter += 1
                     if (last_t - start_t) > time:
                         color = frames["color"]
+                        undistorted = FN2.Frame(512, 424, 4)
+                        registered = FN2.Frame(512, 424, 4)
                         self.registration.apply(color, depth, undistorted, registered)
                         color_image =  registered.asarray(np.uint8)[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
                         
