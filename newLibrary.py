@@ -189,6 +189,10 @@ class Kinect2Tracker:
                     all_data[counter] = data
                     counter += 1
                     if (last_t - start_t) > time:
+                        color = frames["color"]
+                        self.registration.apply(color, depth, undistorted, registered)
+                        color_image =  registered.asarray(np.uint8)[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+                        
                         self.listener.release(frames)
                         break
             self.listener.release(frames)
@@ -205,9 +209,10 @@ class Kinect2Tracker:
 #        print('. Good pixels: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]), end = '')
 #        print('. FC: ' + str(counter))
         if save:
-            print('FrameCaptured: Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]), file = self.lf)
-            print('FrameCaptured: Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]), file = sys.stderr)
+            print('FrameCaptured: Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t)  + ', NFrames: ' + str(counter) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]), file = self.lf)
+            print('FrameCaptured: Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t) + ', NFrames: ' + str(counter) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]), file = sys.stderr)
             np.save(self.master_directory +'Frame_' + str(self.frame_counter).zfill(4) + '.npy', med)
+            cv2.imwrite(self.master_directory+'Frame_' + str(self.frame_counter).zfill(4) + '.jpg', color_image)
             self.frame_counter += 1
         return med
 
@@ -234,6 +239,7 @@ class Kinect2Analyzer:
     def parse_log(self):
 
         self.npy_files = []
+        self.jpg_files = []
         self.meds = []
         self.mins = []
         self.maxes = []
@@ -244,6 +250,7 @@ class Kinect2Analyzer:
             info_type = line.split(':')[0]
             if info_type == 'FrameCaptured':
                 npy_file = line.split(': ')[1].split(',')[0]
+                jpg_file = npy_file.replace('.npy', '.jpg')
                 fmed = float(line.split('Med: ')[1].split(',')[0])
                 #fmin = float(line.split('Min: ')[1].split(',')[0])
                 #fmax = float(line.split('Max: ')[1].split(',')[0])
@@ -251,6 +258,8 @@ class Kinect2Analyzer:
                 fpix = (int(line.split('GP: ')[1].split(' of')[0]), int(line.rstrip().split(' of ')[1]))
 
                 self.npy_files.append(self.master_directory + npy_file)
+                self.jpg_files.append(self.master_directory + jpg_file)
+                
                 self.meds.append(fmed)
                 #self.mins.append(fmin)
                 #self.maxes.append(fmax)
@@ -269,62 +278,86 @@ class Kinect2Analyzer:
 
     def create_heatmap_video(self):
 
-        self.d_min = np.nanmin(self.all_data)
-        self.d_max = np.nanmax(self.all_data)
-        self.d_min2 = np.nanmin(self.all_data - self.all_data[0])
-        self.d_max2 = np.nanmax(self.all_data - self.all_data[0])
-        
-        fig = plt.figure()
-        im = seaborn.heatmap(kt_obj.all_data[0])
-        writer = animation.writers['ffmpeg'](fps=3, metadata=dict(artist='Me'), bitrate=1800)
-        anim = animation.FuncAnimation(fig, self.animate, init_func=self.init, frames = self.all_data.shape[0], repeat = False)
-        anim.save('test.mp4', writer = writer)
-        anim2 = animation.FuncAnimation(fig, self.animate2, init_func=self.init2, frames = self.all_data.shape[0], repeat = False)
-        anim2.save('test2.mp4', writer = writer)
-        
-    def init(self):
-        seaborn.heatmap(self.all_data[0], vmin = self.d_min, vmax = self.d_max)
+        self.d_min = min(np.nanmin(self.all_data), np.nanmin(self.smooth_data))
+        self.d_max = max(np.nanmax(self.all_data), np.nanmax(self.smooth_data))
+        self.d_min2 = min(np.nanmin(self.all_data - self.all_data[0]), np.nanmin(self.smooth_data - self.smooth_data[0]))
+        self.d_max2 = max(np.nanmax(self.all_data - self.all_data[0]), np.nanmax(self.smooth_data - self.smooth_data[0]))
+        img = cv2.imread(self.jpg_files[0])
 
+        self.fig = plt.figure()
+        self.ax1 = self.fig.add_subplot(2,3,1)
+        self.ax2 = self.fig.add_subplot(2,3,2)
+        self.ax3 = self.fig.add_subplot(2,3,3)
+        self.ax4 = self.fig.add_subplot(2,3,4)
+        self.ax5 = self.fig.add_subplot(2,3,5)
+        self.ax6 = self.fig.add_subplot(2,3,6)
+        
+        seaborn.heatmap(self.all_data[0], ax = self.ax1, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.all_data[0]-self.all_data[0], ax = self.ax2, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.smooth_data[0], ax = self.ax3, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.smooth_data[0]-self.smooth_data[0], ax = self.ax4, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False)
+        self.ax5.imshow(img)
+        self.ax6.imshow(img)
+        
+        writer = animation.writers['ffmpeg'](fps=10, metadata=dict(artist='Patrick McGrath'), bitrate=1800)
+        anim = animation.FuncAnimation(self.fig, self.animate, frames = self.all_data.shape[0], repeat = False)
+        anim.save('Fours.mp4', writer = writer)
+        
     def animate(self, i):
-        plt.clf()
-        seaborn.heatmap(self.all_data[i], vmin = self.d_min, vmax = self.d_max)
+        s_l = self.Sand_ROI.ret_line()
+        p_l = self.Pit_ROI.ret_line()
+        c_l = self.Castle_ROI.ret_line()
         
-    def init2(self):
-        seaborn.heatmap(self.all_data[0] - self.all_data[0], vmin = self.d_min2, vmax = self.d_max2)
+        img = cv2.imread(self.jpg_files[i])
 
-    def animate2(self, i):
-        plt.clf()
-        seaborn.heatmap(self.all_data[i] - self.all_data[0], vmin = self.d_min2, vmax = self.d_max2)
+        self.fig.clf()
+        self.ax1 = self.fig.add_subplot(2,3,1)       
+        self.ax2 = self.fig.add_subplot(2,3,2)
+        self.ax3 = self.fig.add_subplot(2,3,3)
+        self.ax4 = self.fig.add_subplot(2,3,4)
+        self.ax5 = self.fig.add_subplot(2,3,5)
+        self.ax6 = self.fig.add_subplot(2,3,6)
+
+        for axis in [self.ax1, self.ax2, self.ax3, self.ax4, self.ax5, self.ax6]:
+            axis.add_line(s_l)
+            axis.add_line(p_l)
+            axis.add_line(c_l)
+ 
+        seaborn.heatmap(self.all_data[i], ax = self.ax1, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.all_data[i]-self.all_data[0], ax = self.ax2, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.smooth_data[i], ax = self.ax3, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False)
+        seaborn.heatmap(self.smooth_data[i]-self.smooth_data[0], ax = self.ax4, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False)
+        self.ax5.imshow(img)
+        self.ax6.imshow(img)
+
 
     def select_regions(self):
         background = self.all_data[-1] - self.all_data[0]
         pl.imshow(self.all_data[-1])
         pl.colorbar()
         pl.title('Identify regions with sand')
-        Sand_ROI = roipoly(roicolor='r')
+        self.Sand_ROI = roipoly(roicolor='r')
         
         pl.imshow(background)
         pl.colorbar()
-        Sand_ROI.displayROI()
+        self.Sand_ROI.displayROI()
         pl.title('Identify regions with pit')
-        Pit_ROI = roipoly(roicolor='b')
+        self.Pit_ROI = roipoly(roicolor='b')
 
         pl.imshow(background)
         pl.colorbar()
-        Sand_ROI.displayROI()
-        Pit_ROI.displayROI()
+        self.Sand_ROI.displayROI()
+        self.Pit_ROI.displayROI()
         pl.title('Identify regions with Castle')
-        Castle_ROI = roipoly(roicolor='g')
-
-        pl.imshow(Sand_ROI.getMask(background) + Pit_ROI.getMask(background) + Castle_ROI.getMask(background))
-        pl.title('ROI masks')
-        pl.show()
+        self.Castle_ROI = roipoly(roicolor='g')
 
     def smooth_data(self):
+        self.smooth_data = np.empty(shape = (len(self.npy_files),) + self.crop_shape)
+
         for i in range(0,self.all_data.shape[1]):
             print(i)
             for j in range(0,self.all_data.shape[2]):
-                yhat = scipy.signal.savgol_filter(self.all_data[:,i,j], 51,3)
+                self.smooth_data[:,i,j] = scipy.signal.savgol_filter(self.all_data[:,i,j], 51,3)
 
 #Set up the options for the program (Don't change anything)
 parser = argparse.ArgumentParser()
@@ -348,6 +381,8 @@ if args.command == 'AnalyzeKinect2':
     kt_obj = Kinect2Analyzer(args.ProjectName, args.odroid)
     kt_obj.parse_log()
     kt_obj.smooth_data()
+    kt_obj.select_regions()
+    kt_obj.create_heatmap_video()
 #kt_obj.select_regions()
 #kt_obj.create_heatmap_video()
 
