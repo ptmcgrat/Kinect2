@@ -70,6 +70,13 @@ class roipoly:
         ax.add_line(l)
         plt.draw()
 
+    def ret_line(self,**linekwargs):
+         l = plt.Line2D(self.allxpoints +
+                     [self.allxpoints[0]],
+                     self.allypoints +
+                     [self.allypoints[0]],
+                     color=self.roicolor, **linekwargs)
+
     def displayMean(self,currentImage, **textkwargs):
         mask = self.getMask(currentImage)
         meanval = np.mean(np.extract(mask, currentImage))
