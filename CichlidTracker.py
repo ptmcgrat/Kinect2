@@ -205,7 +205,7 @@ class CichlidTracker:
         print('saved')
         
         cv2.imshow('Image', reg_image)
-        #self.r = cv2.selectROI('Image', reg_image)
+        self.r = cv2.selectROI('Image', reg_image)
         cv2.destroyAllWindows()
         cv2.waitKey(1)
 
