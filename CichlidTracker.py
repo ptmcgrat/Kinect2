@@ -195,7 +195,7 @@ class CichlidTracker:
 
             # e: Start device and create registration
             self.K2device.start()
-            self.registration = FN2.Registration(self.device.getIrCameraParams(), self.device.getColorCameraParams())
+            self.registration = FN2.Registration(self.K2device.getIrCameraParams(), self.K2device.getColorCameraParams())
 
     def create_ROI(self):
    
