@@ -202,7 +202,8 @@ class CichlidTracker:
         #b: Select ROI using open CV
         print(reg_image.shape)
         np.save(self.master_directory+'BoundingBox.jpg', reg_image)
-
+        print('saved')
+        
         cv2.imshow('Image', reg_image)
         #self.r = cv2.selectROI('Image', reg_image)
         cv2.destroyAllWindows()
