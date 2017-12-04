@@ -101,7 +101,7 @@ class CichlidTracker:
             color = frames["color"]
             depth = frames["depth"]
             self.registration.apply(color, depth, undistorted, registered, enable_filter=False)
-            reg_image =  registered.asarray(np.uint8)
+            reg_image =  registered.asarray(np.uint8)[:,:,0:3]
             self.listener.release(frames)
             return reg_image
 
@@ -113,8 +113,9 @@ class CichlidTracker:
         
         elif self.device == 'kinect2':
             frames = self.listener.waitForNewFrame()
+            output = frames['depth'].asarray()
             self.listener.release(frames)
-            return frames['depth'].asarray()
+            return output
 
     def _video_recording(self):
         if datetime.datetime.now().hour > 8 and datetime.datetimenow.hour < 20:
@@ -201,12 +202,12 @@ class CichlidTracker:
    
         # a: Grab color and depth frames and register them
         reg_image = self._return_reg_color()
-
-        # b: Select ROI using open CV
+        #b: Select ROI using open CV
         self.r = cv2.selectROI('Image', reg_image)
         cv2.destroyAllWindows()
         cv2.waitKey(1)
 
+        reg_image = reg_image.copy()
         # c: Save file with background rectangle
         cv2.rectangle(reg_image, (self.r[0], self.r[1]), (self.r[0] + self.r[2], self.r[1]+self.r[3]) , (0, 255, 0), 2)
         cv2.imwrite(self.master_directory+'BoundingBox.jpg', reg_image)
