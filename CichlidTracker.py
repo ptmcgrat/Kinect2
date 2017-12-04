@@ -133,8 +133,6 @@ class CichlidTracker:
                 sys.exit()
             else:
                 kinect = True
-        except ModuleNotFoundError:
-            kinect = False
         except ImportError:
             kinect = False
 
@@ -148,8 +146,6 @@ class CichlidTracker:
                 sys.exit()
             else:
                 kinect2 = False
-        except ModuleNotFoundError:
-            kinect2 = False
         except ImportError:
             kinect2 = False
 
