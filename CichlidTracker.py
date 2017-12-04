@@ -222,6 +222,7 @@ class CichlidTracker:
         start_t = datetime.datetime.now()
         counter = 0
         while True:
+            print('Frame!')
             depth = self._return_depth()
             data = depth[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
             counter += 1
