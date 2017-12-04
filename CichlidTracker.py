@@ -135,6 +135,8 @@ class CichlidTracker:
                 kinect = True
         except ModuleNotFoundError:
             kinect = False
+        except ImportError:
+            kinect = False
 
         try:
             global FN2
@@ -147,6 +149,8 @@ class CichlidTracker:
             else:
                 kinect2 = False
         except ModuleNotFoundError:
+            kinect2 = False
+        except ImportError:
             kinect2 = False
 
         if kinect and kinect2:
