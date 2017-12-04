@@ -200,9 +200,6 @@ class CichlidTracker:
         # a: Grab color and depth frames and register them
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
-        print(reg_image.shape)
-        np.save(self.master_directory+'BoundingBox.npy', reg_image)
-        print('saved')
         
         cv2.imshow('Image', reg_image)
         self.r = cv2.selectROI('Image', reg_image)
@@ -222,7 +219,6 @@ class CichlidTracker:
         start_t = datetime.datetime.now()
         counter = 0
         while True:
-            print('Frame!')
             depth = self._return_depth()
             data = depth[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
             counter += 1
