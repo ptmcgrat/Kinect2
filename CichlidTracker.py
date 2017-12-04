@@ -201,7 +201,7 @@ class CichlidTracker:
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
         print(reg_image.shape)
-        cv2.imwrite(self.master_directory+'BoundingBox.jpg', reg_image)
+        np.save(self.master_directory+'BoundingBox.jpg', reg_image)
 
         cv2.imshow('Image', reg_image)
         #self.r = cv2.selectROI('Image', reg_image)
