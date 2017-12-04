@@ -200,8 +200,8 @@ class CichlidTracker:
         # a: Grab color and depth frames and register them
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
-        print(reg_image.shape)
-        self.r = cv2.selectROI('Image', reg_image)
+        cv2.imshow('Image', reg_image)
+        #self.r = cv2.selectROI('Image', reg_image)
         cv2.destroyAllWindows()
         cv2.waitKey(1)
 
