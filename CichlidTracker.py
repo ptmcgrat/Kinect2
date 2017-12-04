@@ -101,7 +101,7 @@ class CichlidTracker:
             color = frames["color"]
             depth = frames["depth"]
             self.registration.apply(color, depth, undistorted, registered, enable_filter=False)
-            reg_image =  registered.asarray(np.uint8)[:,:,0:3]
+            reg_image =  registered.asarray(np.uint8)[:,:,0:3].copy()
             self.listener.release(frames)
             return reg_image
 
@@ -201,7 +201,7 @@ class CichlidTracker:
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
         print(reg_image.shape)
-        np.save(self.master_directory+'BoundingBox.jpg', reg_image)
+        np.save(self.master_directory+'BoundingBox.npy', reg_image)
         print('saved')
         
         cv2.imshow('Image', reg_image)
