@@ -189,22 +189,18 @@ class CichlidTracker:
 
             self.listener = FN2.SyncMultiFrameListener(
                 FN2.FrameType.Color | FN2.FrameType.Depth)
-            print('c')
             # d: Register listeners
             self.K2device.setColorFrameListener(self.listener)
             self.K2device.setIrAndDepthFrameListener(self.listener)
-            print('d')
             # e: Start device and create registration
             self.K2device.start()
             self.registration = FN2.Registration(self.K2device.getIrCameraParams(), self.K2device.getColorCameraParams())
-            print('e')
     def create_ROI(self):
    
         # a: Grab color and depth frames and register them
-        print('aa')
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
-        print('ab')
+        print(reg_image.shape)
         self.r = cv2.selectROI('Image', reg_image)
         cv2.destroyAllWindows()
         cv2.waitKey(1)
