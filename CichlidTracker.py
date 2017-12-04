@@ -48,7 +48,8 @@ class CichlidTracker:
             self.master_directory = output_directory + project_name + '/'
 
         if rewrite_flag:
-            shutil.rmtree(self.master_directory)
+            if os.path.exists(self.master_directory):
+                shutil.rmtree(self.master_directory)
             
         if not os.path.exists(self.master_directory):
             os.mkdir(self.master_directory)
@@ -181,6 +182,7 @@ class CichlidTracker:
             FN2.setGlobalLogger(self.logger)
 
             # c: Identify device and create listener
+            self.fn = FN2.Freenect2()
             serial = self.fn.getDeviceSerialNumber(0)
             self.K2device = self.fn.openDevice(serial, pipeline=self.pipeline)
 
