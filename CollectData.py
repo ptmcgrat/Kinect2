@@ -1,5 +1,5 @@
 import argparse
-from Modeules.CichlidTracker import CichlidTracker
+from Modules.CichlidTracker import CichlidTracker
 
 #Set up the options for the program (Don't change anything)
 parser = argparse.ArgumentParser()
@@ -10,7 +10,7 @@ parser.add_argument('-o', '--OutputDirectory', type = str, help = 'Specify the o
 parser.add_argument('-r', '--rewrite', help = 'Write over existing data in directory', action = 'store_true')
 
 args = parser.parse_args()
-if args.command == 'CollectData':
-    tracker = CichlidTracker(args.ProjectName, args.OutputDirectory, args.rewrite)
-    tracker.capture_frames(total_time = args.Time * 24 * 60 * 60)
+
+tracker = CichlidTracker(args.ProjectName, args.OutputDirectory, args.rewrite)
+tracker.capture_frames(total_time = args.Time * 24 * 60 * 60)
 

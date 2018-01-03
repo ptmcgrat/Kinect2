@@ -46,12 +46,16 @@ class CichlidTracker:
             elif self.system == 'mac':
                 self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
         else:
+            if output_directory[-1] != '/':
+                output_directory += '/'
             self.master_directory = output_directory + project_name + '/'
 
         if rewrite_flag:
             if os.path.exists(self.master_directory):
                 shutil.rmtree(self.master_directory)
-            
+
+        if not os.path.exists(output_directory):
+            os.mkdir(output_directory)
         if not os.path.exists(self.master_directory):
             os.mkdir(self.master_directory)
         else:
@@ -85,19 +89,24 @@ class CichlidTracker:
         self.create_background()
 
     def __del__(self):
-        self._print('ObjectDestroyed: ' + str(datetime.datetime.now()))
         try:
+            self._print('ObjectDestroyed: ' + str(datetime.datetime.now()))
             self.lf.close()
         except AttributeError:
             pass
-        if self.device == 'kinect2':
-            self.K2device.stop()
-        if self.device == 'kinect':
-            freenect.sync_stop()
-
-        if self.system == 'mac':
-            self.caff.kill()
-
+        try:
+            if self.device == 'kinect2':
+                self.K2device.stop()
+            if self.device == 'kinect':
+                freenect.sync_stop()
+        except AttributeError:
+            pass
+        try:
+            if self.system == 'mac':
+                self.caff.kill()
+        except AttributeError:
+            pass
+        
     def _print(self, text):
         print(text, file = self.lf)
         print(text, file = sys.stderr)
@@ -319,7 +328,7 @@ class CichlidTracker:
                     self.camera.start_recording(self.master_directory + 'Videos/' + str((now - self.master_start).days + 1) + "_vid.h264", bitrate=7500000)
                     self._print('PiCameraStarted: Time=' + str(now) + ', File=Videos/' + str((now - self.master_start).days + 1) + "_vid.h264")
                 if not self._video_recording() and self.camera.recording:
-                    camera.stop_recording()
+                    self.camera.stop_recording()
                     self._print('PiCameraStopped: Time=' + str(now) + ', File=Videos/' + str((now - self.master_start).days + 1) + "_vid.h264")
 
             
