@@ -139,7 +139,7 @@ class CichlidTracker:
             return output
 
     def _video_recording(self):
-        if datetime.datetime.now().hour > 8 and datetime.datetime.now().hour < 20:
+        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 20:
             return True
         else:
             return False
@@ -322,14 +322,14 @@ class CichlidTracker:
             if now - self.master_start > delta:
                 break
             self.capture_frame()
-
+            now = datetime.datetime.now()
             if self.PiCamera:
                 if self._video_recording() and not self.camera.recording:
-                    self.camera.start_recording(self.master_directory + 'Videos/' + str((now - self.master_start).days + 1) + "_vid.h264", bitrate=7500000)
-                    self._print('PiCameraStarted: Time=' + str(now) + ', File=Videos/' + str((now - self.master_start).days + 1) + "_vid.h264")
+                    self.camera.start_recording(self.master_directory + 'Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264", bitrate=7500000)
+                    self._print('PiCameraStarted: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
                 if not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
-                    self._print('PiCameraStopped: Time=' + str(now) + ', File=Videos/' + str((now - self.master_start).days + 1) + "_vid.h264")
+                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
 
             
             
