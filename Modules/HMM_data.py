@@ -12,12 +12,12 @@ class HMMdata:
         self.frames = frames
         self.current_count = 0
 
-    def add_data(self, directory, prefix = '', suffix = '.hmm.npy'):
+    def add_data(self, in_directory, out_directory, prefix = '', suffix = '.hmm.npy'):
         for i in range(self.data_shape[0]):
-            data = np.load(directory + '/' + prefix + str(i) + suffix)
+            data = np.load(in_directory + '/' + prefix + str(i) + suffix)
             self._add_row(data, i)
         self.data = np.delete(self.data, range(self.current_count, self.data.shape[0]), axis = 0)
-        np.save(directory + '/HMMData.npy', self.data)
+        np.save(out_directory + '/HMMData.npy', self.data)
 
     def read_data(self, directory):
         self.data = np.load(directory + '/HMMData.npy')

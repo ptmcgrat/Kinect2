@@ -4,7 +4,7 @@ import scipy.ndimage
 from hmmlearn import hmm
 import matplotlib.pyplot as plt
 from multiprocessing.dummy import Pool as ThreadPool
-from HMM_data import HMMdata
+from Modules.HMM_data import HMMdata
 
 #from pathos.multiprocessing import ProcessingPool as ThreadPool
 np.warnings.filterwarnings('ignore')
@@ -20,12 +20,13 @@ class VideoProcessor:
         self.height = int(cap.frame_shape[0])
         self.width = int(cap.frame_shape[1])
         self.frame_rate = int(cap.frame_rate)
-        self.frames = min(int(cap.duration*cap.frame_rate), 8*60*60*self.frame_rate)
+        self.frames = min(int(cap.duration*cap.frame_rate), 12*60*60*self.frame_rate)
         cap.close()
         
         self.cores = psutil.cpu_count()
         self.total_blocks = math.ceil(self.frames/(self.blocksize*self.frame_rate))
-        self.outdir = videofile.replace('_vid.mp4', '') + '/'
+        self.outdir = videofile.split(videofile.split('/')[-2])[0] + 'Analysis/'
+        self.tempdir =  self.outdir + 'Temp/'
         self.window = 120
         self.hmm_time = 60*60
         print('VideoProcessor: Analyzing ' + self.videofile)
@@ -36,9 +37,9 @@ class VideoProcessor:
         This functon decompresses video into smaller chunks of data formated in the numpy array format.
         Each numpy array contains one row of data for the entire video.
         """
-        if os.path.exists(self.outdir):
-            shutil.rmtree(self.outdir)
-        os.makedirs(self.outdir)
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
+        os.makedirs(self.tempdir)
         pool = ThreadPool(self.cores)
         print('ConvertingVideo: Creating rows of data for further analysis')
         print('TotalBlocks: ' + str(self.total_blocks))
@@ -64,7 +65,7 @@ class VideoProcessor:
         print('TotalTime: ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes')
             
 
-    def calculateHMM(self, delete = False):
+    def calculateHMM(self, delete = True):
         start = datetime.datetime.now()
         print('ConvertingVideo: Creating rows of data for further analysis')
         print('TotalThreads: ' + str(self.cores))
@@ -92,43 +93,31 @@ class VideoProcessor:
         pool.join()
         start = datetime.datetime.now()
         print('Converting HMMs to internal data structure and deleting temporary data')
-        print('StartTime: ' + str(start))        
+        start = datetime.datetime.now()
+        print('StartTime: ' + str(start))
+        
         self.obj = HMMdata(self.width, self.height, self.frames)
-        self.obj.add_data(self.outdir)
+        if not os.path.exists(self.outdir):
+                os.makedirs(self.outdir)    
+        self.obj.add_data(self.tempdir, self.outdir)
         if delete:
-            for i in range(self.height):
-                o_file = self.row_fn(i)
-                s_file = o_file.replace('.npy','.smoothed.npy')
-                h_file = o_file.replace('.npy', '.hmm.npy')
-                os.remove(o_file)
-                os.remove(s_file)
-                os.remove(h_file)
+            shutil.rmtree(self.tempdir)
         print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs')
         
-        return results
-
     def summarize_data(self):
         try:
             self.obj
         except AttributeError:
             self.obj = HMMdata(self.width, self.height, self.frames)
             self.obj.read_data(self.outdir)
-        absol = []
-        rel = []
-        for i in range(1,9):
-            frame_abs = self.obj.ret_difference(0,i*60*60*25-1)[:,100:]
-            frame_rel = self.obj.ret_difference((i-1)*60*60*25,i*60*60*25-1)[:,100:]
 
-            frame_rel = frame_rel*255/frame_rel.max()
+        t_hours = int(self.frames/(self.frame_rate*60*60))
+        rel_diff = np.zeros(shape = (t_hours, self.height, self.width), dtype = 'uint8')
+        
+        for i in range(1,t_hours+1):
+            rel_diff[i-1] = self.obj.ret_difference((i-1)*60*60*25,i*60*60*25 - 1)
 
-            absol.append(frame_abs.copy())
-            rel.append(frame_rel.copy())
-
-        top = np.concatenate(absol, axis = 1)
-        top = top*255/top.max()
-        bottom = np.concatenate(rel, axis = 1)
-        plt.imshow(np.concatenate([top,bottom], axis = 0))
-        plt.savefig(self.outdir + 'ChangeSummary.png', bbox_inches='tight')
+        return rel_diff
     
     def _readBlock(self,block):
         min_t = block*self.blocksize
@@ -173,7 +162,7 @@ class VideoProcessor:
 
     def _hmmRow(self, row, seconds_to_change = 60*30, non_transition_bins = 2, std = 100, hmm_window = 60):
 
-        data = np.load(self.outdir + str(row) + '.smoothed.npy')
+        data = np.load(self.row_fn(row).replace('.npy', '.smoothed.npy'))
         zs = np.zeros(shape = data.shape, dtype = 'uint8')
         for i, column in enumerate(data):
 
@@ -209,4 +198,4 @@ class VideoProcessor:
         return True
 
     def row_fn(self, row):
-        return self.outdir + str(row) + '.npy'
+        return self.tempdir + str(row) + '.npy'
