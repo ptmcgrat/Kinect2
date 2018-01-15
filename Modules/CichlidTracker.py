@@ -265,9 +265,9 @@ class CichlidTracker:
             np.save(self.master_directory + 'Backgrounds/Background_' + str(self.background_counter).zfill(4) + '.npy', self.background)
             self.background_counter += 1
 
-    def capture_frame(self, time = 60, delta = None, save = True, background = False):
+    def capture_frame(self, time = 300, delta = None, save = True, background = False, max_frames = 500):
         if delta is None:
-            delta= time/200
+            delta= time/(max_frames)
 
         total_time = datetime.timedelta(seconds = time)
 
@@ -275,36 +275,34 @@ class CichlidTracker:
             self.create_background()
 
         #Create array to hold data
-        all_data = np.empty(shape = (int(time/delta + 1), self.r[3], self.r[2]))
+        all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
         all_data[:] = np.nan
         
-        counter = 1
+        counter = 0
         #Collect data
         # For each received frame...
         start_t = datetime.datetime.now()
         current_delta = datetime.timedelta(seconds = counter*delta)
-        
+        color = self._return_reg_color()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
+
         while True:
             current_time = datetime.datetime.now()
             depth = self._return_depth()
+            # Have we progressed to next delta?
             if (current_time - start_t) >= current_delta:
-                if counter == 1: #Ignore first set of data
-                    counter += 1
-                    continue
-                else:
+                if counter != 0: #Ignore first set of data
                     data = depth[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
                     all_data[counter-1] = data
-                    counter += 1
-                    current_delta =  datetime.timedelta(seconds = counter*delta)
-                    if (current_time - start_t) > total_time:
-                        color = self._return_reg_color()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
-                        break
+                counter += 1
+                current_delta =  datetime.timedelta(seconds = counter*delta)
+                if counter == max_frames:
+                    break
 
-        med = np.nanmedian(all_data[0:counter-1], axis = 0)
-        std = np.nanstd(all_data[0:counter-1], axis = 0)
+        med = np.nanmedian(all_data, axis = 0)
+        std = np.nanstd(all_data, axis = 0)
         med[std > self.stdev_threshold] = np.nan
         
-        counts = np.count_nonzero(~np.isnan(all_data[0:counter-1]), axis = 0)
+        counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
         med[counts < 5] = np.nan
         if save:
             self._print('FrameCaptured: Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t)  + ', NFrames: ' + str(counter-1) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]))
