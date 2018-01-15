@@ -275,7 +275,7 @@ class CichlidTracker:
             self.create_background()
 
         #Create array to hold data
-        all_data = np.empty(shape = (int(time/delta), self.r[3], self.r[2]))
+        all_data = np.empty(shape = (int(time/delta + 1), self.r[3], self.r[2]))
         all_data[:] = np.nan
         
         counter = 1
@@ -300,14 +300,14 @@ class CichlidTracker:
                         color = self._return_reg_color()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
                         break
 
-        med = np.nanmedian(all_data, axis = 0)
-        std = np.nanstd(all_data, axis = 0)
+        med = np.nanmedian(all_data[0:counter-1], axis = 0)
+        std = np.nanstd(all_data[0:counter-1], axis = 0)
         med[std > self.stdev_threshold] = np.nan
         
-        counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
+        counts = np.count_nonzero(~np.isnan(all_data[0:counter-1]), axis = 0)
         med[counts < 5] = np.nan
         if save:
-            self._print('FrameCaptured: Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t)  + ', NFrames: ' + str(counter) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]))
+            self._print('FrameCaptured: Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t)  + ', NFrames: ' + str(counter-1) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]))
             np.save(self.master_directory +'Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy', med)
             cv2.imwrite(self.master_directory+'Frames/Frame_' + str(self.frame_counter).zfill(4) + '.jpg', color)
             self.frame_counter += 1
