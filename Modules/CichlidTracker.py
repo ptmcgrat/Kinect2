@@ -1,22 +1,25 @@
-import cv2, platform, sys, os, shutil, datetime, subprocess
+import cv2, platform, sys, os, shutil, datetime, subprocess, smtplib
+import Modules.LogParser as LP
 import numpy as np
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+
 
 class CichlidTracker:
-    def __init__(self, project_name, output_directory, rewrite_flag):
+    def __init__(self, project_name, output_directory, rewrite_flag, frame_delta = 5, background_delta = 60, ROI = False):
 
         # 1: Set parameters
-        self.master_start = datetime.datetime.now()
+        self.project_name = project_name
         self.frame_counter = 1 # Keep track of how many frames are saved
         self.background_counter = 1 # Keep track of how many backgrounds are saved
-        self.stdev_threshold = 20 # Maximum standard deviation to keep pixel values
-        self.max_background_time = datetime.timedelta(seconds = 3600) # Maximum time before calculating new background
         self.kinect_bad_data = 2047
         np.seterr(invalid='ignore')
 
         # 2: Determine which system this code is running on
         if platform.node() == 'odroid':
             self.system = 'odroid'
-        elif platform.node() == 'raspberrypi':
+        elif platform.node() == 'raspberrypi' or 'Pi' in platform.node():
             self.system = 'pi'
         elif platform.system() == 'Darwin':
             self.system = 'mac'
@@ -26,11 +29,11 @@ class CichlidTracker:
             sys.exit()
 
         # 3: Determine which Kinect is attached
-        self.identify_device() #Stored in self.device
+        self._identify_device() #Stored in self.device
 
         # 4: Determine if PiCamera is attached
         self.PiCamera = False
-        if self.system == 'pi':
+        if 'pi' in self.system.lower():
             from picamera import PiCamera
             self.camera = PiCamera()
             self.camera.resolution = (1296, 972)
@@ -73,24 +76,21 @@ class CichlidTracker:
         
         self.logger_file = self.master_directory + 'Logfile.txt'
         self.lf = open(self.logger_file, 'w')
-        self._print('MasterStart: Time=' + str(self.master_start) + ',System=' + self.system + ',Device=' + self.device + ',Camera=' + str(self.PiCamera))
-        self._print('MasterStart: Uname=' + str(platform.uname()))
-        
+        self._print('MasterStart: System='+self.system + ',,Device=' + self.device + ',,Camera=' + str(self.PiCamera) + ',,Uname=' + str(platform.uname()))
+        self._print('MasterStart: Time=' + str(datetime.datetime.now()))
+
         # 6: Open and start Kinect2
-        self.start_kinect()
+        self._start_kinect()
 
         # 7: Identify ROI for depth data study
-        self.create_ROI()
-
+        self._create_ROI(use_ROI = False)
+            
         # 8: Diagnose speed
-        self.diagnose_speed()
+        self._diagnose_speed()
         
-        # 9: Grab initial background
-        self.create_background()
-
     def __del__(self):
         try:
-            self._print('ObjectDestroyed: ' + str(datetime.datetime.now()))
+            self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
             self.lf.close()
         except AttributeError:
             pass
@@ -113,7 +113,7 @@ class CichlidTracker:
 
     def _return_reg_color(self):
         if self.device == 'kinect':
-            return freenect.sync_get_video()[0]
+            return freenect.sync_get_video()[0][self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
         elif self.device == 'kinect2':
             undistorted = FN2.Frame(512, 424, 4)
@@ -124,27 +124,27 @@ class CichlidTracker:
             self.registration.apply(color, depth, undistorted, registered, enable_filter=False)
             reg_image =  registered.asarray(np.uint8)[:,:,0:3].copy()
             self.listener.release(frames)
-            return reg_image
+            return reg_image[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
     def _return_depth(self):
         if self.device == 'kinect':
             data = freenect.sync_get_depth()[0].astype('Float64')
             data[data == self.kinect_bad_data] = np.nan
-            return data
+            return data[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
         
         elif self.device == 'kinect2':
             frames = self.listener.waitForNewFrame(timeout = 1000)
             output = frames['depth'].asarray()
             self.listener.release(frames)
-            return output
+            return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
     def _video_recording(self):
-        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 20:
+        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12
             return True
         else:
             return False
         
-    def identify_device(self):
+    def _identify_device(self):
         try:
             global freenect
             import freenect
@@ -183,7 +183,7 @@ class CichlidTracker:
         else:
             self.device = 'kinect2'
 
-    def start_kinect(self):
+    def _start_kinect(self):
         if self.device == 'kinect':
             freenect.sync_get_depth() #Grabbing a frame initializes the device
             freenect.sync_get_video()
@@ -217,26 +217,30 @@ class CichlidTracker:
             self.K2device.start()
             self.registration = FN2.Registration(self.K2device.getIrCameraParams(), self.K2device.getColorCameraParams())
 
-    def create_ROI(self):
-   
+    def _create_ROI(self, use_ROI = False):
+
         # a: Grab color and depth frames and register them
         reg_image = self._return_reg_color()
         #b: Select ROI using open CV
-        
-        cv2.imshow('Image', reg_image)
-        self.r = cv2.selectROI('Image', reg_image, fromCenter = False)
-        self.r = tuple([int(x) for x in self.r]) # sometimes a float is returned
-        cv2.destroyAllWindows()
-        cv2.waitKey(1)
+        if use_ROI:
+            cv2.imshow('Image', reg_image)
+            self.r = cv2.selectROI('Image', reg_image, fromCenter = False)
+            self.r = tuple([int(x) for x in self.r]) # sometimes a float is returned
+            cv2.destroyAllWindows()
+            cv2.waitKey(1)
 
-        reg_image = reg_image.copy()
-        # c: Save file with background rectangle
-        cv2.rectangle(reg_image, (self.r[0], self.r[1]), (self.r[0] + self.r[2], self.r[1]+self.r[3]) , (0, 255, 0), 2)
-        cv2.imwrite(self.master_directory+'BoundingBox.jpg', reg_image)
+            reg_image = reg_image.copy()
+            # c: Save file with background rectangle
+            cv2.rectangle(reg_image, (self.r[0], self.r[1]), (self.r[0] + self.r[2], self.r[1]+self.r[3]) , (0, 255, 0), 2)
+            cv2.imwrite(self.master_directory+'BoundingBox.jpg', reg_image)
 
-        self._print('ROI: Bounding box created, Image: BoundingBox.jpg, Shape: ' + str(self.r))
+            self._print('ROI: Bounding box created, Image: BoundingBox.jpg, Shape: ' + str(self.r))
+        else:
+            self.r = (0,0,reg_image.shape[1],reg_image[0])
+            self._print('ROI: No Bounding box created, Image: None, Shape: ' + str(self.r))
 
-    def diagnose_speed(self, time = 10):
+            
+    def _diagnose_speed(self, time = 10):
         print('Diagnosing speed for ' + str(time) + ' seconds.', file = sys.stderr)
         delta = datetime.timedelta(seconds = time)
         start_t = datetime.datetime.now()
@@ -247,87 +251,132 @@ class CichlidTracker:
             counter += 1
             if datetime.datetime.now() - start_t > delta:
                 break
-        self._print('DiagnoseSpeed: Captured ' + str(counter) + ' frames in ' + str(time) + ' seconds.')
+        self._print('DiagnoseSpeed: Rate: ' + str(counter/time))
 
-    def create_background(self, num_frames = 5, save = True):
-        print('Capturing Background', file = sys.stderr)
-        self.background_time = datetime.datetime.now()
-        background_data = np.empty(shape = (5, self.r[3], self.r[2]))
-        background_data[:] = np.NAN
-        for i in range(0,num_frames):
-            background_data[i] = self.capture_frame(time = 20, save = False)
-        self.background = np.nanmedian(background_data, axis = 0)
-        std = np.nanstd(background_data, axis = 0)
-        self.background[std > self.stdev_threshold] = np.nan
+    def _email_summary(self):
+
+        current_day = datetime.datetime.now().day - self.master_start.day + 1)
+        # Create summary plot
         
-        if save:
-            self._print('BackgroundCaptured: Backgrounds/Background_' + str(self.background_counter).zfill(4) + '.npy, ' + str(self.background_time) + ', Med: '+ '%.2f' % np.nanmean(self.background) + ', Std: ' + '%.2f' % np.nanmean(std) + ', GP: ' + str(np.count_nonzero(~np.isnan(self.background)))  + ' of ' +  str(self.background.shape[0]*self.background.shape[1]))
-            np.save(self.master_directory + 'Backgrounds/Background_' + str(self.background_counter).zfill(4) + '.npy', self.background)
-            self.background_counter += 1
+        recipients = ['patrick.mcgrath@biology.gatech.edu', 'ptmcgrat@gmail.com'] # ADD EMAIL HERE
+        msg = MIMEMultipart()
+        msg['From'] = platform.node + '@biology.gatech.edu'
+        msg['To'] = ', '.join(recipients)
+        msg['Subject'] = 'Daily summary from [' + platform.node + '] for day: ' + str(current_day)
 
-    def capture_frame(self, time = 300, delta = None, save = True, background = False, max_frames = 500):
-        if delta is None:
-            delta= time/(max_frames)
+        msgAlternative = MIMEMultipart('alternative')
+        msg.attach(msgAlternative)
 
-        total_time = datetime.timedelta(seconds = time)
+        msgText = MIMEText('This is the alternative plain text message.')
+        msgAlternative.attach(msgText)
 
-        if datetime.datetime.now() - self.background_time > self.max_background_time:
-            self.create_background()
+        # We reference the image in the IMG SRC attribute by the ID we give it below
+        msgText = MIMEText('<b>Some <i>HTML</i> text</b> and an image.<br><img src="cid:image1"><br>Nifty!', 'html')
+        msgAlternative.attach(msgText)
 
-        #Create array to hold data
-        all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
-        all_data[:] = np.nan
+        # Get the day summary from the 
+        lp = LP.LogParser(self.lf)
+        msgImage = MIMEImage(lp.day_summary(current_day))
         
-        counter = 0
-        #Collect data
-        # For each received frame...
-        start_t = datetime.datetime.now()
-        current_delta = datetime.timedelta(seconds = counter*delta)
+        # Define the image's ID as referenced above
+        msgImage.add_header('Content-ID', '<image1>')
+        msg.attach(msgImage)
+               
+        server=smtplib.SMTP('outbound.gatech.edu', 25)
+        server.starttls()
+        server.send_message(msg)
+        server.quit()    
+
+    def capture_frame(self, endtime, new_background = False, max_frames = 100, stdev_threshold = 20):
+
+        sums = np.zeros(shape = (self.r[3], self.r[2]))
+        n = np.zeros(shape = (self.r[3], self.r[2]))
+        stds = np.zeros(shape = (self.r[3], self.r[2]))
+        
+        current_time = datetime.datetime.now()
+        if current_time >= endtime:
+            return
+        
+        while True:
+            all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
+            for i in range(0, max_frames):
+                all_data[i] = self._return_depth()
+
+                current_time = datetime.datetime.now()
+                if current_time >= endtime:
+                    break
+            
+            med = np.nanmedian(all_data, axis = 0)
+            std = np.nanstd(all_data, axis = 0)
+            med[std > self.stdev_threshold] = 0
+            std[std > self.stdev_threshold] = 0
+        
+            counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
+            med[counts < 5] = 0
+            std[counts < 5] = 0
+            
+            sums += med
+            stds += std
+            med[counts > 1] = 1
+            n += med
+
+            current_time = datetime.datetime.now()
+            if current_time >= endtime:
+                break
+
+        avg_med = sums/n
+        avg_std = stds/n
         color = self._return_reg_color()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
 
-        while True:
-            current_time = datetime.datetime.now()
-            depth = self._return_depth()
-            # Have we progressed to next delta?
-            if (current_time - start_t) >= current_delta:
-                if counter != 0: #Ignore first set of data
-                    data = depth[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
-                    all_data[counter-1] = data
-                counter += 1
-                current_delta =  datetime.timedelta(seconds = counter*delta)
-                if counter == max_frames:
-                    break
+        self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frame_counter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frame_counter).zfill(6) + '.jpg,,Time' + str(start_t)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+        np.save(self.master_directory +'Frames/Frame_' + str(self.frame_counter).zfill(6) + '.npy', avg_med)
+        cv2.imwrite(self.master_directory+'Frames/Frame_' + str(self.frame_counter).zfill(6) + '.jpg', color)
+        self.frame_counter += 1
+        if new_background:
+            self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.jpg,,Time' + str(start_t)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+            np.save(self.master_directory +'Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.npy', avg_med)
+            cv2.imwrite(self.master_directory+'Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.jpg', color)
+            self.background_counter += 1
+            self.background = avg_med
 
-        med = np.nanmedian(all_data, axis = 0)
-        std = np.nanstd(all_data, axis = 0)
-        med[std > self.stdev_threshold] = np.nan
+        return avg_med
+
+    def capture_frames(self, total_time = 60*60*24*1/24, frame_delta = 5, background_delta = 60, max_frames = 100, stdev_threshold = 20):
         
-        counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
-        med[counts < 5] = np.nan
-        if save:
-            self._print('FrameCaptured: Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy, ' + str(start_t)  + ', NFrames: ' + str(counter-1) + ', Med: '+ '%.2f' % np.nanmean(med) + ', Std: ' + '%.2f' % np.nanmean(std) + ', Min: ' + '%.2f' % np.nanmin(med) + ', Max: ' + '%.2f' % np.nanmax(med) + ', GP: ' + str(np.count_nonzero(~np.isnan(med)))  + ' of ' +  str(med.shape[0]*med.shape[1]))
-            np.save(self.master_directory +'Frames/Frame_' + str(self.frame_counter).zfill(4) + '.npy', med)
-            cv2.imwrite(self.master_directory+'Frames/Frame_' + str(self.frame_counter).zfill(4) + '.jpg', color)
-            self.frame_counter += 1
-        return med
+        self.master_start = datetime.datetime.now()
+        total_delta = datetime.timedelta(seconds = total_time)
+        frame_delta = datetime.timedelta(seconds = 60 * frame_delta)
+        background_delta = datetime.timedelta(seconds = 60 * background_delta)
 
-    def capture_frames(self, total_time = 60*60*24*1/24):
+        current_frametime = master_start + frame_delta
+        current_backgroundtime = master_start
         
-        delta = datetime.timedelta(seconds = total_time)
-
         while True:
+            # Grab new time
             now = datetime.datetime.now()
-            if now - self.master_start > delta:
+
+            # Is the recording finished?
+            if now - self.master_start > total_delta:
                 break
-            self.capture_frame()
-            now = datetime.datetime.now()
+
+            # Fix camera if it needs to be
             if self.PiCamera:
                 if self._video_recording() and not self.camera.recording:
                     self.camera.start_recording(self.master_directory + 'Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264", bitrate=7500000)
                     self._print('PiCameraStarted: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
-                if not self._video_recording() and self.camera.recording:
+                elif not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
+                    self._email_summary()
+
+            # Capture a frame and background if necessary
+            if now > current_background_time:
+                out = self.capture_frame(current_frametime, background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
+                if out is not None:
+                    current_background_time += background_delta
+            else:
+                out = self.capture_frame(current_frametime, background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
+            current_frametime += frame_delta
 
             
             

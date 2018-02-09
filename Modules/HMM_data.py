@@ -32,7 +32,12 @@ class HMMdata:
         data = data
         self.split_data = np.split(data, 1 + np.where(np.diff(data) != 0)[0])
         for d in self.split_data:
-            self.data[self.current_count] = (cpos, cpos + len(d) - 1, d[0])
+            try:
+                self.data[self.current_count] = (cpos, cpos + len(d) - 1, d[0])
+            except IndexError: # numpy array is too small to hold all the data. Resize it
+                self.data = np.resize(self.data, (self.data.shape[0]*5, self.data.shape[1]))
+                self.data[self.current_count] = (cpos, cpos + len(d) - 1, d[0])
+
             cpos = cpos + len(d)
             self.current_count += 1
 

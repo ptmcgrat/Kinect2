@@ -26,7 +26,7 @@ class VideoProcessor:
         self.cores = psutil.cpu_count()
         self.total_blocks = math.ceil(self.frames/(self.blocksize*self.frame_rate))
         self.outdir = videofile.split(videofile.split('/')[-2])[0] + 'Analysis/'
-        self.tempdir =  self.outdir + 'Temp/'
+        self.tempdir =  os.path.expanduser('~') + '/Temp/KinectTracker/' + videofile.split('/')[-1].split('.')[0] + '/'
         self.window = 120
         self.hmm_time = 60*60
         print('VideoProcessor: Analyzing ' + self.videofile)
@@ -66,6 +66,7 @@ class VideoProcessor:
             
 
     def calculateHMM(self, delete = True):
+        
         start = datetime.datetime.now()
         print('ConvertingVideo: Creating rows of data for further analysis')
         print('TotalThreads: ' + str(self.cores))
@@ -95,13 +96,14 @@ class VideoProcessor:
         print('Converting HMMs to internal data structure and deleting temporary data')
         start = datetime.datetime.now()
         print('StartTime: ' + str(start))
+
         
         self.obj = HMMdata(self.width, self.height, self.frames)
         if not os.path.exists(self.outdir):
                 os.makedirs(self.outdir)    
         self.obj.add_data(self.tempdir, self.outdir)
-        if delete:
-            shutil.rmtree(self.tempdir)
+        #if delete:
+        #    shutil.rmtree(self.tempdir)
         print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs')
         
     def summarize_data(self):
@@ -142,7 +144,7 @@ class VideoProcessor:
         # Calculate means
         lrm = scipy.ndimage.filters.uniform_filter(ad, size = (1,self.window), mode = 'reflect', origin = -1*int(self.window/2)).astype('uint8')
         rrm = np.roll(lrm, int(self.window), axis = 1).astype('uint8')
-        rrm[0:self.window] = lrm[0] # Fix means that roll over origin
+        rrm[:,0:self.window] = lrm[:,0:1]
 
         # Identify data that falls outside of mean
         ad[(((ad > lrm + 7.5) & (ad > rrm + 7.5)) | ((ad < lrm - 7.5) & (ad < rrm - 7.5)))] = 0
@@ -199,3 +201,4 @@ class VideoProcessor:
 
     def row_fn(self, row):
         return self.tempdir + str(row) + '.npy'
+

@@ -1,9 +1,24 @@
-import os, cv2, seaborn
+import os, sys, io
 import numpy as np
-from matplotlib import animation
+from datetime import datetime as dt
 import matplotlib.pyplot as plt
-from roipoly import roipoly
-import pylab as pl
+from seaborn import heatmap
+
+
+#add delta value for frame and background
+#make masterstart return 2 lines
+
+class LogFormatError(Exception):
+    pass
+
+class FrameObj:
+    def __init__(self, npy_file, pic_file, time, med, std, gp):
+        self.npy_file = npy_file
+        self.pic_file = pic_file
+        self.time = time
+        self.med = med
+        self.std = std
+        self.gp = gp
 
 class LogParser:    
     def __init__(self, logfile):
@@ -13,171 +28,119 @@ class LogParser:
 
     def parse_log(self):
 
-        self.npy_files = []
-        self.jpg_files = []
-        self.video_files = []
-        self.npy_data = [] #stored as tuple (n_frames, med,min,max,std,gp)
+        self.speeds = []
+        self.frames = []
+        self.backgrounds = []
+        self.movies = []
         
-        for line in self.lf:
-            info_type = line.split(':')[0]
-            if info_type == 'FrameCaptured':
-                npy_file = line.split(': ')[1].split(',')[0]
-                jpg_file = npy_file.replace('.npy', '.jpg')
-                fnframe = int(line.split('NFrames: ')[1].split(',')[0])
-                fmed = float(line.split('Med: ')[1].split(',')[0])
-                fmin = float(line.split('Min: ')[1].split(',')[0])
-                fmax = float(line.split('Max: ')[1].split(',')[0])
-                fstd = float(line.split('Std: ')[1].split(',')[0])
-                fpix = int(line.split('GP: ')[1].split(' of')[0])
+        with open(self.logfile) as f:
+            for line in f:
+                info_type = line.split(':')[0]
+                if info_type == 'MasterStart':
+                    try:
+                        self.system
+                        self.device
+                        self.camera
+                        self.uname
+                    except AttributeError:
+                        self.system, self.device, self.camera, self.uname = self._ret_data(line, ['System', 'Device', 'Camera','Uname'])
+                    else:
+                        raise LogFormatError('It appears MasterStart is present twice in the Logfile. Unable to deal')
 
-                self.npy_files.append(self.master_directory + npy_file)
-                self.jpg_files.append(self.master_directory + jpg_file)
-                self.npy_data.append((fnframe, fmed,fmin,fmax,fstd,fpix))
-                
-            if info_type == 'ROI':
-                self.background_image = cv2.imread(self.master_directory + line.rstrip().split('Image: ')[1].split(',')[0])
-                print(line.rstrip().split('Shape: ('))
-                self.width = int(line.rstrip().split('Shape: (')[1].split(',')[3].split(')')[0])
-                self.height = int(line.rstrip().split('Shape: (')[1].split(',')[2])
+                if info_type == 'MasterRecordStart':
+                    self.master_start = self._ret_data(line, ['Time'])
 
-            if info_type == 'PiCameraStarted':
-                video_file = line.rstrip().split('File=')[1].split(',')[0]
-                self.video_files.append(self.master_directory + video_file)
+                if info_type == 'ROI':
+                    try:
+                        self.bounding_pic
+                        self.bounding_shape
+                    except AttributeError:
+                        self.bounding_pic, self.bounding_shape = self._ret_data(line, ['Image', 'Shape'])
+                        self.width = self.bounding_shape[3]
+                        self.height = self.bounding_shape[2]
+                    else:
+                        raise LogFormatError('It appears ROI is present twice in the Logfile. Unable to deal')
+                    
+                if info_type == 'DiagnoseSpeed':
+                    self.speed.append(self._ret_data(line, 'Rate'))
+                    
+                if info_type == 'FrameCaptured':
+                    self.frames.append(FrameObj(self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
 
-        self.all_data = np.empty(shape = (len(self.npy_files),self.width, self.height))
+                if info_type == 'BackgroundCaptured':
+                    self.backgrounds(FrameObj(self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
+                    
+                #if info_type == 'PiCameraStarted':
+                    
+        self.frames.sort(key = lambda x: x.time)
+        self.backgrounds.sort(key = lambda x: x.time)
 
-        for i, npy_file in enumerate(self.npy_files):
+    def day_summary(self, day, start=10, stop=11):
+        day_frames = [x for x in self.frames if x.time.day - self.master_start.day + 1 == day]
+
+        start = [x for x in day_frames if x.time.hour == start][0]
+        stop = [x for x in day_frames if x.time.hour == stop][0]
+        start_pic = cv2.imread(start.pic_file)
+        end_pic = cv2.imread(stop.pic_file)
+        start_depth = np.load(start.npy_file)
+        end_depth = np.load(stop.npy_file)
+        
+        fig = plt.figure()
+        ax1 = fig.add_subplot(3,2,1)       
+        ax2 = fig.add_subplot(3,2,2)
+        ax3 = fig.add_subplot(3,2,3)
+        ax4 = fig.add_subplot(3,2,4)
+        ax5 = fig.add_subplot(3,2,5)
+        ax6 = fig.add_subplot(3,2,6)
+
+        ax1.imshow(start_pic)
+        ax2.imshow(end_pic)
+        heatmap(end_depth - start_depth, ax = ax3, cbar = True) #seaborn function
+        ax4.plot([x.time for x in day_frames], [x.med for x in day_frames])
+        ax5.plot([x.time for x in day_frames], [x.std for x in day_frames])
+        ax6.plot([x.time for x in day_frames], [x.n for x in day_frames])
+        buf = io.StringIO()
+        plt.savefig(buf, format='png')
+        return buf.getvalue()
+        
+    def create_npy_array:
+        self.all_data = np.empty(shape = (len(self.frames), self.width, self.height))
+        for i, npy_file in enumerate(self.frames):
             data = np.load(npy_file)
             self.all_data[i] = data
 
         np.save(self.depth_df, self.all_data)
 
-    def select_regions(self):
-        background = self.all_data[-1] - self.all_data[0]
-        pl.imshow(self.all_data[-1])
-        pl.colorbar()
-        pl.title('Identify regions with sand')
-        self.Tank_ROI = roipoly(roicolor='r')
-        np.save(self.tank_mask_file, self.Tank_ROI.getMask(background))
 
-        
-        pl.imshow(background)
-        pl.colorbar()
-        self.Tank_ROI.displayROI()
-        pl.title('Identify regions with pit')
-        self.Pit_ROI = roipoly(roicolor='b')
-        np.save(self.pit_mask, self.Pit_ROI.getMask(background))
-
-
-        pl.imshow(background)
-        pl.colorbar()
-        self.Sand_ROI.displayROI()
-        self.Pit_ROI.displayROI()
-        pl.title('Identify regions with Castle')
-        self.Castle_ROI = roipoly(roicolor='g')
-        np.save(self.castle_mask, self.Castle_ROI.getMask(background))
-        
-    def create_heatmap_video(self):
-
-        self.d_min = np.nanpercentile(self.all_data, 0.1)
-        self.d_max = np.nanpercentile(self.all_data, 99.9)
-        self.d_min2 = np.nanpercentile(self.all_data - self.all_data[0], 0.1)
-        self.d_max2 = np.nanpercentile(self.all_data - self.all_data[0], 99.9)
-        
-        img = cv2.imread(self.jpg_files[0])
-
-        self.fig = plt.figure()
-        self.ax1 = self.fig.add_subplot(2,2,1)       
-        self.ax2 = self.fig.add_subplot(2,2,2)
-        self.ax3 = self.fig.add_subplot(2,2,3)
-        self.ax4 = self.fig.add_subplot(2,2,4)
-
-        for axis in [self.ax1, self.ax2, self.ax3, self.ax4]:
-            s_l = self.Sand_ROI.ret_line()
-            p_l = self.Pit_ROI.ret_line()
-            c_l = self.Castle_ROI.ret_line()
-
-            print(axis)
-            print(s_l)
-            axis.add_line(s_l)
-            axis.add_line(p_l)
-            axis.add_line(c_l)
- 
-        seaborn.heatmap(self.all_data[0], ax = self.ax1, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False, cbar = True)
-        self.ax2.imshow(img)
-        self.ax2.set_axis_off()
-        seaborn.heatmap(self.all_data[0]-self.all_data[0], ax = self.ax3, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False, cbar = True)
-        seaborn.heatmap(self.smooth_data[0]-self.smooth_data[0], ax = self.ax4, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False, cbar = True)
-        
-        writer = animation.writers['ffmpeg'](fps=10, metadata=dict(artist='Patrick McGrath'), bitrate=1800)
-        anim = animation.FuncAnimation(self.fig, self.animate, frames = self.all_data.shape[0], repeat = False)
-        anim.save(self.summary_video, writer = writer)        
-
-    def animate(self, i):
-        
-        img = cv2.imread(self.jpg_files[i])
-
-        self.fig.clf()
-        self.ax1 = self.fig.add_subplot(2,2,1)       
-        self.ax2 = self.fig.add_subplot(2,2,2)
-        self.ax3 = self.fig.add_subplot(2,2,3)
-        self.ax4 = self.fig.add_subplot(2,2,4)
-
-        for axis in [self.ax1, self.ax2, self.ax3, self.ax4]:
-            s_l = self.Sand_ROI.ret_line()
-            p_l = self.Pit_ROI.ret_line()
-            c_l = self.Castle_ROI.ret_line()
-
-            print(axis)
-            print(s_l)
-            axis.add_line(s_l)
-            axis.add_line(p_l)
-            axis.add_line(c_l)
- 
-        seaborn.heatmap(self.all_data[i], ax = self.ax1, vmin = self.d_min, vmax = self.d_max, xticklabels=False, yticklabels=False, cbar = True)
-        self.ax2.imshow(img)
-        self.ax2.set_axis_off()
-#        self.ax2.set_xticklabels([])
-#        self.ax2.set_yticklabels([])
-        seaborn.heatmap(self.all_data[i]-self.all_data[0], ax = self.ax3, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False, cbar = True)
-        seaborn.heatmap(self.smooth_data[i]-self.smooth_data[0], ax = self.ax4, vmin = self.d_min2, vmax = self.d_max2, xticklabels=False, yticklabels=False, cbar = True)
-
-            def smooth_data(self):
-        self.smooth_data = np.empty(shape = (len(self.npy_files),) + self.crop_shape)
-
-        for i in range(0,self.all_data.shape[1]):
-            print(i)
-            for j in range(0,self.all_data.shape[2]):
-                self.smooth_data[:,i,j] = scipy.signal.savgol_filter(self.all_data[:,i,j], 51,3)
-
-        np.save(self.smooth_data_file, self.all_data)
-
-    def summarize_data(self):
-        t_data = np.load(self.data_file)
-        s_background = np.load(self.sand_mask)
-        p_background = np.load(self.pit_mask)
-        c_background = np.load(self.castle_mask)
-        nb_background = np.array(s_background)
-        nb_background[p_background == True] = False
-        nb_background[c_background == True] = False
-
-        t = []
-        s_data = []
-        p_data = []
-        c_data = []
-        nb_data = []
-        
-        for i in range(0,t_data.shape[0]):
-            t.append(i)
-            s_data.append(np.nanmean(t_data[i][s_background == True]))
-            p_data.append(np.nanmean(t_data[i][p_background == True]))
-            c_data.append(np.nanmean(t_data[i][c_background == True]))
-            nb_data.append(np.nanmean(t_data[i][nb_background == True]))
-
-        plt.plot(t,s_data, label = 'sand')
-        plt.plot(t,p_data, label = 'pit')
-        plt.plot(t,c_data, label = 'castle')
-        plt.plot(t,nb_data, label = 'sand_not_pit_castle')
-        plt.legend()
+    def _ret_data(self, line, data):
+        out_data = []
+        if type(data) != list:
+            data = [data]
+        for d in data:
+            t_data = line.split(d + ': ')[1].split(',,')[0]
+            # Is it a date?
+            try:
+                out_data.append(dt.strptime(t_data, '%Y-%m-%d %H:%M:%S.%f'))
+                continue
+            except ValueError:
+                pass
+            # Is it a tuple?
+            try:
+                out_data.append(tuple(t_data))
+                continue
+            except TypeError:
+                pass
+            # Is it an int?
+            try:
+                out_data.append(int(t_data))
+                continue
+            except TypeError:
+                pass
+            # Is it a float?
+            try:
+                out_data.append(float(t_data))
+            except TypeError:
+                # Keep it as a string
+                out_data.append(t_data)
+        return out_data
     
-        plt.show()
