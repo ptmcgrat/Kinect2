@@ -225,7 +225,7 @@ class CichlidTracker:
             col = headers.index('TankID')
             if pi_ws.row_values(row)[col] not in ['None','']:
                 self.tankID = pi_ws.row_values(row)[col]
-                self._modifyPiGS(capability = 'Device=' + self.device + ',Camera=' + str(self.piCamera), command = 'None', status = 'AwaitingCommand')
+                self._modifyPiGS(capability = 'Device=' + self.device + ',Camera=' + str(self.piCamera), status = 'AwaitingCommand')
                 return
             else:
                 self._modifyPiGS(error = 'Awaiting assignment of TankID')
