@@ -71,7 +71,7 @@ class CichlidTracker:
             self._closeFiles()
             self.monitorCommands()
 
-        self._modifyPiGS(command = 'None', status = 'Running')
+        self._modifyPiGS(command = 'None', status = 'Running', error = '')
         
         self.projectDirectory = self.masterDirectory + projectID + '/'
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
@@ -161,7 +161,7 @@ class CichlidTracker:
             if command != 'None':
                 self.runCommand(command, projectID)
             else:
-                self._modifyTankGS(error = '')
+                self._modifyPiGS(error = '')
 
 
     def _authenticateGoogleDrive(self):
