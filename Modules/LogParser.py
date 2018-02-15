@@ -47,7 +47,7 @@ class LogParser:
                     else:
                         raise LogFormatError('It appears MasterStart is present twice in the Logfile. Unable to deal')
 
-                if info_type == 'MasterRecordStart':
+                if info_type == 'MasterRecordInitialStart':
                     self.master_start = self._ret_data(line, ['Time'])
 
                 if info_type == 'ROI':
@@ -103,7 +103,7 @@ class LogParser:
         plt.savefig(buf, format='png')
         return buf.getvalue()
         
-    def create_npy_array:
+    def create_npy_array(self):
         self.all_data = np.empty(shape = (len(self.frames), self.width, self.height))
         for i, npy_file in enumerate(self.frames):
             data = np.load(npy_file)
