@@ -1,22 +1,22 @@
-import cv2, platform, sys, os, shutil, datetime, subprocess, smtplib
+import cv2, platform, sys, os, shutil, datetime, subprocess, smtplib, gspread, time, socket
 import Modules.LogParser as LP
 import numpy as np
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
-
+from oauth2client.service_account import ServiceAccountCredentials
 
 class CichlidTracker:
-    def __init__(self, project_name, output_directory, rewrite_flag, frame_delta = 5, background_delta = 60, ROI = False):
-
-        # 1: Set parameters
-        self.project_name = project_name
-        self.frame_counter = 1 # Keep track of how many frames are saved
-        self.background_counter = 1 # Keep track of how many backgrounds are saved
-        self.kinect_bad_data = 2047
+    def __init__(self, credentialFile = 'SAcredentials.json'):
+        # 1: Define valid commands and ignore warnings
+        self.commands = ['New', 'Restart', 'Stop', 'Rewrite']
         np.seterr(invalid='ignore')
 
-        # 2: Determine which system this code is running on
+        # 2: Make connection to google doc
+        self.credentialFile = credentialFile
+        self._authenticateGoogleDrive()
+        
+        # 3: Determine which system this code is running on
         if platform.node() == 'odroid':
             self.system = 'odroid'
         elif platform.node() == 'raspberrypi' or 'Pi' in platform.node():
@@ -25,126 +25,163 @@ class CichlidTracker:
             self.system = 'mac'
             self.caff = subprocess.Popen('caffeinate') #Prevent mac from falling asleep
         else:
-            print('Not sure what system you are running on.', file = sys.stderr)
-            sys.exit()
+            self._initError('Could not determine which system this code is running from')
 
-        # 3: Determine which Kinect is attached
-        self._identify_device() #Stored in self.device
-
-        # 4: Determine if PiCamera is attached
-        self.PiCamera = False
-        if 'pi' in self.system.lower():
+        # 4: Determine which Kinect is attached
+        self._identifyDevice() #Stored in self.device
+        
+        # 5: Determine if PiCamera is attached
+        self.piCamera = False
+        if self.system == 'pi':
             from picamera import PiCamera
             self.camera = PiCamera()
             self.camera.resolution = (1296, 972)
             self.camera.framerate = 30
-            self.PiCamera = True
-
-        # 5: Create master directory and logging files
-        if output_directory is None:
-            if self.system == 'odroid':
-                self.master_directory = '/media/odroid/Kinect2/' + project_name + '/'
-            elif self.system == 'pi':
-                self.master_directory = '/media/pi/Kinect2/' + project_name + '/'
-            elif self.system == 'mac':
-                self.master_directory = '/Users/pmcgrath7/Dropbox (GaTech)/Applications/KinectPiProject/Kinect2Tests/Output/' + project_name + '/'
-        else:
-            if output_directory[-1] != '/':
-                output_directory += '/'
-            self.master_directory = output_directory + project_name + '/'
-
-        if rewrite_flag:
-            if os.path.exists(self.master_directory):
-                shutil.rmtree(self.master_directory)
-
-        if not os.path.exists(output_directory):
-            os.mkdir(output_directory)
-        if not os.path.exists(self.master_directory):
-            os.mkdir(self.master_directory)
-        else:
-            print('Project directory already exists. If you would like to overwrite, use the -r flag')
-            sys.exit()
-
-        if not os.path.exists(self.master_directory + 'Frames/'):
-            os.mkdir(self.master_directory + 'Frames/')
-
-        if not os.path.exists(self.master_directory + 'Backgrounds/'):
-            os.mkdir(self.master_directory + 'Backgrounds/')
-
-        if self.PiCamera and not os.path.exists(self.master_directory + 'Videos/'):
-            os.mkdir(self.master_directory + 'Videos/')
-        
-        self.logger_file = self.master_directory + 'Logfile.txt'
-        self.lf = open(self.logger_file, 'w')
-        self._print('MasterStart: System='+self.system + ',,Device=' + self.device + ',,Camera=' + str(self.PiCamera) + ',,Uname=' + str(platform.uname()))
-        self._print('MasterStart: Time=' + str(datetime.datetime.now()))
-
-        # 6: Open and start Kinect2
-        self._start_kinect()
-
-        # 7: Identify ROI for depth data study
-        self._create_ROI(use_ROI = False)
+            self.piCamera = True
             
-        # 8: Diagnose speed
-        self._diagnose_speed()
+        # 6: Determine master directory
+        self._identifyMasterDirectory() # Stored in self.masterDirectory
+
+        # 7: Make connection to Google Drive and determine which tank this Pi is pointed at
+        self._identifyTank() # Will wait for tankID to assign to it if there is not one
+        
+        # 8: Await instructions
+        self.monitorCommands()
         
     def __del__(self):
-        try:
-            self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
-            self.lf.close()
-        except AttributeError:
-            pass
-        try:
-            if self.device == 'kinect2':
-                self.K2device.stop()
-            if self.device == 'kinect':
-                freenect.sync_stop()
-        except AttributeError:
-            pass
-        try:
-            if self.system == 'mac':
-                self.caff.kill()
-        except AttributeError:
-            pass
         
-    def _print(self, text):
-        print(text, file = self.lf)
-        print(text, file = sys.stderr)
+        self._closeFiles()
 
-    def _return_reg_color(self):
-        if self.device == 'kinect':
-            return freenect.sync_get_video()[0][self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+    def monitorCommands(self, delta = 1):
+        while True:
+            self._identifyTank() #Stored in self.tankID
+            command, projectID = self._returnCommand()
+            print(command + '\t' + projectID)
+            if command != 'None':
+                self.runCommand(command, projectID)
+            self._modifyTankGS(status = 'AwaitingCommand', error = '')
+            time.sleep(delta*10)
 
-        elif self.device == 'kinect2':
-            undistorted = FN2.Frame(512, 424, 4)
-            registered = FN2.Frame(512, 424, 4)
-            frames = self.listener.waitForNewFrame()
-            color = frames["color"]
-            depth = frames["depth"]
-            self.registration.apply(color, depth, undistorted, registered, enable_filter=False)
-            reg_image =  registered.asarray(np.uint8)[:,:,0:3].copy()
-            self.listener.release(frames)
-            return reg_image[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+    def runCommand(self, command, projectID):
+        if command not in self.commands:
+            self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
+            
+        if command == 'Stop':
+            self._modifyDrive(command = 'None')
+            self._modifyDrive(status = 'AwaitingCommand')
+            self._closeFiles()
+            self.monitorCommands()
 
-    def _return_depth(self):
-        if self.device == 'kinect':
-            data = freenect.sync_get_depth()[0].astype('Float64')
-            data[data == self.kinect_bad_data] = np.nan
-            return data[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+        self._modifyTankGS(command = 'None', status = 'Running')
         
-        elif self.device == 'kinect2':
-            frames = self.listener.waitForNewFrame(timeout = 1000)
-            output = frames['depth'].asarray()
-            self.listener.release(frames)
-            return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+        self.projectDirectory = self.masterDirectory + projectID + '/'
+        self.loggerFile = self.projectDirectory + 'Logfile.txt'
+        self.frameDirectory = self.projectDirectory + 'Frames/'
+        self.backgroundDirectory = self.projectDirectory + 'Backgrounds/'
+        self.videoDirectory = self.projectDirectory + 'Videos/'
+        if command == 'New':
+            # Project Directory should not exist. If it does, report error
+            if os.path.exists(self.projectDirectory):
+                self._reinstructError('New command cannot be run if ouput directory already exists. Use Rewrite or Restart')
 
-    def _video_recording(self):
-        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12
-            return True
+        if command == 'Rewrite':
+            if os.path.exists(self.projectDirectory):
+                shutil.rmtree(self.projectDirectory)
+        
+        if command in ['New','Rewrite']:
+            self.masterStart = datetime.datetime.now()
+            os.mkdir(self.projectDirectory)
+            os.mkdir(self.frameDirectory)
+            os.mkdir(self.backgroundDirectory)
+            os.mkdir(self.videoDirectory)
+            self.frameCounter = 1
+            self.backgroundCounter = 1
+            self.videoCounter = 1
+
+        if command == 'Restart':
+            logObj = LP.LogParser(self.loggerFile)
+            self.masterStart = logObj.master_start
+            self.r = logObj.bounding_shape
+            self.frameCounter = logObj.lastFrameCounter + 1
+            self.backgroundCounter = logObj.lastFrameCounter + 1
+            self.videoCounter = logObj.lastVideoCounter + 1
+            if self.system != logObj.system or self.device != logObj.device or self.camera != logObj.camera:
+                self._reinstructError('Restart error. System, device, or camera does not match what is in logfile')
+
+        self.lf = open(self.loggerFile, 'a')
+        self._modifyTankGS(start = str(self.masterStart))
+
+        if command in ['New', 'Rewrite']:
+            self._print('MasterStart: System='+self.system + ',,Device=' + self.device + ',,Camera=' + str(self.piCamera) + ',,Uname=' + str(platform.uname()))
+            self._print('MasterRecordInitialStart: Time=' + str(self.masterStart))
+            self._createROI(useROI = False)
+
         else:
-            return False
+            self._print('MasterRecordRestart: Time =' + str(datetime.datetime.now()))
+
+            
+        # Start kinect
+        self._start_kinect()
         
-    def _identify_device(self):
+        # Diagnose speed
+        self._diagnose_speed()
+
+        # Capture data
+        self.captureFrames()
+    
+    def captureFrames(self, frame_delta = 5, background_delta = 60, max_frames = 100, stdev_threshold = 20):
+
+        current_background_time = datetime.datetime.now()
+        current_frame_time = current_background_time + datetime.timedelta(seconds = 60 * frame_delta)
+
+        while True:
+            # Grab new time
+            now = datetime.datetime.now()
+
+            # Fix camera if it needs to be
+            if self.piCamera:
+                if self._video_recording() and not self.camera.recording:
+                    self.camera.start_recording(self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", bitrate=7500000)
+                    self._print('PiCameraStarted: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                elif not self._video_recording() and self.camera.recording:
+                    self.camera.stop_recording()
+                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    self.videoCounter += 1
+
+            # Capture a frame and background if necessary
+            if now > current_background_time:
+                out = self._captureFrame(current_frame_time, new_background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
+                if out is not None:
+                    current_background_time += datetime.timedelta(seconds = 60 * background_delta)
+            else:
+                out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
+            current_frame_time += datetime.timedelta(seconds = 60 * frame_delta)
+
+            # Check google doc to determine if recording has changed.
+            command, projectID = self._returnCommand()
+            if command != 'None':
+                self.runCommand(command, projectID)
+            else:
+                self._modifyTankGS(error = '')
+
+
+    def _authenticateGoogleDrive(self):
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/spreadsheets"
+        ]
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialFile, scope)
+        gs = gspread.authorize(credentials)
+        self.controllerGS = gs.open('Controller')
+        pi_ws = self.controllerGS.worksheet('RaspberryPi')
+        headers = pi_ws.row_values(1)
+        column = headers.index('RaspberryPiID') + 1
+        try:
+            pi_ws.col_values(column).index(platform.node())
+        except ValueError:
+            pi_ws.append_row([platform.node(), socket.getfqdn(), '', '', 'Awaiting assignment of TankID'])
+        
+    def _identifyDevice(self):
         try:
             global freenect
             import freenect
@@ -152,8 +189,7 @@ class CichlidTracker:
             if freenect.num_devices(a) == 0:
                 kinect = False
             elif freenect.num_devices(a) > 1:
-                print('Multiple Kinect1s attached. Unsure how to handle', file = sys.stderr)
-                sys.exit()
+                self._initError('Multiple Kinect1s attached. Unsure how to handle')
             else:
                 kinect = True
         except ImportError:
@@ -165,24 +201,176 @@ class CichlidTracker:
             if FN2.Freenect2().enumerateDevices() == 1:
                 kinect2 = True
             elif FN2.Freenect2().enumerateDevices() > 1:
-                print('Multiple Kinect2s attached. Unsure how to handle', file = sys.stderr)
-                sys.exit()
+                self._initError('Multiple Kinect2s attached. Unsure how to handle')
             else:
                 kinect2 = False
         except ImportError:
             kinect2 = False
 
         if kinect and kinect2:
-            print('Kinect1 and Kinect2 attached. Unsure how to handle', file = sys.stderr)
-            sys.exit()
+            self._initError('Kinect1 and Kinect2 attached. Unsure how to handle')
         elif not kinect and not kinect2:
-            print('No device attached. Quitting...', file = sys.stderr)
-            sys.exit()
+            self._initError('No depth sensor  attached')
         elif kinect:
             self.device = 'kinect'
         else:
             self.device = 'kinect2'
+       
+    def _identifyTank(self):
+        while True:
+            self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
+            pi_ws = self.controllerGS.worksheet('RaspberryPi')
+            headers = pi_ws.row_values(1)
+            raPiID_col = headers.index('RaspberryPiID') + 1
+            row = pi_ws.col_values(raPiID_col).index(platform.node()) + 1
+            col = headers.index('TankID')
+            if pi_ws.row_values(row)[col] not in ['None','']:
+                self.tankID = pi_ws.row_values(row)[col]
+                self._modifyPiGS(capability = 'System='+self.system + ',Device=' + self.device + ',Camera=' + str(self.piCamera), error = '')
+                return
+            else:
+                self._modifyPiGS(error = 'Awaiting assignment of TankID')
+                time.sleep(5)
 
+    def _identifyMasterDirectory(self):
+        if self.system == 'pi':
+            possibleDirs = []
+            for d in os.listdir('/media/pi/'):
+                try:
+                    with open('/media/pi/' + d + '/temp.txt', 'w') as f:
+                        print('Test', file = f)
+                    with open('/media/pi/' + d + '/temp.txt', 'r') as f:
+                        for line in f:
+                            if 'Test' in line:
+                                possibleDirs.append(d)
+                except:
+                    pass
+                try:
+                    os.remove('/media/pi/' + d + '/temp.txt')
+                except FileNotFoundError:
+                    continue
+            if len(possibleDirs) == 1:
+                self.masterDirectory = '/media/pi/' + d
+            else:
+                self._initError('Not sure which directory to write to. Options are: ' + str(possibleDirs))
+        else:
+            self.masterDirectory = 'blah'
+        if self.masterDirectory[-1] != '/':
+            self.masterDirectory += '/'
+        if not os.path.exists(self.masterDirectory):
+            os.mkdir(self.masterDirectory)
+        
+    def _initError(self, message):
+        try:
+            self._modifyPiGS(self, error = message)
+        except:
+            pass
+        self._print('InitError: ' + message)
+        raise TypeError
+            
+    def _reinstructError(self, message):
+        self._modifyTankGS(self, command = 'None', status = 'AwaitingCommands', error = message, ping = datetime.datetime.now())
+
+        # Update google doc to indicate error
+        self.monitorCommands()
+ 
+    def _print(self, text):
+        try:
+            print(text, file = self.lf, flush = True)
+        except:
+            pass
+        print(text, file = sys.stderr, flush = True)
+
+    def _returnRegColor(self, crop = True):
+        # This function returns a registered color array
+        if self.device == 'kinect':
+            out = freenect.sync_get_video()[0]
+            
+        elif self.device == 'kinect2':
+            undistorted = FN2.Frame(512, 424, 4)
+            registered = FN2.Frame(512, 424, 4)
+            frames = self.listener.waitForNewFrame()
+            color = frames["color"]
+            depth = frames["depth"]
+            self.registration.apply(color, depth, undistorted, registered, enable_filter=False)
+            reg_image =  registered.asarray(np.uint8)[:,:,0:3].copy()
+            self.listener.release(frames)
+            out = reg_image
+
+        if crop:
+            return out[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+        else:
+            return out
+            
+    def _returnDepth(self):
+        # This function returns a float64 npy array containing one frame of data with all bad data as NaNs
+        if self.device == 'kinect':
+            data = freenect.sync_get_depth()[0].astype('Float64')
+            data[data == 2047] = np.nan # 2047 indicates bad data from Kinect 
+            return data[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+        
+        elif self.device == 'kinect2':
+            frames = self.listener.waitForNewFrame(timeout = 1000)
+            output = frames['depth'].asarray()
+            self.listener.release(frames)
+            return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+
+    def _returnCommand(self):
+        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
+        tank_ws = self.controllerGS.worksheet('Tanks')
+        headers = tank_ws.row_values(1)
+        try:
+            tankIndex = tank_ws.col_values(headers.index('TankID') + 1).index(self.tankID)
+        except ValueError:
+            self._exitError(self.tankID + ' not found in Google Doc')
+        command = tank_ws.col_values(headers.index('Command') + 1)[tankIndex]
+        projectID = tank_ws.col_values(headers.index('ProjectID') + 1)[tankIndex]
+        return command, projectID
+
+    def _modifyTankGS(self, start = None, command = None, status = None, error = None):
+        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
+        tank_ws = self.controllerGS.worksheet('Tanks')
+        headers = tank_ws.row_values(1)
+        try:
+            row = tank_ws.col_values(headers.index('TankID') + 1).index(self.tankID) + 1
+        except ValueError:
+            self._exitError(self.tankID + ' not found in Google Doc')
+        if start is not None:
+            column = headers.index('MasterStart') + 1
+            tank_ws.update_cell(row, column, start)
+        if command is not None:
+            column = headers.index('Command') + 1
+            tank_ws.update_cell(row, column, command)
+        if status is not None:
+            column = headers.index('Status') + 1
+            tank_ws.update_cell(row, column, status)
+        if error is not None:
+            column = headers.index('Error') + 1
+            tank_ws.update_cell(row, column, error)
+        column = headers.index('Ping') + 1
+        tank_ws.update_cell(row, column, str(datetime.datetime.now()))
+
+    def _modifyPiGS(self, IP = None, capability = None, error = None):
+        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
+        pi_ws = self.controllerGS.worksheet('RaspberryPi')
+        headers = pi_ws.row_values(1)
+        row = pi_ws.col_values(headers.index('RaspberryPiID')+1).index(platform.node()) + 1
+        if IP is not None:
+            column = headers.index('IP')+1
+            pi_ws.update_cell(row, column, IP)
+        if capability is not None:
+            column = headers.index('Capability')+1
+            pi_ws.update_cell(row, column, capability)
+        if error is not None:
+            column = headers.index('Error')+1
+            pi_ws.update_cell(row, column, error)
+ 
+    def _video_recording(self):
+        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12:
+            return True
+        else:
+            return False
+            
     def _start_kinect(self):
         if self.device == 'kinect':
             freenect.sync_get_depth() #Grabbing a frame initializes the device
@@ -217,12 +405,12 @@ class CichlidTracker:
             self.K2device.start()
             self.registration = FN2.Registration(self.K2device.getIrCameraParams(), self.K2device.getColorCameraParams())
 
-    def _create_ROI(self, use_ROI = False):
+    def _createROI(self, useROI = False):
 
         # a: Grab color and depth frames and register them
-        reg_image = self._return_reg_color()
+        reg_image = self._returnRegColor(crop = False)
         #b: Select ROI using open CV
-        if use_ROI:
+        if useROI:
             cv2.imshow('Image', reg_image)
             self.r = cv2.selectROI('Image', reg_image, fromCenter = False)
             self.r = tuple([int(x) for x in self.r]) # sometimes a float is returned
@@ -236,7 +424,7 @@ class CichlidTracker:
 
             self._print('ROI: Bounding box created, Image: BoundingBox.jpg, Shape: ' + str(self.r))
         else:
-            self.r = (0,0,reg_image.shape[1],reg_image[0])
+            self.r = (0,0,reg_image.shape[1],reg_image.shape[0])
             self._print('ROI: No Bounding box created, Image: None, Shape: ' + str(self.r))
 
             
@@ -246,8 +434,7 @@ class CichlidTracker:
         start_t = datetime.datetime.now()
         counter = 0
         while True:
-            depth = self._return_depth()
-            data = depth[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
+            depth = self._returnDepth()
             counter += 1
             if datetime.datetime.now() - start_t > delta:
                 break
@@ -255,7 +442,7 @@ class CichlidTracker:
 
     def _email_summary(self):
 
-        current_day = datetime.datetime.now().day - self.master_start.day + 1)
+        current_day = datetime.datetime.now().day - self.master_start.day + 1
         # Create summary plot
         
         recipients = ['patrick.mcgrath@biology.gatech.edu', 'ptmcgrat@gmail.com'] # ADD EMAIL HERE
@@ -286,9 +473,10 @@ class CichlidTracker:
         server.starttls()
         server.send_message(msg)
         server.quit()    
-
-    def capture_frame(self, endtime, new_background = False, max_frames = 100, stdev_threshold = 20):
-
+        
+    def _captureFrame(self, endtime, new_background = False, max_frames = 100, stdev_threshold = 20):
+        # Captures time averaged frame of depth data
+        
         sums = np.zeros(shape = (self.r[3], self.r[2]))
         n = np.zeros(shape = (self.r[3], self.r[2]))
         stds = np.zeros(shape = (self.r[3], self.r[2]))
@@ -300,7 +488,7 @@ class CichlidTracker:
         while True:
             all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
             for i in range(0, max_frames):
-                all_data[i] = self._return_depth()
+                all_data[i] = self._returnDepth()
 
                 current_time = datetime.datetime.now()
                 if current_time >= endtime:
@@ -308,8 +496,8 @@ class CichlidTracker:
             
             med = np.nanmedian(all_data, axis = 0)
             std = np.nanstd(all_data, axis = 0)
-            med[std > self.stdev_threshold] = 0
-            std[std > self.stdev_threshold] = 0
+            med[std > stdev_threshold] = 0
+            std[std > stdev_threshold] = 0
         
             counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
             med[counts < 5] = 0
@@ -326,57 +514,44 @@ class CichlidTracker:
 
         avg_med = sums/n
         avg_std = stds/n
-        color = self._return_reg_color()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
+        color = self._returnRegColor()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
 
-        self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frame_counter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frame_counter).zfill(6) + '.jpg,,Time' + str(start_t)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
-        np.save(self.master_directory +'Frames/Frame_' + str(self.frame_counter).zfill(6) + '.npy', avg_med)
-        cv2.imwrite(self.master_directory+'Frames/Frame_' + str(self.frame_counter).zfill(6) + '.jpg', color)
-        self.frame_counter += 1
+        self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg,,Time' + str(endtime)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+        np.save(self.projectDirectory +'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy', avg_med)
+        cv2.imwrite(self.projectDirectory+'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg', color)
+        self.frameCounter += 1
         if new_background:
-            self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.jpg,,Time' + str(start_t)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
-            np.save(self.master_directory +'Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.npy', avg_med)
-            cv2.imwrite(self.master_directory+'Backgrounds/Background_' + str(self.background_counter).zfill(6) + '.jpg', color)
-            self.background_counter += 1
-            self.background = avg_med
+            self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg,,Time' + str(endtime)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+            np.save(self.projectDirectory +'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy', avg_med)
+            cv2.imwrite(self.projectDirectory+'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg', color)
+            self.backgroundCounter += 1
 
         return avg_med
 
-    def capture_frames(self, total_time = 60*60*24*1/24, frame_delta = 5, background_delta = 60, max_frames = 100, stdev_threshold = 20):
-        
-        self.master_start = datetime.datetime.now()
-        total_delta = datetime.timedelta(seconds = total_time)
-        frame_delta = datetime.timedelta(seconds = 60 * frame_delta)
-        background_delta = datetime.timedelta(seconds = 60 * background_delta)
+    def _closeFiles(self):
+        try:
+            self._modifyDrive(command = 'None', status = 'Stopped')
+        except:
+            pass
+        try:
+            self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
+            self.lf.close()
+        except AttributeError:
+            pass
+        try:
+            if self.device == 'kinect2':
+                self.K2device.stop()
+            if self.device == 'kinect':
+                freenect.sync_stop()
+        except AttributeError:
+            pass
+        if self.piCamera:
+            if self.camera.recording:
+                self.camera.stop_recording()
+                self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+        try:
+            if self.system == 'mac':
+                self.caff.kill()
+        except AttributeError:
+            pass
 
-        current_frametime = master_start + frame_delta
-        current_backgroundtime = master_start
-        
-        while True:
-            # Grab new time
-            now = datetime.datetime.now()
-
-            # Is the recording finished?
-            if now - self.master_start > total_delta:
-                break
-
-            # Fix camera if it needs to be
-            if self.PiCamera:
-                if self._video_recording() and not self.camera.recording:
-                    self.camera.start_recording(self.master_directory + 'Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264", bitrate=7500000)
-                    self._print('PiCameraStarted: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
-                elif not self._video_recording() and self.camera.recording:
-                    self.camera.stop_recording()
-                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(now.day - self.master_start.day + 1) + "_vid.h264")
-                    self._email_summary()
-
-            # Capture a frame and background if necessary
-            if now > current_background_time:
-                out = self.capture_frame(current_frametime, background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
-                if out is not None:
-                    current_background_time += background_delta
-            else:
-                out = self.capture_frame(current_frametime, background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
-            current_frametime += frame_delta
-
-            
-            
