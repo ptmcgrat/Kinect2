@@ -41,38 +41,37 @@ class CichlidTracker:
             
         # 6: Determine master directory
         self._identifyMasterDirectory() # Stored in self.masterDirectory
-
-        # 7: Make connection to Google Drive and determine which tank this Pi is pointed at
-        self._identifyTank() # Will wait for tankID to assign to it if there is not one
         
-        # 8: Await instructions
+        # 7: Await instructions
         self.monitorCommands()
         
     def __del__(self):
-        
         self._closeFiles()
 
     def monitorCommands(self, delta = 1):
         while True:
             self._identifyTank() #Stored in self.tankID
             command, projectID = self._returnCommand()
+            if projectID in ['','None']:
+                self._reinstructError('ProjectID must be set')
+
             print(command + '\t' + projectID)
             if command != 'None':
                 self.runCommand(command, projectID)
-            self._modifyTankGS(status = 'AwaitingCommand', error = '')
+            self._modifyPiGS(status = 'AwaitingCommand', error = '')
             time.sleep(delta*10)
 
+            
     def runCommand(self, command, projectID):
         if command not in self.commands:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
         if command == 'Stop':
-            self._modifyDrive(command = 'None')
-            self._modifyDrive(status = 'AwaitingCommand')
+            self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
             self.monitorCommands()
 
-        self._modifyTankGS(command = 'None', status = 'Running')
+        self._modifyPiGS(command = 'None', status = 'Running')
         
         self.projectDirectory = self.masterDirectory + projectID + '/'
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
@@ -109,7 +108,7 @@ class CichlidTracker:
                 self._reinstructError('Restart error. System, device, or camera does not match what is in logfile')
 
         self.lf = open(self.loggerFile, 'a')
-        self._modifyTankGS(start = str(self.masterStart))
+        self._modifyPiGS(start = str(self.masterStart))
 
         if command in ['New', 'Rewrite']:
             self._print('MasterStart: System='+self.system + ',,Device=' + self.device + ',,Camera=' + str(self.piCamera) + ',,Uname=' + str(platform.uname()))
@@ -179,7 +178,7 @@ class CichlidTracker:
         try:
             pi_ws.col_values(column).index(platform.node())
         except ValueError:
-            pi_ws.append_row([platform.node(), socket.getfqdn(), '', '', 'Awaiting assignment of TankID'])
+            pi_ws.append_row([platform.node(),socket.gethostbyname(socket.gethostname()),'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
         
     def _identifyDevice(self):
         try:
@@ -226,7 +225,7 @@ class CichlidTracker:
             col = headers.index('TankID')
             if pi_ws.row_values(row)[col] not in ['None','']:
                 self.tankID = pi_ws.row_values(row)[col]
-                self._modifyPiGS(capability = 'System='+self.system + ',Device=' + self.device + ',Camera=' + str(self.piCamera), error = '')
+                self._modifyPiGS(capability = 'Device=' + self.device + ',Camera=' + str(self.piCamera), command = 'None', status = 'AwaitingCommand')
                 return
             else:
                 self._modifyPiGS(error = 'Awaiting assignment of TankID')
@@ -262,14 +261,14 @@ class CichlidTracker:
         
     def _initError(self, message):
         try:
-            self._modifyPiGS(self, error = message)
+            self._modifyPiGS(command = 'None', status = 'Stopped', error = 'InitError: ' + message)
         except:
             pass
         self._print('InitError: ' + message)
         raise TypeError
             
     def _reinstructError(self, message):
-        self._modifyTankGS(self, command = 'None', status = 'AwaitingCommands', error = message, ping = datetime.datetime.now())
+        self._modifyPiGS(command = 'None', status = 'AwaitingCommands', error = 'InstructError: ' + message)
 
         # Update google doc to indicate error
         self.monitorCommands()
@@ -317,54 +316,39 @@ class CichlidTracker:
 
     def _returnCommand(self):
         self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
-        tank_ws = self.controllerGS.worksheet('Tanks')
-        headers = tank_ws.row_values(1)
-        try:
-            tankIndex = tank_ws.col_values(headers.index('TankID') + 1).index(self.tankID)
-        except ValueError:
-            self._exitError(self.tankID + ' not found in Google Doc')
-        command = tank_ws.col_values(headers.index('Command') + 1)[tankIndex]
-        projectID = tank_ws.col_values(headers.index('ProjectID') + 1)[tankIndex]
+        pi_ws = self.controllerGS.worksheet('RaspberryPi')
+        headers = pi_ws.row_values(1)
+        piIndex = pi_ws.col_values(headers.index('RaspberryPiID') + 1).index(platform.node())
+        command = pi_ws.col_values(headers.index('Command') + 1)[piIndex]
+        projectID = pi_ws.col_values(headers.index('ProjectID') + 1)[piIndex]
         return command, projectID
 
-    def _modifyTankGS(self, start = None, command = None, status = None, error = None):
-        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
-        tank_ws = self.controllerGS.worksheet('Tanks')
-        headers = tank_ws.row_values(1)
-        try:
-            row = tank_ws.col_values(headers.index('TankID') + 1).index(self.tankID) + 1
-        except ValueError:
-            self._exitError(self.tankID + ' not found in Google Doc')
-        if start is not None:
-            column = headers.index('MasterStart') + 1
-            tank_ws.update_cell(row, column, start)
-        if command is not None:
-            column = headers.index('Command') + 1
-            tank_ws.update_cell(row, column, command)
-        if status is not None:
-            column = headers.index('Status') + 1
-            tank_ws.update_cell(row, column, status)
-        if error is not None:
-            column = headers.index('Error') + 1
-            tank_ws.update_cell(row, column, error)
-        column = headers.index('Ping') + 1
-        tank_ws.update_cell(row, column, str(datetime.datetime.now()))
-
-    def _modifyPiGS(self, IP = None, capability = None, error = None):
+    def _modifyPiGS(self, start = None, command = None, status = None, IP = None, capability = None, error = None):
         self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
         pi_ws = self.controllerGS.worksheet('RaspberryPi')
         headers = pi_ws.row_values(1)
         row = pi_ws.col_values(headers.index('RaspberryPiID')+1).index(platform.node()) + 1
+        if start is not None:
+            column = headers.index('MasterStart') + 1
+            pi_ws.update_cell(row, column, start)
+        if command is not None:
+            column = headers.index('Command') + 1
+            pi_ws.update_cell(row, column, command)
+        if status is not None:
+            column = headers.index('Status') + 1
+            pi_ws.update_cell(row, column, status)
+        if error is not None:
+            column = headers.index('Error') + 1
+            pi_ws.update_cell(row, column, error)
         if IP is not None:
             column = headers.index('IP')+1
             pi_ws.update_cell(row, column, IP)
         if capability is not None:
             column = headers.index('Capability')+1
             pi_ws.update_cell(row, column, capability)
-        if error is not None:
-            column = headers.index('Error')+1
-            pi_ws.update_cell(row, column, error)
- 
+        column = headers.index('Ping') + 1
+        pi_ws.update_cell(row, column, str(datetime.datetime.now()))
+
     def _video_recording(self):
         if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12:
             return True
