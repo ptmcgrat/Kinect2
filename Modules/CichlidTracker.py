@@ -8,16 +8,16 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from oauth2client.service_account import ServiceAccountCredentials
 
-dropbox_script = 'Dropbox-Uploader/dropbox_uploader.sh'
 
 class CichlidTracker:
-    def __init__(self, credentialFile = 'SAcredentials.json'):
+    def __init__(self):
         # 1: Define valid commands and ignore warnings
         self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'Snapshot']
         np.seterr(invalid='ignore')
 
-        # 2: Make connection to google doc
-        self.credentialFile = credentialFile
+        # 2: Make connection to google doc and dropbox
+        self.dropboxScript = os.path.expanduser('~') + '/Dropbox-Uploader/dropbox_uploader.sh'
+        self.credentialFile = os.path.expanduser('~') + '/SAcredentials.json'
         self._authenticateGoogleDrive()
         
         # 3: Determine which system this code is running on
@@ -522,7 +522,7 @@ class CichlidTracker:
         return avg_med
 
     def _uploadFiles(self):
-        subprocess.Popen([dropbox_script, 'upload', '-s', self.projectDirectory, self.projectID]) 
+        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]) 
     
     def _closeFiles(self):
         try:
