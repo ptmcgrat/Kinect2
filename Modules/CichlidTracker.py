@@ -516,7 +516,7 @@ class CichlidTracker:
         if new_background:
             self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg,,Time: ' + str(endtime)  + ',,NFrames: ' + str(num_frames) + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
             np.save(self.projectDirectory +'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy', avg_med)
-            matplotlib.image.imsave(self.projectDirectory+'Background/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg', color)
+            matplotlib.image.imsave(self.projectDirectory+'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg', color)
             self.backgroundCounter += 1
 
         return avg_med
