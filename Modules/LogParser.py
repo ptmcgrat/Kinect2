@@ -1,8 +1,9 @@
 import os, sys, io
 import numpy as np
 from datetime import datetime as dt
+import matplotlib
+matplotlib.use('Pdf') # Enables creation of pdf without needing to worry about X11 forwarding when ssh'ing into the Pi
 import matplotlib.pyplot as plt
-from seaborn import heatmap
 
 
 #add delta value for frame and background
@@ -35,6 +36,7 @@ class LogParser:
         
         with open(self.logfile) as f:
             for line in f:
+                line = line.rstrip()
                 info_type = line.split(':')[0]
                 if info_type == 'MasterStart':
                     try:
@@ -56,19 +58,19 @@ class LogParser:
                         self.bounding_shape
                     except AttributeError:
                         self.bounding_pic, self.bounding_shape = self._ret_data(line, ['Image', 'Shape'])
-                        self.width = self.bounding_shape[3]
-                        self.height = self.bounding_shape[2]
+                        self.width = self.bounding_shape[2]
+                        self.height = self.bounding_shape[3]
                     else:
                         raise LogFormatError('It appears ROI is present twice in the Logfile. Unable to deal')
                     
                 if info_type == 'DiagnoseSpeed':
-                    self.speed.append(self._ret_data(line, 'Rate'))
+                    self.speeds.append(self._ret_data(line, 'Rate'))
                     
                 if info_type == 'FrameCaptured':
-                    self.frames.append(FrameObj(self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
+                    self.frames.append(FrameObj(*self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
 
                 if info_type == 'BackgroundCaptured':
-                    self.backgrounds(FrameObj(self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
+                    self.backgrounds.append(FrameObj(*self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
                     
                 #if info_type == 'PiCameraStarted':
                     
@@ -125,21 +127,19 @@ class LogParser:
             except ValueError:
                 pass
             # Is it a tuple?
-            try:
-                out_data.append(tuple(t_data))
+            if t_data[0] == '(' and t_data[-1] == ')':
+                out_data.append(tuple(int(x) for x in t_data[1:-1].split(', ')))
                 continue
-            except TypeError:
-                pass
             # Is it an int?
             try:
                 out_data.append(int(t_data))
                 continue
-            except TypeError:
+            except ValueError:
                 pass
             # Is it a float?
             try:
                 out_data.append(float(t_data))
-            except TypeError:
+            except ValueError:
                 # Keep it as a string
                 out_data.append(t_data)
         return out_data

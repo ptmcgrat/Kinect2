@@ -1,15 +1,19 @@
-import cv2, platform, sys, os, shutil, datetime, subprocess, smtplib, gspread, time, socket
+import platform, sys, os, shutil, datetime, subprocess, smtplib, gspread, time, socket
+import matplotlib.image
 import Modules.LogParser as LP
 import numpy as np
+from PIL import Image
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from oauth2client.service_account import ServiceAccountCredentials
 
+dropbox_script = 'Dropbox-Uploader/dropbox_uploader.sh'
+
 class CichlidTracker:
     def __init__(self, credentialFile = 'SAcredentials.json'):
         # 1: Define valid commands and ignore warnings
-        self.commands = ['New', 'Restart', 'Stop', 'Rewrite']
+        self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'Snapshot']
         np.seterr(invalid='ignore')
 
         # 2: Make connection to google doc
@@ -46,7 +50,9 @@ class CichlidTracker:
         self.monitorCommands()
         
     def __del__(self):
+        self._modifyPiGS(command = 'None', status = 'Stopped', error = 'UnknownError')
         self._closeFiles()
+        self._uploadFiles()
 
     def monitorCommands(self, delta = 1):
         while True:
@@ -61,7 +67,6 @@ class CichlidTracker:
             self._modifyPiGS(status = 'AwaitingCommand', error = '')
             time.sleep(delta*10)
 
-            
     def runCommand(self, command, projectID):
         if command not in self.commands:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
@@ -69,10 +74,11 @@ class CichlidTracker:
         if command == 'Stop':
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
-            self.monitorCommands()
+            return
 
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
-        
+
+        self.projectID = projectID
         self.projectDirectory = self.masterDirectory + projectID + '/'
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
         self.frameDirectory = self.projectDirectory + 'Frames/'
@@ -111,12 +117,12 @@ class CichlidTracker:
         self._modifyPiGS(start = str(self.masterStart))
 
         if command in ['New', 'Rewrite']:
-            self._print('MasterStart: System='+self.system + ',,Device=' + self.device + ',,Camera=' + str(self.piCamera) + ',,Uname=' + str(platform.uname()))
-            self._print('MasterRecordInitialStart: Time=' + str(self.masterStart))
+            self._print('MasterStart: System: '+self.system + ',,Device: ' + self.device + ',,Camera: ' + str(self.piCamera) + ',,Uname: ' + str(platform.uname()))
+            self._print('MasterRecordInitialStart: Time: ' + str(self.masterStart))
             self._createROI(useROI = False)
 
         else:
-            self._print('MasterRecordRestart: Time =' + str(datetime.datetime.now()))
+            self._print('MasterRecordRestart: Time: ' + str(datetime.datetime.now()))
 
             
         # Start kinect
@@ -141,11 +147,12 @@ class CichlidTracker:
             if self.piCamera:
                 if self._video_recording() and not self.camera.recording:
                     self.camera.start_recording(self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", bitrate=7500000)
-                    self._print('PiCameraStarted: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    self._print('PiCameraStarted: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                 elif not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
-                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                     self.videoCounter += 1
+                    self._uploadFiles()
 
             # Capture a frame and background if necessary
             if now > current_background_time:
@@ -406,10 +413,10 @@ class CichlidTracker:
             cv2.rectangle(reg_image, (self.r[0], self.r[1]), (self.r[0] + self.r[2], self.r[1]+self.r[3]) , (0, 255, 0), 2)
             cv2.imwrite(self.master_directory+'BoundingBox.jpg', reg_image)
 
-            self._print('ROI: Bounding box created, Image: BoundingBox.jpg, Shape: ' + str(self.r))
+            self._print('ROI: Bounding box created,, Image: BoundingBox.jpg,, Shape: ' + str(self.r))
         else:
             self.r = (0,0,reg_image.shape[1],reg_image.shape[0])
-            self._print('ROI: No Bounding box created, Image: None, Shape: ' + str(self.r))
+            self._print('ROI: No Bounding box created,, Image: None,, Shape: ' + str(self.r))
 
             
     def _diagnose_speed(self, time = 10):
@@ -498,23 +505,28 @@ class CichlidTracker:
 
         avg_med = sums/n
         avg_std = stds/n
-        color = self._returnRegColor()[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]                        
-
-        self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg,,Time' + str(endtime)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+        color = self._returnRegColor()                        
+        num_frames = int(max_frames*(n.max()-1) + i)
+        
+        self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg,,Time: ' + str(endtime)  + ',,NFrames: ' + num_frames + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+        
         np.save(self.projectDirectory +'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy', avg_med)
-        cv2.imwrite(self.projectDirectory+'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg', color)
+        matplotlib.image.imsave(self.projectDirectory+'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg', color)
         self.frameCounter += 1
         if new_background:
-            self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg,,Time' + str(endtime)  + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
+            self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg,,Time: ' + str(endtime)  + ',,NFrames: ' + num_frames + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
             np.save(self.projectDirectory +'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy', avg_med)
-            cv2.imwrite(self.projectDirectory+'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg', color)
+            matplotlib.image.imsave(self.projectDirectory+'Background/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg', color)
             self.backgroundCounter += 1
 
         return avg_med
 
+    def _uploadFiles(self):
+        subprocess.Popen([dropbox_script, 'upload', '-s', self.projectDirectory, self.projectID]) 
+    
     def _closeFiles(self):
         try:
-            self._modifyDrive(command = 'None', status = 'Stopped')
+            self._modifyPiGS(command = 'None', status = 'Stopped', error = 'ExitError: Something went wrong')
         except:
             pass
         try:
