@@ -16,8 +16,8 @@ class CichlidTracker:
         np.seterr(invalid='ignore')
 
         # 2: Make connection to google doc and dropbox
-        self.dropboxScript = os.path.expanduser('~') + '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
-        self.credentialFile = os.path.expanduser('~') + '/home/pi/SAcredentials.json'
+        self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
+        self.credentialFile = '/home/pi/SAcredentials.json'
         self._authenticateGoogleDrive()
         
         # 3: Determine which system this code is running on
