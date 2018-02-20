@@ -525,7 +525,7 @@ class CichlidTracker:
 
     def _uploadFiles(self):
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
-        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID], stderr = open('/home/pi/DropboxError.txt', 'w'))
+        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, ''], stderr = open('/home/pi/DropboxError.txt', 'w'))
 
     def _closeFiles(self):
         try:
