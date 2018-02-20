@@ -524,9 +524,9 @@ class CichlidTracker:
         return avg_med
 
     def _uploadFiles(self):
-        self._print('DropboxUpload: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
-        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID], stderr = open('DropboxError.txt', 'w'))
-    
+        self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
+        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID], stderr = open('/home/pi/DropboxError.txt', 'w'))
+
     def _closeFiles(self):
         try:
             self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
