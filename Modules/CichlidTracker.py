@@ -513,6 +513,8 @@ class CichlidTracker:
         np.save(self.projectDirectory +'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy', avg_med)
         matplotlib.image.imsave(self.projectDirectory+'Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg', color)
         self.frameCounter += 1
+        self._print('DropboxUpload: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
+        subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID], stderr = open('DropboxError.txt', 'w')
         if new_background:
             self._print('BackgroundCaptured: NpyFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy,,PicFile: Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.jpg,,Time: ' + str(endtime)  + ',,NFrames: ' + str(num_frames) + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
             np.save(self.projectDirectory +'Backgrounds/Background_' + str(self.backgroundCounter).zfill(6) + '.npy', avg_med)
@@ -522,7 +524,7 @@ class CichlidTracker:
         return avg_med
 
     def _uploadFiles(self):
-        self._print('DropboxUpload: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID])
+        self._print('DropboxUpload: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
         subprocess.Popen([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID], stderr = open('DropboxError.txt', 'w')) 
     
     def _closeFiles(self):
