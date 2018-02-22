@@ -60,6 +60,8 @@ class CichlidTracker:
             command, projectID = self._returnCommand()
             if projectID in ['','None']:
                 self._reinstructError('ProjectID must be set')
+                time.sleep(delta*10)
+                continue
 
             print(command + '\t' + projectID)
             if command != 'None':
@@ -523,8 +525,9 @@ class CichlidTracker:
         return avg_med
 
     def _uploadFiles(self):
-        self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str([self.dropboxScript, 'upload', '-s', self.projectDirectory, self.projectID]))
-        subprocess.Popen([self.dropboxScript, '-s', 'upload', self.projectDirectory, ''], stderr = open('/home/pi/DropboxError.txt', 'w'))
+        dropbox_command = [self.dropboxScript, '-s', 'upload', self.projectDirectory, '']
+        self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
+        subprocess.Popen(dropbox_command, stdout = open('/home/pi/DropboxOut.txt', 'w'), stderr = open('/home/pi/DropboxError.txt', 'w'))
 
     def _closeFiles(self):
         try:
