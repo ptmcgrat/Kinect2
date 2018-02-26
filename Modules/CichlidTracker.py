@@ -333,31 +333,35 @@ class CichlidTracker:
         return command, projectID
 
     def _modifyPiGS(self, start = None, command = None, status = None, IP = None, capability = None, error = None):
-        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
-        pi_ws = self.controllerGS.worksheet('RaspberryPi')
-        headers = pi_ws.row_values(1)
-        row = pi_ws.col_values(headers.index('RaspberryPiID')+1).index(platform.node()) + 1
-        if start is not None:
-            column = headers.index('MasterStart') + 1
-            pi_ws.update_cell(row, column, start)
-        if command is not None:
-            column = headers.index('Command') + 1
-            pi_ws.update_cell(row, column, command)
-        if status is not None:
-            column = headers.index('Status') + 1
-            pi_ws.update_cell(row, column, status)
-        if error is not None:
-            column = headers.index('Error') + 1
-            pi_ws.update_cell(row, column, error)
-        if IP is not None:
-            column = headers.index('IP')+1
-            pi_ws.update_cell(row, column, IP)
-        if capability is not None:
-            column = headers.index('Capability')+1
-            pi_ws.update_cell(row, column, capability)
-        column = headers.index('Ping') + 1
-        pi_ws.update_cell(row, column, str(datetime.datetime.now()))
-
+        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS
+        try:
+            pi_ws = self.controllerGS.worksheet('RaspberryPi')
+            headers = pi_ws.row_values(1)
+            row = pi_ws.col_values(headers.index('RaspberryPiID')+1).index(platform.node()) + 1
+            if start is not None:
+                column = headers.index('MasterStart') + 1
+                pi_ws.update_cell(row, column, start)
+            if command is not None:
+                column = headers.index('Command') + 1
+                pi_ws.update_cell(row, column, command)
+            if status is not None:
+                column = headers.index('Status') + 1
+                pi_ws.update_cell(row, column, status)
+            if error is not None:
+                column = headers.index('Error') + 1
+                pi_ws.update_cell(row, column, error)
+            if IP is not None:
+                column = headers.index('IP')+1
+                pi_ws.update_cell(row, column, IP)
+            if capability is not None:
+                column = headers.index('Capability')+1
+                pi_ws.update_cell(row, column, capability)
+            column = headers.index('Ping') + 1
+            pi_ws.update_cell(row, column, str(datetime.datetime.now()))
+        except gspread.exceptions.RequestError as e:
+            self._print('GoogleError: Time: ' + str(datetime.datetime.now()) + ',,Error: ' + str(e))
+            
+            
     def _video_recording(self):
         if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12:
             return True
