@@ -94,7 +94,8 @@ class CichlidTracker:
         if command == 'Rewrite':
             if os.path.exists(self.projectDirectory):
                 shutil.rmtree(self.projectDirectory)
-        
+            subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', projectID])
+
         if command in ['New','Rewrite']:
             self.masterStart = datetime.datetime.now()
             os.mkdir(self.projectDirectory)
@@ -179,15 +180,19 @@ class CichlidTracker:
             "https://www.googleapis.com/auth/spreadsheets"
         ]
         credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialFile, scope)
-        gs = gspread.authorize(credentials)
-        self.controllerGS = gs.open('Controller')
-        pi_ws = self.controllerGS.worksheet('RaspberryPi')
-        headers = pi_ws.row_values(1)
-        column = headers.index('RaspberryPiID') + 1
         try:
-            pi_ws.col_values(column).index(platform.node())
-        except ValueError:
-            pi_ws.append_row([platform.node(),socket.gethostbyname(socket.gethostname()),'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
+            gs = gspread.authorize(credentials)
+            self.controllerGS = gs.open('Controller')
+            pi_ws = self.controllerGS.worksheet('RaspberryPi')
+            headers = pi_ws.row_values(1)
+            column = headers.index('RaspberryPiID') + 1
+            try:
+                pi_ws.col_values(column).index(platform.node())
+            except ValueError:
+                pi_ws.append_row([platform.node(),socket.gethostbyname(socket.gethostname()),'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
+        except gspread.exceptions.RequestError:
+            time.sleep(2)
+            self._authenticateGoogleDrive()
         
     def _identifyDevice(self):
         try:
