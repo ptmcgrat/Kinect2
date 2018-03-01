@@ -368,7 +368,7 @@ class CichlidTracker:
             
             
     def _video_recording(self):
-        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 12:
+        if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 18:
             return True
         else:
             return False
