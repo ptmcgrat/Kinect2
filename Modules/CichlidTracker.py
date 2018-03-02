@@ -365,7 +365,9 @@ class CichlidTracker:
             pi_ws.update_cell(row, column, str(datetime.datetime.now()))
         except gspread.exceptions.RequestError as e:
             self._print('GoogleError: Time: ' + str(datetime.datetime.now()) + ',,Error: ' + str(e))
-            
+        except TypeError:
+            self._print('GoogleError: Time: ' + str(datetime.datetime.now()) + ',,Error: Unknown. Gspread does not handle RequestErrors properly')
+
             
     def _video_recording(self):
         if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 18:
