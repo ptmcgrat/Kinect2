@@ -182,8 +182,13 @@ class CichlidTracker:
         credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialFile, scope)
         try:
             gs = gspread.authorize(credentials)
-            self.controllerGS = gs.open('Controller')
-            pi_ws = self.controllerGS.worksheet('RaspberryPi')
+            while True:
+                try:
+                    self.controllerGS = gs.open('Controller')
+                    pi_ws = self.controllerGS.worksheet('RaspberryPi')
+                    break
+                except:
+                    time.sleep(1)
             headers = pi_ws.row_values(1)
             column = headers.index('RaspberryPiID') + 1
             try:
