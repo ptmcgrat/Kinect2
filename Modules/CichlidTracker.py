@@ -41,7 +41,7 @@ class CichlidTracker:
             self.camera = PiCamera()
             self.camera.resolution = (1296, 972)
             self.camera.framerate = 30
-            self.piCamera = True
+            self.piCamera = 'True'
             
         # 6: Determine master directory
         self._identifyMasterDirectory() # Stored in self.masterDirectory
@@ -113,7 +113,7 @@ class CichlidTracker:
             self.frameCounter = logObj.lastFrameCounter + 1
             self.backgroundCounter = logObj.lastFrameCounter + 1
             self.videoCounter = logObj.lastVideoCounter + 1
-            if self.system != logObj.system or self.device != logObj.device or self.camera != logObj.camera:
+            if self.system != logObj.system or self.device != logObj.device or self.piCamera != logObj.camera:
                 self._reinstructError('Restart error. System, device, or camera does not match what is in logfile')
 
         self.lf = open(self.loggerFile, 'a')

@@ -21,11 +21,17 @@ class FrameObj:
         self.std = std
         self.gp = gp
 
+class MovieObj:
+    def __init__(self, time, movie_file):
+        self.time = time
+        self.movie_file = movie_file
+
 class LogParser:    
     def __init__(self, logfile):
         self.logfile = logfile
         self.master_directory = logfile.replace(logfile.split('/')[-1], '')
         self.depth_df = self.master_directory + 'Depth.npy'
+        self.parse_log()
 
     def parse_log(self):
 
@@ -72,10 +78,13 @@ class LogParser:
                 if info_type == 'BackgroundCaptured':
                     self.backgrounds.append(FrameObj(*self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
                     
-                #if info_type == 'PiCameraStarted':
+                if info_type == 'PiCameraStarted':
+                    self.movies.append(MovieObj(*self._ret_data(line,['Time','File'])))
                     
         self.frames.sort(key = lambda x: x.time)
         self.backgrounds.sort(key = lambda x: x.time)
+        self.lastFrameCounter=len(self.frames)
+        self.lastVideoCounter=len(self.movies)
 
     def day_summary(self, day, start=10, stop=11):
         day_frames = [x for x in self.frames if x.time.day - self.master_start.day + 1 == day]
