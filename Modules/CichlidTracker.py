@@ -56,8 +56,14 @@ class CichlidTracker:
         
     def __del__(self):
         self._modifyPiGS(command = 'None', status = 'Stopped', error = 'UnknownError')
+        try:
+            if self.device == 'kinect2':
+                self.K2device.stop()
+            if self.device == 'kinect':
+                freenect.sync_stop()
+        except AttributeError:
+            pass
         self._closeFiles()
-        self._uploadFiles()
 
     def monitorCommands(self, delta = 1):
         while True:
@@ -635,22 +641,16 @@ class CichlidTracker:
         subprocess.Popen(dropbox_command, stdout = open('/home/pi/DropboxOut.txt', 'w'), stderr = open('/home/pi/DropboxError.txt', 'w'))
 
     def _closeFiles(self):
+        if self.piCamera:
+            if self.camera.recording:
+                self.camera.stop_recording()
+                self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+        self._uploadFiles()
         try:
             self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
             self.lf.close()
         except AttributeError:
             pass
-        try:
-            if self.device == 'kinect2':
-                self.K2device.stop()
-            if self.device == 'kinect':
-                freenect.sync_stop()
-        except AttributeError:
-            pass
-        if self.piCamera:
-            if self.camera.recording:
-                self.camera.stop_recording()
-                self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
         try:
             if self.system == 'mac':
                 self.caff.kill()
