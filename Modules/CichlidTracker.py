@@ -199,7 +199,11 @@ class CichlidTracker:
             try:
                 pi_ws.col_values(column).index(platform.node())
             except ValueError:
-                pi_ws.append_row([platform.node(),socket.gethostbyname(socket.gethostname()),'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                s.close()
+                pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
         except gspread.exceptions.RequestError:
             time.sleep(2)
             self._authenticateGoogleSpreadSheets()
