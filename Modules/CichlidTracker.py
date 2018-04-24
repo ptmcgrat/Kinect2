@@ -365,7 +365,7 @@ class CichlidTracker:
         return command, projectID
 
     def _modifyPiGS(self, start = None, command = None, status = None, IP = None, capability = None, error = None):
-        self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS
+        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS
         try:
             pi_ws = self.controllerGS.worksheet('RaspberryPi')
             headers = pi_ws.row_values(1)
