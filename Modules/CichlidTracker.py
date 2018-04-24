@@ -8,6 +8,10 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from oauth2client.service_account import ServiceAccountCredentials
 
+import pydrive
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+    
 
 class CichlidTracker:
     def __init__(self):
@@ -15,10 +19,11 @@ class CichlidTracker:
         self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'Snapshot']
         np.seterr(invalid='ignore')
 
-        # 2: Make connection to google doc and dropbox
+        # 2: Make connection to google drive and dropbox
         self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
-        self.credentialFile = '/home/pi/SAcredentials.json'
-        self._authenticateGoogleDrive()
+        self.credentialSpreadsheet = '/home/pi/SAcredentials.json'
+        self.credentialDrive = '/home/pi/token.txt' #Creates self.controllerGS
+        self._authenticateGoogleDrive() #Creates self.gauth
         
         # 3: Determine which system this code is running on
         if platform.node() == 'odroid':
@@ -174,12 +179,12 @@ class CichlidTracker:
                 self._modifyPiGS(error = '')
 
 
-    def _authenticateGoogleDrive(self):
+    def _authenticateGoogleSpreadSheets(self):
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialFile, scope)
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialSpreadsheet, scope)
         try:
             gs = gspread.authorize(credentials)
             while True:
@@ -197,8 +202,25 @@ class CichlidTracker:
                 pi_ws.append_row([platform.node(),socket.gethostbyname(socket.gethostname()),'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
         except gspread.exceptions.RequestError:
             time.sleep(2)
-            self._authenticateGoogleDrive()
-        
+            self._authenticateGoogleSpreadSheets()
+
+    def _authenticateGoogleDrive(self):
+        self.gauth = GoogleAuth()
+        # Try to load saved client credentials
+        self.gauth.LoadCredentialsFile(self.credentialDrive)
+        if self.gauth.credentials is None:
+            # Authenticate if they're not there
+            self.gauth.LocalWebserverAuth()
+        elif self.gauth.access_token_expired:
+            # Refresh them if token is expired
+            self.gauth.Refresh()
+        else:
+            # Initialize with the saved creds
+            self.gauth.Authorize()
+        # Save the current credentials to a file
+        self.gauth.SaveCredentialsFile('/home/pi/token.txt')
+
+            
     def _identifyDevice(self):
         try:
             global freenect
@@ -448,7 +470,67 @@ class CichlidTracker:
             if datetime.datetime.now() - start_t > delta:
                 break
         self._print('DiagnoseSpeed: Rate: ' + str(counter/time))
+    def hourly_update(self):
+        dt = datetime.datetime.now()
+        lp = LP.LogParser(self.lf)
+        img_name = lp.drive_summary(self.tankID)
+        self.update_images(img_name, img_name)
+        
+    def update_images(self, icon_jpg, link_jpg):
+        self._authenticateGoogleDrive()
+        icon_name = self.tankID + '_icon'
+        link_name = self.tankID + '_link'
+        iconPDFO = self.upload_image(icon_jpg, icon_name)
+        linkPDFO = self.upload_image(link_jpg, link_name)
+        
+        self._authenticateGoogleSpreadSheets()
+        self.insert_image(iconPDFO, linkPDFO)
 
+    def upload_image(self, image_file, name): #name should have format 't###_icon' or 't###_link'
+        drive = GoogleDrive(self.gauth)
+        folder_id = "'151cke-0p-Kx-QjJbU45huK31YfiUs6po'"  #'Public Images' folder ID
+        
+        file_list = drive.ListFile({'q':"{} in parents and trashed=false".format(folder_id)}).GetList()
+        # check if file name already exists so we can replace it
+        flag = False
+        count = 0
+        while flag == False and count < len(file_list):
+            if file_list[count]['title'] == name:
+                fileID = file_list[count]['id']
+                flag = True
+            else:
+                count += 1
+
+        if flag == True:
+            # Replace the file if name exists
+            f = drive.CreateFile({'id': fileID})
+            f.SetContentFile(image_file)
+            f.Upload()
+            # print("Replaced", name, "with newest version")
+        else:
+            # Upload the image normally if name does not exist
+            f = drive.CreateFile({'title': name, 'mimeType':'image/jpeg',
+                                 "parents": [{"kind": "drive#fileLink", "id": folder_id[1:-1]}]})
+            f.SetContentFile(image_file)
+            f.Upload()
+            # print("Uploaded", name, "as new file")
+        return f
+
+    def insert_image(self, icon_image, link_image):
+
+        pi_ws = self.controllerGS.worksheet('RaspberryPi')
+        
+        iconID = icon_image['id']
+        linkID = link_image['id']
+        
+        headers = pi_ws.row_values(1)
+        raPiID_col = headers.index('RaspberryPiID') + 1
+        image_col = headers.index('Image') + 1
+        row = pi_ws.col_values(raPiID_col).index(platform.node()) + 1
+        
+        info = '=HYPERLINK("https://drive.google.com/uc?id={}", IMAGE("http://drive.google.com/uc?export=view&id={}")'.format(linkID, iconID)
+
+        pi_ws.update_cell(row, image_col, info)
     def _email_summary(self):
 
         current_day = datetime.datetime.now().day - self.master_start.day + 1
@@ -483,7 +565,7 @@ class CichlidTracker:
         server.send_message(msg)
         server.quit()    
         
-    def _captureFrame(self, endtime, new_background = False, max_frames = 100, stdev_threshold = 20):
+    def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 20):
         # Captures time averaged frame of depth data
         
         sums = np.zeros(shape = (self.r[3], self.r[2]))
@@ -496,6 +578,7 @@ class CichlidTracker:
         
         while True:
             all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
+            all_data[:] = np.nan
             for i in range(0, max_frames):
                 all_data[i] = self._returnDepth()
 
@@ -505,15 +588,18 @@ class CichlidTracker:
             
             med = np.nanmedian(all_data, axis = 0)
             std = np.nanstd(all_data, axis = 0)
+
             med[std > stdev_threshold] = 0
             std[std > stdev_threshold] = 0
         
             counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
+
             med[counts < 5] = 0
             std[counts < 5] = 0
             
             sums += med
             stds += std
+
             med[counts > 1] = 1
             n += med
 
@@ -524,7 +610,7 @@ class CichlidTracker:
         avg_med = sums/n
         avg_std = stds/n
         color = self._returnRegColor()                        
-        num_frames = int(max_frames*(n.max()-1) + i)
+        num_frames = int(max_frames*(n.max()-1) + i + 1)
         
         self._print('FrameCaptured: NpyFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.npy,,PicFile: Frames/Frame_' + str(self.frameCounter).zfill(6) + '.jpg,,Time: ' + str(endtime)  + ',,NFrames: ' + str(num_frames) + ',,AvgMed: '+ '%.2f' % np.nanmean(avg_med) + ',,AvgStd: ' + '%.2f' % np.nanmean(avg_std) + ',,GP: ' + str(np.count_nonzero(~np.isnan(avg_med))))
         
