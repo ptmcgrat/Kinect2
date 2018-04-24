@@ -356,7 +356,7 @@ class CichlidTracker:
             return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
     def _returnCommand(self):
-        self._authenticateGoogleSpreadSheet() # link to google drive spreadsheet stored in self.controllerGS 
+        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS 
         pi_ws = self.controllerGS.worksheet('RaspberryPi')
         headers = pi_ws.row_values(1)
         piIndex = pi_ws.col_values(headers.index('RaspberryPiID') + 1).index(platform.node())
