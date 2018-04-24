@@ -258,7 +258,7 @@ class CichlidTracker:
        
     def _identifyTank(self):
         while True:
-            self._authenticateGoogleDrive() # link to google drive spreadsheet stored in self.controllerGS 
+            self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS 
             pi_ws = self.controllerGS.worksheet('RaspberryPi')
             headers = pi_ws.row_values(1)
             raPiID_col = headers.index('RaspberryPiID') + 1
