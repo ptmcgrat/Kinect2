@@ -203,7 +203,7 @@ class CichlidTracker:
                 s.connect(("8.8.8.8", 80))
                 ip = s.getsockname()[0]
                 s.close()
-                pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Awaiting assignment of TankID',str(datetime.datetime.now())])
+                pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Error: Awaiting assignment of TankID',str(datetime.datetime.now())])
         except gspread.exceptions.RequestError:
             time.sleep(2)
             self._authenticateGoogleSpreadSheets()
