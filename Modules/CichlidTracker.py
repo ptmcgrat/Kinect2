@@ -8,9 +8,9 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from oauth2client.service_account import ServiceAccountCredentials
 
-import pydrive
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+#import pydrive
+#from pydrive.auth import GoogleAuth
+#from pydrive.drive import GoogleDrive
     
 
 class CichlidTracker:
@@ -22,8 +22,8 @@ class CichlidTracker:
         # 2: Make connection to google drive and dropbox
         self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
         self.credentialSpreadsheet = '/home/pi/SAcredentials.json'
-        self.credentialDrive = '/home/pi/token.txt' #Creates self.controllerGS
-        self._authenticateGoogleDrive() #Creates self.gauth
+        self.credentialDrive = '/home/pi/token.txt'
+        self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
         
         # 3: Determine which system this code is running on
         if platform.node() == 'odroid':
