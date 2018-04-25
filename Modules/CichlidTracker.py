@@ -56,6 +56,11 @@ class CichlidTracker:
         
     def __del__(self):
         self._modifyPiGS(command = 'None', status = 'Stopped', error = 'UnknownError')
+        if self.piCamera:
+            if self.camera.recording:
+                self.camera.stop_recording()
+                self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+
         try:
             if self.device == 'kinect2':
                 self.K2device.stop()
@@ -92,6 +97,12 @@ class CichlidTracker:
                     freenect.sync_stop()
             except:
                 pass
+            if self.piCamera:
+                if self.camera.recording:
+                    self.camera.stop_recording()
+                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+            self._uploadFiles()
+ 
                     
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
@@ -651,16 +662,11 @@ class CichlidTracker:
         dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
         self._modifyPiGS(status = 'DropboxUpload')
-        subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+        subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
         self._modifyPiGS(status = 'AwaitingCommand')
 
     def _closeFiles(self):
-        if self.piCamera:
-            if self.camera.recording:
-                self.camera.stop_recording()
-                self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
-        self._uploadFiles()
-        try:
+       try:
             self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
             self.lf.close()
         except AttributeError:
