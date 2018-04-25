@@ -150,7 +150,7 @@ class CichlidTracker:
         # Capture data
         self.captureFrames()
     
-    def captureFrames(self, frame_delta = 5, background_delta = 60, max_frames = 100, stdev_threshold = 20):
+    def captureFrames(self, frame_delta = 5, background_delta = 60, max_frames = 20, stdev_threshold = 20):
 
         current_background_time = datetime.datetime.now()
         current_frame_time = current_background_time + datetime.timedelta(seconds = 60 * frame_delta)
@@ -638,7 +638,7 @@ class CichlidTracker:
         return avg_med
 
     def _uploadFiles(self):
-        dropbox_command = [self.dropboxScript, '-s', '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
         subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'a'))
 
