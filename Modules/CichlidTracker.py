@@ -617,8 +617,6 @@ class CichlidTracker:
                     break
               
             med = np.nanmedian(all_data, axis = 0)
-            print(np.count_nonzero(np.isnan(med)))
-            print(np.count_nonzero(med == 0))
             med[np.isnan(med)] = 0
             std = np.nanstd(all_data, axis = 0)
             med[np.isnan(std)] = 0
@@ -631,15 +629,9 @@ class CichlidTracker:
             
             sums += med
             stds += std
-            print(np.count_nonzero(np.isnan(med)))
-            print(np.count_nonzero(med == 0))
- 
+
             med[med > 1] = 1
             n += med
-            print(np.count_nonzero(np.isnan(med)))
-            print(np.count_nonzero(med == 0))
-            print(np.count_nonzero(med > 1))
-            print('Break')
             current_time = datetime.datetime.now()
             if current_time >= endtime:
                 break
