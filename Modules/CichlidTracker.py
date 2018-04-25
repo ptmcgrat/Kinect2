@@ -124,7 +124,7 @@ class CichlidTracker:
             self.masterStart = logObj.master_start
             self.r = logObj.bounding_shape
             self.frameCounter = logObj.lastFrameCounter + 1
-            self.backgroundCounter = logObj.lastFrameCounter + 1
+            self.backgroundCounter = logObj.lastBackgroundCounter + 1
             self.videoCounter = logObj.lastVideoCounter + 1
             if self.system != logObj.system or self.device != logObj.device or self.piCamera != logObj.camera:
                 self._reinstructError('Restart error. System, device, or camera does not match what is in logfile')
@@ -168,7 +168,6 @@ class CichlidTracker:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                     self.videoCounter += 1
-                    self._uploadFiles()
 
             # Capture a frame and background if necessary
             if now > current_background_time:
@@ -640,7 +639,9 @@ class CichlidTracker:
     def _uploadFiles(self):
         dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
+        self._modifyPiGS(status = 'DropboxUpload')
         subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+        self._modifyPiGS(status = 'AwaitingCommand')
 
     def _closeFiles(self):
         if self.piCamera:
