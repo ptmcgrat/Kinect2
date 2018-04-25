@@ -618,7 +618,7 @@ class CichlidTracker:
               
             med = np.nanmedian(all_data, axis = 0)
             print(np.count_nonzero(np.isnan(med)))
-            print(np.count_nonzero(med == 0)
+            print(np.count_nonzero(med == 0))
             med[np.isnan(med)] = 0
 
             std = np.nanstd(all_data, axis = 0)
