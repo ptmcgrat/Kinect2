@@ -118,7 +118,7 @@ class CichlidTracker:
 
         if command in ['New','Rewrite']:
             self.masterStart = datetime.datetime.now()
-            if command is 'New':
+            if command == 'New':
                 os.mkdir(self.projectDirectory)
             os.mkdir(self.frameDirectory)
             os.mkdir(self.backgroundDirectory)
