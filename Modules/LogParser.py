@@ -18,8 +18,8 @@ class LogFormatError(Exception):
 class LogParser:    
     def __init__(self, logfile):
         self.logfile = logfile
-        self.master_directory = logfile.replace(logfile.split('/')[-1], '')
-        self.depth_df = self.master_directory + 'Depth.npy'
+        self.master_directory = logfile.replace(logfile.split('/')[-1], '') + '/'
+        self.depth_df = self.master_directory + 'MasterDepth.npy'
         self.parse_log()
 
     def parse_log(self):
@@ -45,7 +45,7 @@ class LogParser:
                         raise LogFormatError('It appears MasterStart is present twice in the Logfile. Unable to deal')
 
                 if info_type == 'MasterRecordInitialStart':
-                    self.master_start = self._ret_data(line, ['Time'])
+                    self.master_start = self._ret_data(line, ['Time'])[0]
 
                 if info_type == 'ROI':
                     try:
@@ -72,6 +72,7 @@ class LogParser:
                     
         self.frames.sort(key = lambda x: x.time)
         self.backgrounds.sort(key = lambda x: x.time)
+        self.lastBackgroundCounter = len(self.backgrounds)
         self.lastFrameCounter=len(self.frames)
         self.lastVideoCounter=len(self.movies)
 
@@ -160,9 +161,9 @@ class LogParser:
         return self.drive_summary_fname
     
     def create_npy_array(self):
-        self.all_data = np.empty(shape = (len(self.frames), self.width, self.height))
-        for i, npy_file in enumerate(self.frames):
-            data = np.load(npy_file)
+        self.all_data = np.empty(shape = (len(self.frames), self.height, self.width))
+        for i, frame in enumerate(self.frames):
+            data = np.load(self.master_directory + frame.npy_file)
             self.all_data[i] = data
 
         np.save(self.depth_df, self.all_data)
