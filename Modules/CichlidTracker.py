@@ -90,7 +90,9 @@ class CichlidTracker:
                     self.K2device.stop()
                 if self.device == 'kinect':
                     freenect.sync_stop()
-
+            except:
+                pass
+                    
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
             return
