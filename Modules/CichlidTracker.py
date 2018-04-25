@@ -82,7 +82,7 @@ class CichlidTracker:
             print(command + '\t' + projectID)
             if command != 'None':
                 self.runCommand(command, projectID)
-            self._modifyPiGS(status = 'AwaitingCommand', error = '')
+            self._modifyPiGS(status = 'AwaitingCommand')
             time.sleep(delta*10)
 
     def runCommand(self, command, projectID):
@@ -620,24 +620,26 @@ class CichlidTracker:
             print(np.count_nonzero(np.isnan(med)))
             print(np.count_nonzero(med == 0))
             med[np.isnan(med)] = 0
-
             std = np.nanstd(all_data, axis = 0)
             med[np.isnan(std)] = 0
-
             med[std > stdev_threshold] = 0
             std[std > stdev_threshold] = 0
-
             counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
             med[counts < 3] = 0
             std[counts < 3] = 0
-  
+
             
             sums += med
             stds += std
-
-            med[counts > 1] = 1
+            print(np.count_nonzero(np.isnan(med)))
+            print(np.count_nonzero(med == 0))
+ 
+            med[med > 1] = 1
             n += med
-
+            print(np.count_nonzero(np.isnan(med)))
+            print(np.count_nonzero(med == 0))
+            print(np.count_nonzero(med > 1))
+            print('Break')
             current_time = datetime.datetime.now()
             if current_time >= endtime:
                 break
