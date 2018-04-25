@@ -640,7 +640,7 @@ class CichlidTracker:
     def _uploadFiles(self):
         dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
-        subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'a'))
+        subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
 
     def _closeFiles(self):
         if self.piCamera:
