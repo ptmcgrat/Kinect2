@@ -105,11 +105,13 @@ class CichlidTracker:
         if command == 'Rewrite':
             if os.path.exists(self.projectDirectory):
                 shutil.rmtree(self.projectDirectory)
-            subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', projectID])
+            os.mkdir(self.projectDirectory)
+            subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', projectID], stdout = open(self.projectDirectory + 'DropboxDeleteOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxDeleteError.txt', 'a'))
 
         if command in ['New','Rewrite']:
             self.masterStart = datetime.datetime.now()
-            os.mkdir(self.projectDirectory)
+            if command is 'New':
+                os.mkdir(self.projectDirectory)
             os.mkdir(self.frameDirectory)
             os.mkdir(self.backgroundDirectory)
             os.mkdir(self.videoDirectory)
@@ -638,7 +640,7 @@ class CichlidTracker:
     def _uploadFiles(self):
         dropbox_command = [self.dropboxScript, '-s', '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
         self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
-        subprocess.Popen(dropbox_command, stdout = open('/home/pi/DropboxOut.txt', 'w'), stderr = open('/home/pi/DropboxError.txt', 'w'))
+        subprocess.Popen(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'a'))
 
     def _closeFiles(self):
         if self.piCamera:
