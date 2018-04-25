@@ -85,6 +85,12 @@ class CichlidTracker:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
         if command == 'Stop':
+            try:
+                if self.device == 'kinect2':
+                    self.K2device.stop()
+                if self.device == 'kinect':
+                    freenect.sync_stop()
+
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
             return
@@ -576,7 +582,7 @@ class CichlidTracker:
         server.send_message(msg)
         server.quit()    
         
-    def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 20):
+    def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25):
         # Captures time averaged frame of depth data
         
         sums = np.zeros(shape = (self.r[3], self.r[2]))
@@ -596,17 +602,20 @@ class CichlidTracker:
                 current_time = datetime.datetime.now()
                 if current_time >= endtime:
                     break
-            
+              
             med = np.nanmedian(all_data, axis = 0)
+            med[np.isnan(med)] = 0
+
             std = np.nanstd(all_data, axis = 0)
+            med[np.isnan(std)] = 0
 
             med[std > stdev_threshold] = 0
             std[std > stdev_threshold] = 0
-        
-            counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
 
-            med[counts < 5] = 0
-            std[counts < 5] = 0
+            counts = np.count_nonzero(~np.isnan(all_data), axis = 0)
+            med[counts < 3] = 0
+            std[counts < 3] = 0
+  
             
             sums += med
             stds += std
