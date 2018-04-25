@@ -669,11 +669,11 @@ class CichlidTracker:
        try:
             self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
             self.lf.close()
-        except AttributeError:
-            pass
-        try:
-            if self.system == 'mac':
-                self.caff.kill()
-        except AttributeError:
-            pass
+       except AttributeError:
+           pass
+       try:
+           if self.system == 'mac':
+               self.caff.kill()
+       except AttributeError:
+           pass
 
