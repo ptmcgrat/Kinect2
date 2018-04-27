@@ -177,9 +177,7 @@ class CichlidTracker:
         while True:
             # Grab new time
             now = datetime.datetime.now()
-            self.camera.resolution = (1296, 972)
-            self.camera.framerate = 30
-
+            
             # Fix camera if it needs to be
             if self.piCamera:
                 if self._video_recording() and not self.camera.recording:
