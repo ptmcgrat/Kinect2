@@ -177,12 +177,15 @@ class CichlidTracker:
         while True:
             # Grab new time
             now = datetime.datetime.now()
+            self.camera.resolution = (1296, 972)
+            self.camera.framerate = 30
 
             # Fix camera if it needs to be
             if self.piCamera:
                 if self._video_recording() and not self.camera.recording:
+                    self.camera.capture(self.videoDirectory + str(self.videoCounter).zfill(4) + "_pic.jpg")
                     self.camera.start_recording(self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", bitrate=7500000)
-                    self._print('PiCameraStarted: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    self._print('PiCameraStarted: FrameRate: ' + str(self.camera.framerate) + ',,Resolution: ' + str(self.camera.resolution) + ',,Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                 elif not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
