@@ -556,7 +556,7 @@ class CichlidTracker:
     def _uploadFiles(self):
         self._modifyPiGS(status = 'DropboxUpload')    
 
-        subprocess.call(['/home/pi/Kinect2/UploadData.py', self.projectDirectory, self.projectID])
+        subprocess.call(['python3', '/home/pi/Kinect2/UploadData.py', self.projectDirectory, self.projectID])
         
         self._modifyPiGS(status = 'AwaitingCommand')
 
