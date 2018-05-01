@@ -3,7 +3,7 @@ import Modules.LogParser as LP
 import numpy as np
 from PIL import Image
 from oauth2client.service_account import ServiceAccountCredentials
-
+import matplotlib.image
 
 class CichlidTracker:
     def __init__(self):
