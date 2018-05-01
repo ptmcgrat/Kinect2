@@ -57,6 +57,7 @@ class CichlidTracker:
                 self.K2device.stop()
             if self.device == 'kinect':
                 freenect.sync_stop()
+                freenect.shutdown(self.a)
         except AttributeError:
             pass
         self._closeFiles()
@@ -87,7 +88,7 @@ class CichlidTracker:
                     self.K2device.stop()
                 if self.device == 'kinect':
                     freenect.sync_stop()
-                    freenect.close_device()
+                    freenect.shutdown(self.a)
             except:
                 self._print('ErrorStopping camera')
                 pass
@@ -235,10 +236,10 @@ class CichlidTracker:
         try:
             global freenect
             import freenect
-            a = freenect.init()
-            if freenect.num_devices(a) == 0:
+            self.a = freenect.init()
+            if freenect.num_devices(self.a) == 0:
                 kinect = False
-            elif freenect.num_devices(a) > 1:
+            elif freenect.num_devices(self.a) > 1:
                 self._initError('Multiple Kinect1s attached. Unsure how to handle')
             else:
                 kinect = True
