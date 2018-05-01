@@ -79,6 +79,7 @@ class CichlidTracker:
 
     def runCommand(self, command, projectID):
         self.projectID = projectID
+        self.projectDirectory = self.masterDirectory + projectID + '/'
         if command not in self.commands:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
@@ -105,8 +106,6 @@ class CichlidTracker:
 
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
 
-        self.projectID = projectID
-        self.projectDirectory = self.masterDirectory + projectID + '/'
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
         self.frameDirectory = self.projectDirectory + 'Frames/'
         self.backgroundDirectory = self.projectDirectory + 'Backgrounds/'
