@@ -87,17 +87,19 @@ class CichlidTracker:
                     self.K2device.stop()
                 if self.device == 'kinect':
                     freenect.sync_stop()
+                    freenect.close_device()
             except:
+                self._print('ErrorStopping camera')
                 pass
             if self.piCamera:
                 if self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
-            self._uploadFiles()
- 
                     
-            self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self._closeFiles()
+            self._uploadFiles()
+
+            self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             return
 
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
@@ -168,6 +170,7 @@ class CichlidTracker:
         current_frame_time = current_background_time + datetime.timedelta(seconds = 60 * frame_delta)
 
         while True:
+            self._modifyPiGS(command = 'None', status = 'Running', error = '')
             # Grab new time
             now = datetime.datetime.now()
             
@@ -551,51 +554,9 @@ class CichlidTracker:
         self._modifyPiGS(status = 'Running')
             
     def _uploadFiles(self):
-        self._modifyPiGS(status = 'DropboxUpload')
+        self._modifyPiGS(status = 'DropboxUpload')    
 
-        #Backgrounds
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Backgrounds', self.projectDirectory]
-        while True:
-            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
-            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
-                if 'FAILED' in f.read():
-                    continue
-                else:
-                    break   
-
-        #Frames
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Frames', self.projectDirectory]
-        while True:
-            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
-            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
-                if 'FAILED' in f.read():
-                    continue
-                else:
-                    break   
-
-        #Videos
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', '-s', self.projectDirectory + '/Videos', self.projectDirectory]   
-        while True:
-            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
-            errors = 0
-            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
-                for line in f:
-                    if 'FAILED' in line:
-                        subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', line.split('"')[-2]])
-                        errors+=1
-            if errors == 0:
-                break
-
-        #Log
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Logfile.txt', self.projectDirectory] 
-        while True:
-            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
-            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
-                if 'FAILED' in f.read():
-                    continue
-                else:
-                    break   
-
+        subprocess.call(['/media/pi/Kinect2/UploadData.py', self.projectDirectory, self.projectID])
         
         self._modifyPiGS(status = 'AwaitingCommand')
 
