@@ -583,7 +583,7 @@ class CichlidTracker:
                     if 'FAILED' in line:
                         subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', line.split('"')[-2]])
                         errors+=1
-            if errors = 0:
+            if errors == 0:
                 break
 
         #Log
