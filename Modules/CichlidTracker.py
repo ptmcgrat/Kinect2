@@ -71,10 +71,8 @@ class CichlidTracker:
                 continue
 
             print(command + '\t' + projectID)
-            if command != 'None':
-                if command == 'Snapshot':
-                    
-                    self.runCommand(command, projectID)
+            if command != 'None':    
+                self.runCommand(command, projectID)
             self._modifyPiGS(status = 'AwaitingCommand')
             time.sleep(delta*10)
 
