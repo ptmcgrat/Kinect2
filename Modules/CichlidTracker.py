@@ -1,18 +1,8 @@
-import platform, sys, os, shutil, datetime, subprocess, smtplib, gspread, time, socket
-import matplotlib.image
+import platform, sys, os, shutil, datetime, subprocess, gspread, time, socket
 import Modules.LogParser as LP
 import numpy as np
 from PIL import Image
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
-from email.mime.multipart import MIMEMultipart
-from oauth2client.service_account import ServiceAccountCredentials
-
-#import pydrive
-#from pydrive.auth import GoogleAuth
-#from pydrive.drive import GoogleDrive
-    
-
+  
 class CichlidTracker:
     def __init__(self):
         # 1: Define valid commands and ignore warnings
@@ -22,7 +12,6 @@ class CichlidTracker:
         # 2: Make connection to google drive and dropbox
         self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
         self.credentialSpreadsheet = '/home/pi/SAcredentials.json'
-        self.credentialDrive = '/home/pi/token.txt'
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
         
         # 3: Determine which system this code is running on
@@ -81,11 +70,14 @@ class CichlidTracker:
 
             print(command + '\t' + projectID)
             if command != 'None':
-                self.runCommand(command, projectID)
+                if command == 'Snapshot':
+                    
+                    self.runCommand(command, projectID)
             self._modifyPiGS(status = 'AwaitingCommand')
             time.sleep(delta*10)
 
     def runCommand(self, command, projectID):
+        self.projectID = projectID
         if command not in self.commands:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
@@ -134,6 +126,7 @@ class CichlidTracker:
             os.mkdir(self.frameDirectory)
             os.mkdir(self.backgroundDirectory)
             os.mkdir(self.videoDirectory)
+            self._createDropboxFolders()
             self.frameCounter = 1
             self.backgroundCounter = 1
             self.videoCounter = 1
@@ -234,23 +227,6 @@ class CichlidTracker:
         except gspread.exceptions.RequestError:
             time.sleep(2)
             self._authenticateGoogleSpreadSheets()
-
-    def _authenticateGoogleDrive(self):
-        self.gauth = GoogleAuth()
-        # Try to load saved client credentials
-        self.gauth.LoadCredentialsFile(self.credentialDrive)
-        if self.gauth.credentials is None:
-            # Authenticate if they're not there
-            self.gauth.LocalWebserverAuth()
-        elif self.gauth.access_token_expired:
-            # Refresh them if token is expired
-            self.gauth.Refresh()
-        else:
-            # Initialize with the saved creds
-            self.gauth.Authorize()
-        # Save the current credentials to a file
-        self.gauth.SaveCredentialsFile('/home/pi/token.txt')
-
             
     def _identifyDevice(self):
         try:
@@ -501,100 +477,6 @@ class CichlidTracker:
             if datetime.datetime.now() - start_t > delta:
                 break
         self._print('DiagnoseSpeed: Rate: ' + str(counter/time))
-    def hourly_update(self):
-        dt = datetime.datetime.now()
-        lp = LP.LogParser(self.lf)
-        img_name = lp.drive_summary(self.tankID)
-        self.update_images(img_name, img_name)
-        
-    def update_images(self, icon_jpg, link_jpg):
-        self._authenticateGoogleDrive()
-        icon_name = self.tankID + '_icon'
-        link_name = self.tankID + '_link'
-        iconPDFO = self.upload_image(icon_jpg, icon_name)
-        linkPDFO = self.upload_image(link_jpg, link_name)
-        
-        self._authenticateGoogleSpreadSheets()
-        self.insert_image(iconPDFO, linkPDFO)
-
-    def upload_image(self, image_file, name): #name should have format 't###_icon' or 't###_link'
-        drive = GoogleDrive(self.gauth)
-        folder_id = "'151cke-0p-Kx-QjJbU45huK31YfiUs6po'"  #'Public Images' folder ID
-        
-        file_list = drive.ListFile({'q':"{} in parents and trashed=false".format(folder_id)}).GetList()
-        # check if file name already exists so we can replace it
-        flag = False
-        count = 0
-        while flag == False and count < len(file_list):
-            if file_list[count]['title'] == name:
-                fileID = file_list[count]['id']
-                flag = True
-            else:
-                count += 1
-
-        if flag == True:
-            # Replace the file if name exists
-            f = drive.CreateFile({'id': fileID})
-            f.SetContentFile(image_file)
-            f.Upload()
-            # print("Replaced", name, "with newest version")
-        else:
-            # Upload the image normally if name does not exist
-            f = drive.CreateFile({'title': name, 'mimeType':'image/jpeg',
-                                 "parents": [{"kind": "drive#fileLink", "id": folder_id[1:-1]}]})
-            f.SetContentFile(image_file)
-            f.Upload()
-            # print("Uploaded", name, "as new file")
-        return f
-
-    def insert_image(self, icon_image, link_image):
-
-        pi_ws = self.controllerGS.worksheet('RaspberryPi')
-        
-        iconID = icon_image['id']
-        linkID = link_image['id']
-        
-        headers = pi_ws.row_values(1)
-        raPiID_col = headers.index('RaspberryPiID') + 1
-        image_col = headers.index('Image') + 1
-        row = pi_ws.col_values(raPiID_col).index(platform.node()) + 1
-        
-        info = '=HYPERLINK("https://drive.google.com/uc?id={}", IMAGE("http://drive.google.com/uc?export=view&id={}")'.format(linkID, iconID)
-
-        pi_ws.update_cell(row, image_col, info)
-    def _email_summary(self):
-
-        current_day = datetime.datetime.now().day - self.master_start.day + 1
-        # Create summary plot
-        
-        recipients = ['patrick.mcgrath@biology.gatech.edu', 'ptmcgrat@gmail.com'] # ADD EMAIL HERE
-        msg = MIMEMultipart()
-        msg['From'] = platform.node + '@biology.gatech.edu'
-        msg['To'] = ', '.join(recipients)
-        msg['Subject'] = 'Daily summary from [' + platform.node + '] for day: ' + str(current_day)
-
-        msgAlternative = MIMEMultipart('alternative')
-        msg.attach(msgAlternative)
-
-        msgText = MIMEText('This is the alternative plain text message.')
-        msgAlternative.attach(msgText)
-
-        # We reference the image in the IMG SRC attribute by the ID we give it below
-        msgText = MIMEText('<b>Some <i>HTML</i> text</b> and an image.<br><img src="cid:image1"><br>Nifty!', 'html')
-        msgAlternative.attach(msgText)
-
-        # Get the day summary from the 
-        lp = LP.LogParser(self.lf)
-        msgImage = MIMEImage(lp.day_summary(current_day))
-        
-        # Define the image's ID as referenced above
-        msgImage.add_header('Content-ID', '<image1>')
-        msg.attach(msgImage)
-               
-        server=smtplib.SMTP('outbound.gatech.edu', 25)
-        server.starttls()
-        server.send_message(msg)
-        server.quit()    
         
     def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25):
         # Captures time averaged frame of depth data
@@ -655,11 +537,66 @@ class CichlidTracker:
 
         return avg_med
 
-    def _uploadFiles(self):
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory, '']
-        self._print('DropboxUpload: Start: ' + str(datetime.datetime.now()) + ',,Command: ' + str(dropbox_command))
+    def _createDropboxFolders(self):
         self._modifyPiGS(status = 'DropboxUpload')
-        subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', '-s', self.projectDirectory, '']
+        while True:
+            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
+                if 'FAILED' in f.read():
+                    subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', self.projectID])
+                    continue
+                else:
+                    break
+        self._modifyPiGS(status = 'Running')
+            
+    def _uploadFiles(self):
+        self._modifyPiGS(status = 'DropboxUpload')
+
+        #Backgrounds
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Backgrounds', self.projectDirectory]
+        while True:
+            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
+                if 'FAILED' in f.read():
+                    continue
+                else:
+                    break   
+
+        #Frames
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Frames', self.projectDirectory]
+        while True:
+            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
+                if 'FAILED' in f.read():
+                    continue
+                else:
+                    break   
+
+        #Videos
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', '-s', self.projectDirectory + '/Videos', self.projectDirectory]   
+        while True:
+            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+            errors = 0
+            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
+                for line in f:
+                    if 'FAILED' in line:
+                        subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', line.split('"')[-2]])
+                        errors+=1
+            if errors = 0:
+                break
+
+        #Log
+        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', self.projectDirectory + '/Logfile.txt', self.projectDirectory] 
+        while True:
+            subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
+            with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
+                if 'FAILED' in f.read():
+                    continue
+                else:
+                    break   
+
+        
         self._modifyPiGS(status = 'AwaitingCommand')
 
     def _closeFiles(self):
