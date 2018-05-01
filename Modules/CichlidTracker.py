@@ -2,7 +2,9 @@ import platform, sys, os, shutil, datetime, subprocess, gspread, time, socket
 import Modules.LogParser as LP
 import numpy as np
 from PIL import Image
-  
+from oauth2client.service_account import ServiceAccountCredentials
+
+
 class CichlidTracker:
     def __init__(self):
         # 1: Define valid commands and ignore warnings
