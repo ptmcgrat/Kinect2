@@ -102,7 +102,7 @@ class CichlidTracker:
             self._uploadFiles()
 
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
-            return
+            self.monitorCommands()
 
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
 
