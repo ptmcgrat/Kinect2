@@ -366,13 +366,17 @@ class CichlidTracker:
             return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
     def _returnCommand(self):
-        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS 
-        pi_ws = self.controllerGS.worksheet('RaspberryPi')
-        headers = pi_ws.row_values(1)
-        piIndex = pi_ws.col_values(headers.index('RaspberryPiID') + 1).index(platform.node())
-        command = pi_ws.col_values(headers.index('Command') + 1)[piIndex]
-        projectID = pi_ws.col_values(headers.index('ProjectID') + 1)[piIndex]
-        return command, projectID
+        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS
+        while True:
+            try:
+                pi_ws = self.controllerGS.worksheet('RaspberryPi')
+                headers = pi_ws.row_values(1)
+                piIndex = pi_ws.col_values(headers.index('RaspberryPiID') + 1).index(platform.node())
+                command = pi_ws.col_values(headers.index('Command') + 1)[piIndex]
+                projectID = pi_ws.col_values(headers.index('ProjectID') + 1)[piIndex]
+                return command, projectID
+            except gspread.exceptions.RequestError:
+                continue
 
     def _modifyPiGS(self, start = None, command = None, status = None, IP = None, capability = None, error = None):
         self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS
