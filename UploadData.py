@@ -39,7 +39,7 @@ while True:
         break
     
 #Videos
-dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', '-s', args.projectDirectory + '/Videos', args.projectID]   
+dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', '-s', 'upload', args.projectDirectory + '/Videos', args.projectID]   
 while True:
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadVideos.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
     errors = 0
