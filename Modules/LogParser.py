@@ -33,8 +33,10 @@ class LogParser:
                         self.device
                         self.camera
                         self.uname
+                        self.tankID
+                        self.projectID
                     except AttributeError:
-                        self.system, self.device, self.camera, self.uname = self._ret_data(line, ['System', 'Device', 'Camera','Uname'])
+                        self.system, self.device, self.camera, self.uname, self.tankID, self.projectID = self._ret_data(line, ['System', 'Device', 'Camera','Uname', 'TankID', 'ProjectID'])
                     else:
                         raise LogFormatError('It appears MasterStart is present twice in the Logfile. Unable to deal')
 
@@ -68,7 +70,7 @@ class LogParser:
                     self.backgrounds.append(FrameObj(*t_list))
                     
                 if info_type == 'PiCameraStarted':
-                    t_list = self._ret_data(line,['Time','File', 'FrameRate'])
+                    t_list = self._ret_data(line,['Time','VideoFile', 'PicFile', 'FrameRate'])
                     t_list.append(self.master_directory)
                     self.movies.append(MovieObj(*t_list))
                     
@@ -97,7 +99,11 @@ class LogParser:
         if type(data) != list:
             data = [data]
         for d in data:
-            t_data = line.split(d + ': ')[1].split(',,')[0]
+            try:
+                t_data = line.split(d + ': ')[1].split(',,')[0]
+            except IndexError:
+                out_data.append('Error')
+                continue
             # Is it a date?
             try:
                 out_data.append(dt.strptime(t_data, '%Y-%m-%d %H:%M:%S.%f'))
@@ -132,10 +138,11 @@ class FrameObj:
         self.gp = gp
 
 class MovieObj:
-    def __init__(self, time, movie_file, framerate, master_directory):
+    def __init__(self, time, movie_file, pic_file, framerate, master_directory):
         self.time = time
         self.h264_file = master_directory + movie_file
+        self.pic_file = master_directory + pic_file
         self.mp4_file = master_directory + movie_file.replace('.h264', '') + '.mp4'
         self.framerate = framerate
         self.master_directory = master_directory
-        self.hmm_file = self.master_directory + movie_file.split('/')[1].split('.')[0] + '.hmm'
+        self.hmm_file = master_directory + movie_file.split('/')[-1].split('.')[0] + '.hmm'
