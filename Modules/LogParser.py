@@ -1,12 +1,6 @@
 import os, sys, io
 import numpy as np
 from datetime import datetime as dt
-import matplotlib
-matplotlib.use('Pdf') # Enables creation of pdf without needing to worry about X11 forwarding when ssh'ing into the Pi
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import io
-from PIL import Image
 
 
 #add delta value for frame and background
@@ -62,13 +56,21 @@ class LogParser:
                     self.speeds.append(self._ret_data(line, 'Rate'))
                     
                 if info_type == 'FrameCaptured':
-                    self.frames.append(FrameObj(*self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
+                    t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
+                    t_list[0] = self.master_directory + t_list[0]
+                    t_list[1] = self.master_directory + t_list[1]
+                    self.frames.append(FrameObj(*t_list))
 
                 if info_type == 'BackgroundCaptured':
-                    self.backgrounds.append(FrameObj(*self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])))
+                    t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
+                    t_list[0] = self.master_directory + t_list[0]
+                    t_list[1] = self.master_directory + t_list[1]
+                    self.backgrounds.append(FrameObj(*t_list))
                     
                 if info_type == 'PiCameraStarted':
-                    self.movies.append(MovieObj(*self._ret_data(line,['Time','File'])))
+                    t_list = self._ret_data(line,['Time','File', 'FrameRate'])
+                    t_list.append(self.master_directory)
+                    self.movies.append(MovieObj(*t_list))
                     
         self.frames.sort(key = lambda x: x.time)
         self.backgrounds.sort(key = lambda x: x.time)
@@ -76,99 +78,20 @@ class LogParser:
         self.lastFrameCounter=len(self.frames)
         self.lastVideoCounter=len(self.movies)
 
-    def day_summary(self, day, start=10, stop=11):
-        day_frames = [x for x in self.frames if x.time.day - self.master_start.day + 1 == day]
-
-        start = [x for x in day_frames if x.time.hour == start][0]
-        stop = [x for x in day_frames if x.time.hour == stop][0]
-        start_pic = cv2.imread(start.pic_file)
-        end_pic = cv2.imread(stop.pic_file)
-        start_depth = np.load(start.npy_file)
-        end_depth = np.load(stop.npy_file)
-        
-        fig = plt.figure()
-        ax1 = fig.add_subplot(3,2,1)       
-        ax2 = fig.add_subplot(3,2,2)
-        ax3 = fig.add_subplot(3,2,3)
-        ax4 = fig.add_subplot(3,2,4)
-        ax5 = fig.add_subplot(3,2,5)
-        ax6 = fig.add_subplot(3,2,6)
-
-        ax1.imshow(start_pic)
-        ax2.imshow(end_pic)
-        heatmap(end_depth - start_depth, ax = ax3, cbar = True) #seaborn function
-        ax4.plot([x.time for x in day_frames], [x.med for x in day_frames])
-        ax5.plot([x.time for x in day_frames], [x.std for x in day_frames])
-        ax6.plot([x.time for x in day_frames], [x.n for x in day_frames])
-        buf = io.StringIO()
-        plt.savefig(buf, format='png')
-        return buf.getvalue()
-
-    def drive_summary(self, fname):
-        self.drive_summary_fname = fname
-        last_hour_datetime = self.frames[-1].time - timedelta(hours = 1)  #uses last frame's time and subtracts one hour
-        last_day_datetime = self.frames[-1].time - timedelta(days = 1)    #uses last frame's day and subtracts one day
-        self.hour_frames = [w for w in x.frames if last_hour_datetime < w.time]  
-        self.last_day_frames = [w for w in x.frames if last_day_datetime < w.time]
-        
-        fig = plt.figure(figsize=(10,7))
-        ax1 = fig.add_subplot(2, 2, 1)
-        ax2 = fig.add_subplot(2, 2, 2)
-        ax3 = fig.add_subplot(2, 2, 3)
-        ax4 = fig.add_subplot(2, 2, 4)
-        
-        ### TITLES ###
-        ax1.set_title("Change over last hour")
-        ax2.set_title("Change over last day")
-        ax3.set_title("Change since beginning")
-        ax4.set_title("Pixel quality since begining")
-        ### AXES LABELS ###
-        ax1.set_xlabel(self.hour_frames[0].time.strftime("%d %b %Y %H:%m") + " to " +
-                       self.hour_frames[-1].time.strftime("%d %b %Y %H:%m"))
-        ax1.set_ylabel("Med")
-        ax2.set_xlabel(self.last_day_frames[0].time.strftime("%d %b %Y %H:%m") + " to " +
-                       self.last_day_frames[-1].time.strftime("%d %b %Y %H:%m"))
-        ax2.set_ylabel("Med")
-        ax3.set_ylabel("Med")
-        ax4.set_ylabel("% of GP")
-        ### PLOT DATA ###
-        ax1.plot([w.time for w in self.hour_frames], [w.med for w in self.hour_frames])  #change over last hour
-        ax2.plot([w.time for w in self.last_day_frames], [w.med for w in self.last_day_frames])  #change over last hour
-        ax3.plot([w.time for w in self.frames], [w.med for w in self.frames])   #change since beginning 
-        ax4.plot([w.time for w in self.frames], [w.gp[0]/w.gp[1] for w in self.frames])  #pixel quality since beginning
-        ### FORMAT X-AXIS ###
-        ax1.xaxis_date()
-        ax2.xaxis_date()
-        ax3.xaxis_date()
-        ax4.xaxis_date()
-        
-        hour_min_Fmt = mdates.DateFormatter("%H:%M")
-        month_day_Fmt = mdates.DateFormatter("%d %b %Y")
-        
-        ax1.xaxis.set_major_formatter(hour_min_Fmt)
-        ax2.xaxis.set_major_formatter(hour_min_Fmt)
-        ax3.xaxis.set_major_formatter(month_day_Fmt)
-        ax4.xaxis.set_major_formatter(month_day_Fmt)
-        
-        #fig.autofmt_xdate(rotation = 30, ha = 'right')  #doesn't work b/c will miss first row
-        
-        for label in ax1.get_xmajorticklabels()+ax2.get_xmajorticklabels()+ax3.get_xmajorticklabels()+ax4.get_xmajorticklabels():
-            label.set_rotation(45)
-            label.set_horizontalalignment("right")
-        
-        plt.subplots_adjust(bottom = 0.15, left = 0.12, wspace = 0.24, hspace = 0.57)
-        plt.savefig(self.drive_summary_fname)
-        return self.drive_summary_fname
-    
     def create_npy_array(self):
         self.all_data = np.empty(shape = (len(self.frames), self.height, self.width))
         for i, frame in enumerate(self.frames):
-            data = np.load(self.master_directory + frame.npy_file)
+            data = np.load(frame.npy_file)
             self.all_data[i] = data
 
         np.save(self.depth_df, self.all_data)
 
-
+    def load_npy_array(self):
+        try:
+            self.all_data = np.load(self.depth_df)
+        except:
+            self.create_npy_array()
+        
     def _ret_data(self, line, data):
         out_data = []
         if type(data) != list:
@@ -198,7 +121,6 @@ class LogParser:
                 # Keep it as a string
                 out_data.append(t_data)
         return out_data
-    
 
 class FrameObj:
     def __init__(self, npy_file, pic_file, time, med, std, gp):
@@ -210,6 +132,10 @@ class FrameObj:
         self.gp = gp
 
 class MovieObj:
-    def __init__(self, time, movie_file):
+    def __init__(self, time, movie_file, framerate, master_directory):
         self.time = time
-        self.movie_file = movie_file
+        self.h264_file = master_directory + movie_file
+        self.mp4_file = master_directory + movie_file.replace('.h264', '') + '.mp4'
+        self.framerate = framerate
+        self.master_directory = master_directory
+        self.hmm_file = self.master_directory + movie_file.split('/')[1].split('.')[0] + '.hmm'

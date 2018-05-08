@@ -15,7 +15,8 @@ class CichlidTracker:
         self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
         self.credentialSpreadsheet = '/home/pi/SAcredentials.json'
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
-        
+        self._modifyPiGS(error = '')
+
         # 3: Determine which system this code is running on
         if platform.node() == 'odroid':
             self.system = 'odroid'
@@ -148,6 +149,7 @@ class CichlidTracker:
 
         if command in ['New', 'Rewrite']:
             self._print('MasterStart: System: '+self.system + ',,Device: ' + self.device + ',,Camera: ' + str(self.piCamera) + ',,Uname: ' + str(platform.uname()))
+            self._print('MasterStart: TankID: ' + self.tankID + ',,ProjectID: ' + self.projectID)
             self._print('MasterRecordInitialStart: Time: ' + str(self.masterStart))
             self._createROI(useROI = False)
 
