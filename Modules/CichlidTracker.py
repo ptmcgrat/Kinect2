@@ -13,7 +13,7 @@ class CichlidTracker:
 
         # 2: Make connection to google drive and dropbox
         self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
-        self.credentialSpreadsheet = '/home/pi/SAcredentials.json'
+        self.credentialSpreadsheet = 'SAcredentials.json'
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
         self._modifyPiGS(error = '')
 
@@ -191,6 +191,7 @@ class CichlidTracker:
                 out = self._captureFrame(current_frame_time, new_background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
                 if out is not None:
                     current_background_time += datetime.timedelta(seconds = 60 * background_delta)
+                subprocess.Popen(['python3', 'Modules/DriveUpdater.py', self.loggerFile])
             else:
                 out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
             current_frame_time += datetime.timedelta(seconds = 60 * frame_delta)
