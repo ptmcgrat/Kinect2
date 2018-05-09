@@ -1,29 +1,13 @@
 import argparse, datetime, gspread
 from Modules.LogParser import LogParser as LP
 import matplotlib
+matplotlib.use('Pdf')  # Enables creation of pdf without needing to worry about X11 forwarding when ssh'ing into the Pi
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 import numpy as np
-#matplotlib.use('Pdf') # Enables creation of pdf without needing to worry about X11 forwarding when ssh'ing into the Pi
-import matplotlib.dates as mdates
-import numpy as np
-#import pydrive
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from oauth2client.service_account import ServiceAccountCredentials
-
-
-#./python3 DriveUpdater.py TankID -l LogParser
-#If Logfile is None, just send back picture of tank from Kinect and PiCamera and depth from Kinect. Otherwise also include graph
-
-# How to use from CichlidTraacker
-"""
-from Modules.DriveUpdater import Drive Updater
-
-lp = LP.LogParser(self.lf)
-DU = DriveUpdater(self.tankID, lp)
-
-"""
 
 parser = argparse.ArgumentParser()
 parser.add_argument('Logfile', type = str, help = 'Name of logfile')
