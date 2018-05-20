@@ -11,11 +11,14 @@ dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
 dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', args.projectDirectory + '/Logfile.txt', args.projectID] 
 while True:
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadLogFile.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
-    with open(args.projectDirectory + 'DropboxUploadOutLogFile.txt') as f:
-        if 'FAILED' in f.read():
-            continue
-        else:
-            break   
+    try:
+        with open(args.projectDirectory + 'DropboxUploadOutLogFile.txt') as f:
+            if 'FAILED' in f.read():
+                continue
+            else:
+                break
+    except:
+        break
 
 
 #Backgrounds

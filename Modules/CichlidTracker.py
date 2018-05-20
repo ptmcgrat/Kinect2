@@ -211,7 +211,12 @@ class CichlidTracker:
         ]
         credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialSpreadsheet, scope)
         try:
-            gs = gspread.authorize(credentials)
+            while True:
+                try:
+                    gs = gspread.authorize(credentials)
+                    break
+                except:
+                    time.sleep(1)
             while True:
                 try:
                     self.controllerGS = gs.open('Controller')
