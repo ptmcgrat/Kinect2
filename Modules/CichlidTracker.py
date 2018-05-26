@@ -8,7 +8,7 @@ import matplotlib.image
 class CichlidTracker:
     def __init__(self):
         # 1: Define valid commands and ignore warnings
-        self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'Snapshot']
+        self.commands = ['New', 'Restart', 'Stop', 'Rewrite']
         np.seterr(invalid='ignore')
 
         # 2: Make connection to google drive and dropbox
@@ -197,7 +197,10 @@ class CichlidTracker:
             current_frame_time += datetime.timedelta(seconds = 60 * frame_delta)
 
             # Check google doc to determine if recording has changed.
-            command, projectID = self._returnCommand()
+            try:
+                command, projectID = self._returnCommand()
+            except KeyError:
+                continue
             if command != 'None':
                 self.runCommand(command, projectID)
             else:
@@ -210,33 +213,30 @@ class CichlidTracker:
             "https://www.googleapis.com/auth/spreadsheets"
         ]
         credentials = ServiceAccountCredentials.from_json_keyfile_name(self.credentialSpreadsheet, scope)
-        try:
-            while True:
-                try:
-                    gs = gspread.authorize(credentials)
-                    break
-                except:
-                    time.sleep(1)
-            while True:
-                try:
-                    self.controllerGS = gs.open('Controller')
-                    pi_ws = self.controllerGS.worksheet('RaspberryPi')
-                    break
-                except:
-                    time.sleep(1)
+        for i in range(0,3): # Try to autheticate three times before failing
+            try:
+                gs = gspread.authorize(credentials)
+            except:
+                continue
+            try:
+                self.controllerGS = gs.open('Controller')
+                pi_ws = self.controllerGS.worksheet('RaspberryPi')
+            except:
+                continue
             headers = pi_ws.row_values(1)
             column = headers.index('RaspberryPiID') + 1
             try:
                 pi_ws.col_values(column).index(platform.node())
+                return True
             except ValueError:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.connect(("8.8.8.8", 80))
                 ip = s.getsockname()[0]
                 s.close()
                 pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Error: Awaiting assignment of TankID',str(datetime.datetime.now())])
-        except gspread.exceptions.RequestError:
+                return True
             time.sleep(2)
-            self._authenticateGoogleSpreadSheets()
+        return False
             
     def _identifyDevice(self):
         try:
@@ -373,7 +373,9 @@ class CichlidTracker:
             return output[self.r[1]:self.r[1]+self.r[3], self.r[0]:self.r[0]+self.r[2]]
 
     def _returnCommand(self):
-        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS
+        if not self._authenticateGoogleSpreadSheets():
+            raise KeyError
+            # link to google drive spreadsheet stored in self.controllerGS
         while True:
             try:
                 pi_ws = self.controllerGS.worksheet('RaspberryPi')
@@ -386,7 +388,8 @@ class CichlidTracker:
                 continue
 
     def _modifyPiGS(self, start = None, command = None, status = None, IP = None, capability = None, error = None):
-        self._authenticateGoogleSpreadSheets() # link to google drive spreadsheet stored in self.controllerGS
+        while not self._authenticateGoogleSpreadSheets(): # link to google drive spreadsheet stored in self.controllerGS
+            continue
         try:
             pi_ws = self.controllerGS.worksheet('RaspberryPi')
             headers = pi_ws.row_values(1)
