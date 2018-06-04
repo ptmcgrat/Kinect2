@@ -223,7 +223,10 @@ class CichlidTracker:
                 pi_ws = self.controllerGS.worksheet('RaspberryPi')
             except:
                 continue
-            headers = pi_ws.row_values(1)
+            try:
+                headers = pi_ws.row_values(1)
+            except:
+                continue
             column = headers.index('RaspberryPiID') + 1
             try:
                 pi_ws.col_values(column).index(platform.node())
@@ -233,7 +236,10 @@ class CichlidTracker:
                 s.connect(("8.8.8.8", 80))
                 ip = s.getsockname()[0]
                 s.close()
-                pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Error: Awaiting assignment of TankID',str(datetime.datetime.now())])
+                try:
+                    pi_ws.append_row([platform.node(),ip,'','','','','','None','Stopped','Error: Awaiting assignment of TankID',str(datetime.datetime.now())])
+                except:
+                    continue
                 return True
             time.sleep(2)
         return False
