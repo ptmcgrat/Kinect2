@@ -241,6 +241,8 @@ class CichlidTracker:
                 except:
                     continue
                 return True
+            except:
+                continue    
             time.sleep(2)
         return False
             
