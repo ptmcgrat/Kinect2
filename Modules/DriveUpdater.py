@@ -41,7 +41,10 @@ class DriveUpdater:
         ax6 = fig.add_subplot(2, 3, 6) #Hour Depth Change
 
         img_1 = img.imread(self.lp.frames[-1].pic_file)
-        img_2 = img.imread(self.lp.movies[-1].pic_file)
+        try:
+            img_2 = img.imread(self.lp.movies[-1].pic_file)
+        except:
+            img_2 = img_1
         dpth_3 = np.load(self.lp.frames[-1].npy_file)
         dpth_4 = np.load(self.lp.frames[0].npy_file)
         dpth_5 = np.load(lastDayFrames[0].npy_file)
