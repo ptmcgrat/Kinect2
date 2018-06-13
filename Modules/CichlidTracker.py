@@ -14,17 +14,6 @@ class CichlidTracker:
         # 2: Make connection to google drive and dropbox
         self.dropboxScript = 'Dropbox-Uploader/dropbox_uploader.sh'
 
-        # 3: Determine master directory
-        self._identifyMasterDirectory() # Stored in self.masterDirectory
-
-        # 4: Identify credential files
-        self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
-        self.credentialDropbox = self.masterDirectory + '.dropbox_uploader'
-
-        # 5: Connect to Google Spreadsheets
-        self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
-        self._modifyPiGS(error = '')
-
         # 6: Determine which system this code is running on
         if platform.node() == 'odroid':
             self.system = 'odroid'
@@ -38,6 +27,19 @@ class CichlidTracker:
 
         # 7: Determine which Kinect is attached
         self._identifyDevice() #Stored in self.device
+        
+        # 3: Determine master directory
+        self._identifyMasterDirectory() # Stored in self.masterDirectory
+
+        # 4: Identify credential files
+        self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
+        self.credentialDropbox = self.masterDirectory + '.dropbox_uploader'
+
+        # 5: Connect to Google Spreadsheets
+        self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
+        self._modifyPiGS(error = '')
+
+ 
         
         # 8: Determine if PiCamera is attached
         self.piCamera = False
