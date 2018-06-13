@@ -127,7 +127,7 @@ class CichlidTracker:
             if os.path.exists(self.projectDirectory):
                 shutil.rmtree(self.projectDirectory)
             os.mkdir(self.projectDirectory)
-            subprocess.call([self.dropboxScript, '-f', '/home/pi/Kinect2/.dropbox_uploader', 'delete', projectID], stdout = open(self.projectDirectory + 'DropboxDeleteOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxDeleteError.txt', 'a'))
+            subprocess.call([self.dropboxScript, '-f', self.credentialDropbox, 'delete', projectID], stdout = open(self.projectDirectory + 'DropboxDeleteOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxDeleteError.txt', 'a'))
             
         if command in ['New','Rewrite']:
             self.masterStart = datetime.datetime.now()
