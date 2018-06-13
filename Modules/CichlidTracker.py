@@ -33,7 +33,7 @@ class CichlidTracker:
 
         # 4: Identify credential files
         self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
-        self.credentialDropbox = self.masterDirectory + '.dropbox_uploader'
+        self.credentialDropbox = self.masterDirectory + 'CredentialFiles/.dropbox_uploader'
 
         # 5: Connect to Google Spreadsheets
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
