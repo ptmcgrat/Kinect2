@@ -18,8 +18,10 @@ class DriveUpdater:
         self.lp = LP(logfile)
         self.node = self.lp.uname.split("node='")[1].split("'")[0]
         self.lastFrameTime = self.lp.frames[-1].time
-        self.credentialDrive = 'DriveCredentials.txt'
-        self.credentialSpreadsheet = 'SAcredentials.json'
+        
+        self.masterDirectory = logfile.split(self.lp.projectID)[0]
+        self.credentialDrive = self.masterDirectory + 'CredentialFiles/DriveCredentials.txt'
+        self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
         self._createImage()
         f = self.uploadImage(self.lp.tankID + '.jpg', self.lp.tankID)
         self.insertImage(f)

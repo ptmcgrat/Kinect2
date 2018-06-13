@@ -12,12 +12,20 @@ class CichlidTracker:
         np.seterr(invalid='ignore')
 
         # 2: Make connection to google drive and dropbox
-        self.dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
-        self.credentialSpreadsheet = 'SAcredentials.json'
+        self.dropboxScript = 'Dropbox-Uploader/dropbox_uploader.sh'
+
+        # 3: Determine master directory
+        self._identifyMasterDirectory() # Stored in self.masterDirectory
+
+        # 4: Identify credential files
+        self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
+        self.credentialDropbox = self.masterDirectory + '.dropbox_uploader'
+
+        # 5: Connect to Google Spreadsheets
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
         self._modifyPiGS(error = '')
 
-        # 3: Determine which system this code is running on
+        # 6: Determine which system this code is running on
         if platform.node() == 'odroid':
             self.system = 'odroid'
         elif platform.node() == 'raspberrypi' or 'Pi' in platform.node():
@@ -28,10 +36,10 @@ class CichlidTracker:
         else:
             self._initError('Could not determine which system this code is running from')
 
-        # 4: Determine which Kinect is attached
+        # 7: Determine which Kinect is attached
         self._identifyDevice() #Stored in self.device
         
-        # 5: Determine if PiCamera is attached
+        # 8: Determine if PiCamera is attached
         self.piCamera = False
         if self.system == 'pi':
             from picamera import PiCamera
@@ -40,10 +48,7 @@ class CichlidTracker:
             self.camera.framerate = 30
             self.piCamera = 'True'
             
-        # 6: Determine master directory
-        self._identifyMasterDirectory() # Stored in self.masterDirectory
-        
-        # 7: Await instructions
+        # 9: Await instructions
         self.monitorCommands()
         
     def __del__(self):
@@ -120,7 +125,7 @@ class CichlidTracker:
             if os.path.exists(self.projectDirectory):
                 shutil.rmtree(self.projectDirectory)
             os.mkdir(self.projectDirectory)
-            subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', projectID], stdout = open(self.projectDirectory + 'DropboxDeleteOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxDeleteError.txt', 'a'))
+            subprocess.call([self.dropboxScript, '-f', '/home/pi/Kinect2/.dropbox_uploader', 'delete', projectID], stdout = open(self.projectDirectory + 'DropboxDeleteOut.txt', 'a'), stderr = open(self.projectDirectory + 'DropboxDeleteError.txt', 'a'))
             
         if command in ['New','Rewrite']:
             self.masterStart = datetime.datetime.now()
@@ -564,12 +569,12 @@ class CichlidTracker:
 
     def _createDropboxFolders(self):
         self._modifyPiGS(status = 'DropboxUpload')
-        dropbox_command = [self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', '-s', self.projectDirectory, '']
+        dropbox_command = [self.dropboxScript, '-f', self.credentialDropbox, 'upload', '-s', self.projectDirectory, '']
         while True:
             subprocess.call(dropbox_command, stdout = open(self.projectDirectory + 'DropboxUploadOut.txt', 'w'), stderr = open(self.projectDirectory + 'DropboxUploadError.txt', 'w'))
             with open(self.projectDirectory + 'DropboxUploadOut.txt') as f:
                 if 'FAILED' in f.read():
-                    subprocess.call([self.dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'delete', self.projectID])
+                    subprocess.call([self.dropboxScript, '-f', self.credentialDropbox, 'delete', self.projectID])
                     continue
                 else:
                     break

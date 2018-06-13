@@ -6,9 +6,10 @@ parser.add_argument('projectID', type = str, help = 'Folder you would like to st
 args = parser.parse_args()
 
 dropboxScript = '/home/pi/Dropbox-Uploader/dropbox_uploader.sh'
+credentialDropbox = '/media/pi/' + args.projectDirectory.split('/')[3] + '/CredentialFiles/.dropbox_uploader'
 
 #Log
-dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', args.projectDirectory + '/Logfile.txt', args.projectID] 
+dropbox_command = [dropboxScript, '-f', credentialDropbox, 'upload', args.projectDirectory + '/Logfile.txt', args.projectID] 
 while True:
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadLogFile.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
     try:
@@ -22,7 +23,7 @@ while True:
 
 
 #Backgrounds
-dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', args.projectDirectory + '/Backgrounds', args.projectID]
+dropbox_command = [dropboxScript, '-f', credentialDropbox, 'upload', args.projectDirectory + '/Backgrounds', args.projectID]
 while True:
     bad_flag = False
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadBackgrounds.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
@@ -37,7 +38,7 @@ while True:
         break
 
 #Frames
-dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', 'upload', args.projectDirectory + '/Frames', args.projectID]
+dropbox_command = [dropboxScript, '-f', credentialDropbox, 'upload', args.projectDirectory + '/Frames', args.projectID]
 while True:
     bad_flag = False
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadFrames.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
@@ -52,7 +53,7 @@ while True:
         break
     
 #Videos
-dropbox_command = [dropboxScript, '-f', '/home/pi/.dropbox_uploader', '-s', 'upload', args.projectDirectory + '/Videos', args.projectID]   
+dropbox_command = [dropboxScript, '-f', credentialDropbox, '-s', 'upload', args.projectDirectory + '/Videos', args.projectID]   
 while True:
     subprocess.call(dropbox_command, stdout = open(args.projectDirectory + 'DropboxUploadVideos.txt', 'w'), stderr = open(args.projectDirectory + 'DropboxUploadError.txt', 'w'))
     errors = 0
