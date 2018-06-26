@@ -8,7 +8,7 @@ import matplotlib.image
 class CichlidTracker:
     def __init__(self):
         # 1: Define valid commands and ignore warnings
-        self.commands = ['New', 'Restart', 'Stop', 'Rewrite']
+        self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'UploadData', 'LocalDelete']
         np.seterr(invalid='ignore')
 
         # 2: Make connection to google drive and dropbox
@@ -107,8 +107,18 @@ class CichlidTracker:
                     self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                     
             self._closeFiles()
-            self._uploadFiles()
 
+            self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
+            self.monitorCommands()
+
+        if command == 'UploadData':
+            self._modifyPiGS(command = 'None')
+            self._uploadFiles()
+            self.monitorCommands()
+         
+        if command == 'LocalDelete':
+            if os.path.exists(self.projectDirectory):
+                shutil.rmtree(self.projectDirectory)
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             self.monitorCommands()
 
