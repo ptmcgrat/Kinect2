@@ -109,19 +109,19 @@ class CichlidTracker:
             self._closeFiles()
 
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
-            self.monitorCommands()
+            return
 
         if command == 'UploadData':
             self._modifyPiGS(command = 'None')
             self._uploadFiles()
-            self.monitorCommands()
-         
+            return
+            
         if command == 'LocalDelete':
             if os.path.exists(self.projectDirectory):
                 shutil.rmtree(self.projectDirectory)
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
-            self.monitorCommands()
-
+            return
+            
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
 
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
@@ -219,7 +219,7 @@ class CichlidTracker:
             except KeyError:
                 continue
             if command != 'None':
-                self.runCommand(command, projectID)
+                break
             else:
                 self._modifyPiGS(error = '')
 
