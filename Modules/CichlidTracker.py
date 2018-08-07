@@ -99,8 +99,7 @@ class CichlidTracker:
                     freenect.sync_stop()
                     freenect.shutdown(self.a)
             except:
-                self._print('ErrorStopping camera')
-                pass
+                self._print('ErrorStopping kinect')
             if self.piCamera:
                 if self.camera.recording:
                     self.camera.stop_recording()
@@ -146,7 +145,7 @@ class CichlidTracker:
             os.mkdir(self.frameDirectory)
             os.mkdir(self.backgroundDirectory)
             os.mkdir(self.videoDirectory)
-            self._createDropboxFolders()
+            #self._createDropboxFolders()
             self.frameCounter = 1
             self.backgroundCounter = 1
             self.videoCounter = 1
@@ -308,7 +307,12 @@ class CichlidTracker:
             col = headers.index('TankID')
             if pi_ws.row_values(row)[col] not in ['None','']:
                 self.tankID = pi_ws.row_values(row)[col]
-                self._modifyPiGS(capability = 'Device=' + self.device + ',Camera=' + str(self.piCamera), status = 'AwaitingCommand')
+                for i in range(5):
+                    try:
+                        self._modifyPiGS(capability = 'Device=' + self.device + ',Camera=' + str(self.piCamera), status = 'AwaitingCommand')
+                        return
+                    except:
+                        continue
                 return
             else:
                 self._modifyPiGS(error = 'Awaiting assignment of TankID')
@@ -518,7 +522,24 @@ class CichlidTracker:
             counter += 1
             if datetime.datetime.now() - start_t > delta:
                 break
+        #Grab single snapshot of depth and save it
+        depth = self._returnDepth()
+        np.save(self.projectDirectory +'Frames/FirstFrame.npy', depth)
+
+        #Grab a bunch of depth files to characterize the variability
+        data = np.zeros(shape = (50, self.r[3], self.r[2]))
+        for i in range(0, 50):
+            all_data[i] = self._returnDepth()
+            
+        counts = np.count_nonzero(~np.isnan(data), axis = 0)
+        std = np.nanstd(data, axis = 0)
+        np.save(self.projectDirectory +'Frames/FirstDataCount.npy', counts)
+        np.save(self.projectDirectory +'Frames/StdevCount.npy', std)
+         
         self._print('DiagnoseSpeed: Rate: ' + str(counter/time))
+
+        self._print('FirstFrameCaptured: FirstFrame: Frames/FirstFrame.npy,,GoodDataCount: Frames/FirstDataCount.npy,,StdevCount: Frames/StdevCount.npy')
+
         
     def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25):
         # Captures time averaged frame of depth data
@@ -595,7 +616,8 @@ class CichlidTracker:
     def _uploadFiles(self):
         self._modifyPiGS(status = 'DropboxUpload')    
 
-        subprocess.call(['python3', '/home/pi/Kinect2/Modules/UploadData.py', self.projectDirectory, self.projectID])
+#        subprocess.call(['python3', '/home/pi/Kinect2/Modules/UploadData.py', self.projectDirectory, self.projectID])
+        subprocess.call(['rclone', 'copy', self.projectDirectory, 'remote:' + 'McGrath/Apps/CichlidPiData/' + self.projectID + '/'])
         
         self._modifyPiGS(status = 'AwaitingCommand')
 
