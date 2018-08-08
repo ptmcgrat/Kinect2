@@ -11,10 +11,7 @@ class CichlidTracker:
         self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'UploadData', 'LocalDelete']
         np.seterr(invalid='ignore')
 
-        # 2: Make connection to google drive and dropbox
-        self.dropboxScript = 'Dropbox-Uploader/dropbox_uploader.sh'
-
-        # 6: Determine which system this code is running on
+        # 2: Determine which system this code is running on (This script is meant to be able to run on Raspberry Pi/Odroids/MacLaptops
         if platform.node() == 'odroid':
             self.system = 'odroid'
         elif platform.node() == 'raspberrypi' or 'Pi' in platform.node():
@@ -25,23 +22,20 @@ class CichlidTracker:
         else:
             self._initError('Could not determine which system this code is running from')
 
-        # 7: Determine which Kinect is attached
+        # 3: Determine which Kinect is attached (This script can handle v1 or v2 Kinects
         self._identifyDevice() #Stored in self.device
         
-        # 3: Determine master directory
+        # 4: Determine master directory (Identify the external hard drive where data should be stored)
         self._identifyMasterDirectory() # Stored in self.masterDirectory
 
-        # 4: Identify credential files
+        # 5: Identify credential files (Credential files for uploading updates to Google Drive are found here)
         self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
-        self.credentialDropbox = self.masterDirectory + 'CredentialFiles/.dropbox_uploader'
 
-        # 5: Connect to Google Spreadsheets
+        # 6: Connect to Google Spreadsheets
         self._authenticateGoogleSpreadSheets() #Creates self.controllerGS
         self._modifyPiGS(error = '')
-
- 
         
-        # 8: Determine if PiCamera is attached
+        # 7: Determine if PiCamera is attached
         self.piCamera = False
         if self.system == 'pi':
             from picamera import PiCamera
@@ -50,10 +44,11 @@ class CichlidTracker:
             self.camera.framerate = 30
             self.piCamera = 'True'
             
-        # 9: Await instructions
+        # 8: Await instructions
         self.monitorCommands()
         
     def __del__(self):
+        # Try to close out files and stop running Kinects
         self._modifyPiGS(command = 'None', status = 'Stopped', error = 'UnknownError')
         if self.piCamera:
             if self.camera.recording:
@@ -70,13 +65,14 @@ class CichlidTracker:
             pass
         self._closeFiles()
 
-    def monitorCommands(self, delta = 1):
+    def monitorCommands(self, delta = 10):
+        # This function checks the master Controller Google Spreadsheet to determine if a command was issued (delta = seconds to recheck)
         while True:
             self._identifyTank() #Stored in self.tankID
             command, projectID = self._returnCommand()
             if projectID in ['','None']:
                 self._reinstructError('ProjectID must be set')
-                time.sleep(delta*10)
+                time.sleep(delta)
                 continue
 
             print(command + '\t' + projectID)
@@ -86,6 +82,7 @@ class CichlidTracker:
             time.sleep(delta*10)
 
     def runCommand(self, command, projectID):
+        # This function is used to run a specific command found int he  master Controller Google Spreadsheet
         self.projectID = projectID
         self.projectDirectory = self.masterDirectory + projectID + '/'
         if command not in self.commands:
@@ -529,7 +526,7 @@ class CichlidTracker:
         #Grab a bunch of depth files to characterize the variability
         data = np.zeros(shape = (50, self.r[3], self.r[2]))
         for i in range(0, 50):
-            all_data[i] = self._returnDepth()
+            data[i] = self._returnDepth()
             
         counts = np.count_nonzero(~np.isnan(data), axis = 0)
         std = np.nanstd(data, axis = 0)
