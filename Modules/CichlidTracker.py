@@ -79,7 +79,7 @@ class CichlidTracker:
             if command != 'None':    
                 self.runCommand(command, projectID)
             self._modifyPiGS(status = 'AwaitingCommand')
-            time.sleep(delta*10)
+            time.sleep(delta)
 
     def runCommand(self, command, projectID):
         # This function is used to run a specific command found int he  master Controller Google Spreadsheet
