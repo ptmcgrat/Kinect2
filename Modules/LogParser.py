@@ -13,7 +13,6 @@ class LogParser:
     def __init__(self, logfile):
         self.logfile = logfile
         self.master_directory = logfile.replace(logfile.split('/')[-1], '') + '/'
-        self.depth_df = self.master_directory + 'MasterDepth.npy'
         self.parse_log()
 
     def parse_log(self):
@@ -59,40 +58,46 @@ class LogParser:
                     
                 if info_type == 'FrameCaptured':
                     t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
-                    t_list[0] = self.master_directory + t_list[0]
-                    t_list[1] = self.master_directory + t_list[1]
                     self.frames.append(FrameObj(*t_list))
 
                 if info_type == 'BackgroundCaptured':
                     t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
-                    t_list[0] = self.master_directory + t_list[0]
-                    t_list[1] = self.master_directory + t_list[1]
                     self.backgrounds.append(FrameObj(*t_list))
                     
                 if info_type == 'PiCameraStarted':
-                    t_list = self._ret_data(line,['Time','VideoFile', 'PicFile', 'FrameRate'])
-                    t_list.append(self.master_directory)
+                    if 'VideoFile' in line:
+                        #Patricks logfile
+                        t_list = self._ret_data(line,['Time','VideoFile', 'PicFile', 'FrameRate'])
+                    else:
+                        #Marks logfile
+                        t_list = self._ret_data(line,['Time','File'])
+                        t_list.extend(['Unknown', 30])
+
                     self.movies.append(MovieObj(*t_list))
-                    
+
         self.frames.sort(key = lambda x: x.time)
+
+        # Process frames into days
+        rel_day = 0
+        cur_day = 0
+        self.days = {}
+        for index,frame in enumerate(self.frames):
+            if frame.time.day != cur_day:
+                if rel_day != 0:
+                    self.days[rel_day][1] = index
+                rel_day += 1
+                self.days[rel_day] = [index,0]
+                frame.rel_day = rel_day
+            
+            cur_day = frame.time.day
+
+        self.days[rel_day][1] = index + 1
+        self.numDays = len(self.days)
+            
         self.backgrounds.sort(key = lambda x: x.time)
         self.lastBackgroundCounter = len(self.backgrounds)
         self.lastFrameCounter=len(self.frames)
         self.lastVideoCounter=len(self.movies)
-
-    def create_npy_array(self):
-        self.all_data = np.empty(shape = (len(self.frames), self.height, self.width))
-        for i, frame in enumerate(self.frames):
-            data = np.load(frame.npy_file)
-            self.all_data[i] = data
-
-        np.save(self.depth_df, self.all_data)
-
-    def load_npy_array(self):
-        try:
-            self.all_data = np.load(self.depth_df)
-        except:
-            self.create_npy_array()
         
     def _ret_data(self, line, data):
         out_data = []
@@ -110,6 +115,12 @@ class LogParser:
                 continue
             except ValueError:
                 pass
+            try:
+                out_data.append(dt.strptime(t_data, '%a %b %d %H:%M:%S %Y'))
+                continue
+            except ValueError:
+                pass
+            
             # Is it a tuple?
             if t_data[0] == '(' and t_data[-1] == ')':
                 out_data.append(tuple(int(x) for x in t_data[1:-1].split(', ')))
@@ -136,13 +147,16 @@ class FrameObj:
         self.med = med
         self.std = std
         self.gp = gp
+        self.rel_day = 0
+        self.frameDir = pic_file.replace(pic_file.split('/')[-1],'')
+
 
 class MovieObj:
-    def __init__(self, time, movie_file, pic_file, framerate, master_directory):
+    def __init__(self, time, movie_file, pic_file, framerate):
         self.time = time
-        self.h264_file = master_directory + movie_file
-        self.pic_file = master_directory + pic_file
-        self.mp4_file = master_directory + movie_file.replace('.h264', '') + '.mp4'
+        self.h264_file =  movie_file
+        self.pic_file =  pic_file
+        self.mp4_file =  movie_file.replace('.h264', '') + '.mp4'
         self.framerate = framerate
-        self.master_directory = master_directory
-        self.hmm_file = master_directory + movie_file.split('/')[-1].split('.')[0] + '.hmm'
+        self.hmm_file = movie_file.split('.')[0] + '.hmm'
+        self.frameDir = pic_file.replace(pic_file.split('/')[-1],'')

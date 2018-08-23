@@ -300,7 +300,12 @@ class CichlidTracker:
             pi_ws = self.controllerGS.worksheet('RaspberryPi')
             headers = pi_ws.row_values(1)
             raPiID_col = headers.index('RaspberryPiID') + 1
-            row = pi_ws.col_values(raPiID_col).index(platform.node()) + 1
+            for i in range(5):
+                try:
+                    row = pi_ws.col_values(raPiID_col).index(platform.node()) + 1
+                    break
+                except:
+                    continue
             col = headers.index('TankID')
             if pi_ws.row_values(row)[col] not in ['None','']:
                 self.tankID = pi_ws.row_values(row)[col]

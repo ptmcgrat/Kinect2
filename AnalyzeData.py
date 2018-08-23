@@ -1,73 +1,39 @@
-from Modules.VideoProcessor import VideoProcessor
-import argparse
-import numpy as np
-import matplotlib.pyplot as plt
-from Modules.roipoly import roipoly
-import pylab as pl
+from Modules.DataAnalyzer import DataAnalyzer as DA
+import argparse, os
 
+rcloneName = 'cichlidVideo'
+dBoxMasterDir = 'McGrath/Apps/CichlidPiData/'
+locMasterDir = os.getenv('HOME') + '/Temp/CichlidAnalyzer/'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('VideoFiles', type = str, nargs = '+', help = 'Name of the videos you would like to analyze')
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('-f', '--InputFile', type = str, help = 'Excel file containing information on what you want analyzed')
+group.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Name of the projects you would like to analyze.')
+parser.add_argument('-v', '--Videos', nargs = '+', type = int, help = 'If you want to restrict video analysis to certain days use this flag (first day = 1, 0 = no video analysis, -1 = all)')
+parser.add_argument('-k', '--keep', action = 'store_true', help = 'Use this flag if you do not want the temp data to be deleted')
 args = parser.parse_args()
 
-#for videofile in args.VideoFiles:
-#    try:
-#        obj = VideoProcessor(videofile)
-#    
-#        obj.convertVideo()
-#        obj.calculateHMM(delete = True)
-#        obj.summarize_data()
-#    except:
-#        print('Error in ' + videofile)
-#    obj.summarize_data()
-#results = pool.map(solve1, args)
+projects = {}
+da_objs = {}
+if args.InputFile is not None:
+    if args.Videos is not None:
+        print('Use of -f and -v option is not allowed. Ignoring info provided in -v', file = sys.stderr)
+    #parse input file
 
+else:
+    if args.Videos is None:
+        print('No -v argument provided. Will not analyze any videos')
+        args.Videos = [0]
+    if len(args.ProjectIDs) > 1 and args.Videos not in [[0],[-1]]:
+        print('If more than one projectID is provided, -v flag can only be 0 (nothing analyzed) or -1 (everything analyzed). Defaulting to 0', file = sys.stderr)
+        args.Videos = [0]
+    for projectID in args.ProjectIDs:
+        projects[projectID] = args.Videos
 
+for projectID in projects:
+    da_objs[projectID] = DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, projects[projectID])
+    da_objs[projectID].processDepth()
 
-
-#if args.command == 'AnalyzeKinect2':
-#    kt_obj = Kinect2Analyzer(args.ProjectName,args.odroid)
-    #kt_obj.parse_log()
-    #kt_obj.smooth_data()
-    #kt_obj.select_regions()
-    #kt_obj.create_heatmap_video()
-#    kt_obj.summarize_data()
-                
-# This is a hack
-
-
-
-for i,videofile in enumerate(args.VideoFiles):
-    print(videofile)
-    obj = VideoProcessor(videofile)
-    if i == 0:
-        data = np.zeros(shape = (12*len(args.VideoFiles), obj.height, obj.width), dtype = 'uint8')
-    data[i*12:i*12 + 12] = obj.summarize_data()
-
-background = np.sum(data, axis = 0)
-pl.imshow(background)
-pl.colorbar()
-pl.title('Identify regions with sand')
-ROI = roipoly(roicolor='r')
-plt.show()
-
-edges = ROI.getEdges(background)
-max_c = data.max()*(1/4)
-
-rows = []
-for i,videofile in enumerate(args.VideoFiles):
-    row = []
-    for j in range(0,12, 2):
-        square = np.sum(data[i*12+j:i*12+j+2], axis = 0)/max_c*255
-        square[edges] = 255
-        row.append(square.copy()[0:700,600:1200])
-    day_change = np.sum(data[i*12:(i+1)*12], axis = 0)/max_c*255
-    day_change[edges] = 255
-    accum_change = np.sum(data[0:(i+1)*12], axis = 0)/max_c/4*255
-    accum_change[edges] = 255
-    rows.append(np.concatenate(row + [day_change[0:700,600:1200], accum_change[0:700,600:1200]], axis = 1))
-
-plt.imshow(np.concatenate(rows, axis = 0))
-plt.show()
-
+#for projectID, da_obj in da_objs.items():
+#    da_obj.summarizeDepth()
 
