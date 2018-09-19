@@ -18,8 +18,8 @@ class DriveUpdater:
         self.lp = LP(logfile)
         self.node = self.lp.uname.split("node='")[1].split("'")[0]
         self.lastFrameTime = self.lp.frames[-1].time
-        
         self.masterDirectory = logfile.split(self.lp.projectID)[0]
+        self.projectDirectory = self.masterDirectory + self.lp.projectID + '/'
         self.credentialDrive = self.masterDirectory + 'CredentialFiles/DriveCredentials.txt'
         self.credentialSpreadsheet = self.masterDirectory + 'CredentialFiles/SAcredentials.json'
         self._createImage()
@@ -42,15 +42,15 @@ class DriveUpdater:
         ax5 = fig.add_subplot(2, 3, 5) #Day Depth Change
         ax6 = fig.add_subplot(2, 3, 6) #Hour Depth Change
 
-        img_1 = img.imread(self.lp.frames[-1].pic_file)
+        img_1 = img.imread(self.projectDirectory + self.lp.frames[-1].pic_file)
         try:
-            img_2 = img.imread(self.lp.movies[-1].pic_file)
+            img_2 = img.imread(self.projectDirectory + self.lp.movies[-1].pic_file)
         except:
             img_2 = img_1
-        dpth_3 = np.load(self.lp.frames[-1].npy_file)
-        dpth_4 = np.load(self.lp.frames[0].npy_file)
-        dpth_5 = np.load(lastDayFrames[0].npy_file)
-        dpth_6 = np.load(lastHourFrames[0].npy_file)
+        dpth_3 = np.load(self.projectDirectory + self.lp.frames[-1].npy_file)
+        dpth_4 = np.load(self.projectDirectory + self.lp.frames[0].npy_file)
+        dpth_5 = np.load(self.projectDirectory + lastDayFrames[0].npy_file)
+        dpth_6 = np.load(self.projectDirectory + lastHourFrames[0].npy_file)
 
         ### TITLES ###
         ax1.set_title('Kinect RGB Picture')
