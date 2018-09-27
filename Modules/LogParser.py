@@ -38,6 +38,11 @@ class LogParser:
                         self.system, self.device, self.camera, self.uname, self.tankID, self.projectID = self._ret_data(line, ['System', 'Device', 'Camera','Uname', 'TankID', 'ProjectID'])
                     else:
                         raise LogFormatError('It appears MasterStart is present twice in the Logfile. Unable to deal')
+                    #Check if error in Marks file (tankId and projectID are swapped)
+                    if self.projectID[0:2] == 'Tk':
+                        temp = self.projectID
+                        self.projectID = self.tankID
+                        self.tankID = temp
 
                 if info_type == 'MasterRecordInitialStart':
                     self.master_start = self._ret_data(line, ['Time'])[0]
@@ -58,6 +63,11 @@ class LogParser:
                     
                 if info_type == 'FrameCaptured':
                     t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
+                    # Is this a Mark file?
+                    if t_list[2].year == 1900:
+                        # Get date from directory files are stored in
+                        t_date = dt.strptime(t_list[0].split('/')[0], '%B-%d-%Y')
+                        t_list[2] = t_list[2].replace(year = t_date.year, month = t_date.month, day = t_date.day)
                     self.frames.append(FrameObj(*t_list))
 
                 if info_type == 'BackgroundCaptured':
@@ -120,6 +130,11 @@ class LogParser:
                 continue
             except ValueError:
                 pass
+            try:
+                out_data.append(dt.strptime(t_data, '%H:%M:%S'))
+                continue
+            except ValueError:
+                pass
             
             # Is it a tuple?
             if t_data[0] == '(' and t_data[-1] == ')':
@@ -148,15 +163,19 @@ class FrameObj:
         self.std = std
         self.gp = gp
         self.rel_day = 0
-        self.frameDir = pic_file.replace(pic_file.split('/')[-1],'')
+        self.frameDir = npy_file.replace(npy_file.split('/')[-1],'')
 
 
 class MovieObj:
     def __init__(self, time, movie_file, pic_file, framerate):
         self.time = time
-        self.h264_file =  movie_file
+        if '.mp4' in movie_file:
+            self.mp4_file = movie_file
+            self.h264_file =  movie_file.replace('.mp4', '') + '.h264'
+        else:
+            self.h264_file =  movie_file
+            self.mp4_file =  movie_file.replace('.h264', '') + '.mp4'
         self.pic_file =  pic_file
-        self.mp4_file =  movie_file.replace('.h264', '') + '.mp4'
         self.framerate = framerate
-        self.hmm_file = movie_file.split('.')[0] + '.hmm'
-        self.frameDir = pic_file.replace(pic_file.split('/')[-1],'')
+        self.hmm_file = self.mp4_file.replace('.mp4', '.hmm')
+        self.movieDir = movie_file.replace(movie_file.split('/')[-1],'')
