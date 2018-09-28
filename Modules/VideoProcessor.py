@@ -25,7 +25,7 @@ class VideoProcessor:
         # Store arguments
         self.videofile = videofile
         self.baseName = self.videofile.split('/')[-1].split('.')[0]
-        self.outDirectory = outDirectory if outDirectory[-1] == '/' else outDirectory + '/' + self.baseName + '/'
+        self.outDirectory = outDirectory if outDirectory[-1] == '/' else outDirectory + '/'
         self.rewrite = rewrite
 
         # Set paramaters
@@ -69,6 +69,8 @@ class VideoProcessor:
         This function then smoothes the raw data
         Finally, an HMM is fit to the data and an HMMobject is created
         """
+        print(self.hmmFile)
+        print(os.path.exists(self.hmmFile))
         if os.path.exists(self.hmmFile) and not self.rewrite:
             print('Hmmfile already exists. Will not recalculate it unless rewrite flag is True')
             return
@@ -140,7 +142,7 @@ class VideoProcessor:
         self.obj = HMMdata(self.width, self.height, self.frames, self.frame_rate)
         self.obj.add_data(self.tempDirectory, self.hmmFile)
         # Copy example data to directory containing videofile
-        subprocess.call(['cp', self.row_fn(int(self.height/2)), self.row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self.row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.exampleDirectory])
+        subprocess.call(['cp', self._row_fn(int(self.height/2)), self._row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self._row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.exampleDirectory])
 
         if delete:
             shutil.rmtree(self.tempDirectory)
