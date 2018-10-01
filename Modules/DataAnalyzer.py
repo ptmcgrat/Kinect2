@@ -88,7 +88,7 @@ class DataAnalyzer:
 
     def __del__(self):
         # Remove local files once object is destroyed
-        #shutil.rmtree(self.locMasterDir)
+        shutil.rmtree(self.locMasterDir)
         print('Deleting')
         pass
 
@@ -163,6 +163,8 @@ class DataAnalyzer:
             subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + baseName, self.locAnalysisDir + baseName], stderr = self.fnull)
             self.vp_obj = VideoProcessor(self.locMasterDir + vo.mp4_file, self.locAnalysisDir + baseName)
             self.vp_obj.calculateHMM()
+            self.vp_obj.createFramesToAnnotate()
+            self.vp_obj.clusterHMM()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
 
 

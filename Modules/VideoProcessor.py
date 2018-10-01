@@ -184,7 +184,7 @@ class VideoProcessor:
         for i in [int(x) for x in np.linspace(1.25*3600*self.framerate, self.frames - 1.25*3600*self.framerate, n)]:
             frame = cap[frame]
             t_image = Image.fromarray(frame)
-            im.save('AnnotateImage' + str(counter).zfill(4) + '.jpg')
+            im.save(self.annotationDirectory + 'AnnotateImage' + str(counter).zfill(4) + '.jpg')
         
     def summarize_data(self):
         try:
