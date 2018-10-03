@@ -175,6 +175,7 @@ class DataAnalyzer:
             self.vp_obj.createFramesToAnnotate()
             self.vp_obj.clusterHMM()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
+            shutil.rmtree(self.locAnalysisDir + basename)
 
 
     def _identifyTray(self):
