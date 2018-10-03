@@ -72,12 +72,19 @@ class DataAnalyzer:
         # Name of analysis files that will be created
         #self.rawDepthDataFile = self.locAnalysisDir + 'rawDepthData.npy'
         #self.interpDepthDataFile = self.locAnalysisDir + 'interpDepthData.npy'
+        self.interpDepthFile = 'interpDepthData.npy'
         self.smoothDepthFile = 'smoothedDepthData.npy'
         self.trayFile = 'TrayInfo.txt'
         self.bowerFile = 'BowerInfo.txt'
         self.transMFile = 'TransformationMatrix.npy'
         self.histogramFile = 'DataHistograms.xlsx'
-
+        self.totalChangeFile = 'TotalChange.npy'
+        self.dailyChangeFile = 'DailyChange.npy'
+        self.dailyMaskFile = 'DailyMask.npy'
+        self.hourlyChangeFile = 'HourlyChange.npy'
+        self.overnightChangeFile = 'OvernightChange.npy'
+        self.analysisVideo = 'InitialVideo.mp4'
+        
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
         
@@ -104,7 +111,9 @@ class DataAnalyzer:
     def processDepth(self):
         self._createSmoothDepthArray()
         self._createHistogramData()
-        self._dailySummary(self.smoothDepthData, 'Smooth')
+        self._calculateBowerData()
+        self._dailySummary(self.interpDepthData, 'Smooth')
+        self._createInitialVideo()
         #plt.clf()
         #plt.plot(c1)
         #plt.plot(c2)
@@ -178,16 +187,15 @@ class DataAnalyzer:
             pass
 
         # First deterimine if we want to recreate the tray region or try to use what already exists
-        if not self.rewriteFlag:
-            subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + self.trayFile, self.locAnalysisDir], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + self.trayFile, self.locAnalysisDir], stderr = self.fnull)
 
-            if os.path.isfile(self.locAnalysisDir + self.trayFile):
-                self._print('Loading tray information from file on dropbox')
-                with open(self.locAnalysisDir + self.trayFile) as f:
-                    line = next(f)
-                    tray = line.rstrip().split(',')
-                    self.tray_r = [int(x) for x in tray]
-                return
+        if os.path.isfile(self.locAnalysisDir + self.trayFile):
+            self._print('Loading tray information from file on dropbox')
+            with open(self.locAnalysisDir + self.trayFile) as f:
+                line = next(f)
+                tray = line.rstrip().split(',')
+                self.tray_r = [int(x) for x in tray]
+            return
 
         # Unable to load it from existing file, either because it doesn't exist or the 
         self._print('Identify the parts of the frame that include tray to analyze')
@@ -220,63 +228,6 @@ class DataAnalyzer:
             print(','.join([str(x) for x in self.tray_r]), file = f)
 
         subprocess.call(['rclone', 'copy', self.locAnalysisDir + self.trayFile, self.remote + ':' + self.remAnalysisDir])
-
-
-    def _identifyBower(self):
-
-        # If tray attribute already exists, exist
-        try:
-            self.bowerMask
-            return
-        except AttributeError:
-            pass
-
-       # First deterimine if we want to recreate the tray region or try to use what already exists
-        if not self.rewriteFlag:
-            subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + self.bowerFile, self.locAnalysisDir], stderr = self.fnull)
-
-            if os.path.isfile(self.locAnalysisDir + self.bowerFile):
-                print('Loading bower information from file on dropbox', file = sys.stderr)
-                with open(self.locAnalysisDir + self.bowerFile) as f:
-                    line = next(f)
-                    tray = line.rstrip().split(',')
-                    self.bowerMask = [int(x) for x in tray]
-                    return
-            
-        # Unable to load it from existing file, either because it doesn't exist or the 
-        subprocess.call(['rclone', 'copy', self.remote + ':' + self.remMasterDir + self.lp.frames[0].npy_file, self.locMasterDir + self.lp.frames[0].frameDir], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.remote + ':' + self.remMasterDir + self.lp.frames[-1].npy_file, self.locMasterDir + self.lp.frames[-1].frameDir], stderr = self.fnull)
-        if not os.path.isfile(self.locMasterDir + self.lp.frames[-1].npy_file) or not os.path.isfile(self.locMasterDir + self.lp.frames[0].npy_file):
-            self._print('Cant find the files to find the bower! Quitting')
-            sys.exit()
-            
-        cmap = plt.get_cmap('jet')
-        final_image = cmap(plt.Normalize(-10,10)(np.load(self.locMasterDir + self.lp.frames[0].npy_file) -  np.load(self.locMasterDir + self.lp.frames[-1].npy_file)))
-                        
-        self._print('Identifying the bower')
-        cv2.imshow('Select region that contains the bower (be generous)', final_image)
-        bower_r = cv2.selectROI('Select region that contains the bower (be generous)', final_image, fromCenter = False)
-        bower_r = [int(x) for x in bower_r] # sometimes a float is returned
-        bower_r = [bower_r[1],bower_r[0],bower_r[1] + bower_r[3], bower_r[0] + bower_r[2]] #(x0,y0,xf,yf)
-
-        if bower_r[0] < 20: 
-            bower_r[0] = 0
-        if bower_r[1] < 20: 
-            bower_r[1] = 0
-        if final_image.shape[0] - bower_r[2]  < 20: 
-            bower_r[2] = final_image.shape[0]
-        if final_image.shape[1] - bower_r[3]  < 20:  
-            bower_r[3] = final_image.shape[1]
-
-        self.bowerMask = bower_r
-                
-        cv2.destroyAllWindows()
-        cv2.waitKey(1)
-            
-        with open(self.locAnalysisDir + self.bowerFile, 'w') as f:
-            print(','.join([str(x) for x in self.bowerMask]), file = f)
-            
-        subprocess.call(['rclone', 'copy', self.locAnalysisDir + self.bowerFile, self.remote + ':' + self.remAnalysisDir], stderr = self.fnull)
 
     def _registerImages(self):
 
@@ -354,12 +305,18 @@ class DataAnalyzer:
         if not self.rewriteFlag:
             if not os.path.isfile(self.locAnalysisDir + self.smoothDepthFile):
                 subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + self.smoothDepthFile, self.locAnalysisDir], stderr = self.fnull)
+                
+            if not os.path.isfile(self.locAnalysisDir + self.interpDepthFile):
+                subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + self.interpDepthFile, self.locAnalysisDir], stderr = self.fnull)
 
-            if os.path.isfile(self.locAnalysisDir + self.smoothDepthFile):
+                
+            if os.path.isfile(self.locAnalysisDir + self.smoothDepthFile) and os.path.isfile(self.locAnalysisDir + self.interpDepthFile):
                 print('Loading depth information from file on dropbox', file = sys.stderr)
                 self.smoothDepthData = np.load(self.locAnalysisDir + self.smoothDepthFile)
+                self.interpDepthData = np.load(self.locAnalysisDir + self.interpDepthFile)
                 return
-        
+
+            
         #Load or calculate raw data
         print('Creating large npy array to hold raw depth data', file = sys.stderr)
         rawDepthData = np.empty(shape = (len(self.lp.frames), self.lp.height, self.lp.width))
@@ -423,76 +380,160 @@ class DataAnalyzer:
         interpDepthData[:,:,:self.tray_r[1]] = np.nan
         interpDepthData[:,:,self.tray_r[3]:] = np.nan
 
+        self.interpDepthData = interpDepthData
+        np.save(self.locAnalysisDir + self.interpDepthFile, self.interpDepthData)
         self.smoothDepthData = scipy.signal.savgol_filter(interpDepthData, tunits, order, axis = 0, mode = 'mirror')
         np.save(self.locAnalysisDir + self.smoothDepthFile, self.smoothDepthData)
+        subprocess.call(['rclone', 'copy', self.locAnalysisDir + self.interpDepthFile, self.remote + ':' + self.remAnalysisDir], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.locAnalysisDir + self.smoothDepthFile, self.remote + ':' + self.remAnalysisDir], stderr = self.fnull)
 
+    def _calculateBowerData(self, day_threshold = 0.4, min_pixels = 250, hourlyChange = 2):
+        self.firstDay = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
+        self.dailyChange = np.empty(shape = (self.lp.numDays, self.lp.height, self.lp.width))
+        self.hourlyChange = np.empty(shape = (int(self.lp.numDays*24/hourlyChange), self.lp.height, self.lp.width))
+        self.overnightChange = np.empty(shape = (self.lp.numDays, self.lp.height, self.lp.width))
         
+        self.mask = np.empty(shape = (self.lp.numDays, self.lp.height, self.lp.width), dtype = bool)
+        
+        #DailyChange        
+        for i in range(self.lp.numDays):
+            
+            start = self.firstDay + datetime.timedelta(hours = 24*i)
+            end = self.firstDay + datetime.timedelta(hours = 24*(i+1))
+            try:
+                first_index = max([False if x.time<=start else True for x in self.lp.frames].index(True) - 1, 0) #This ensures that we get overnight changes when kinect wasn't running
+            except ValueError:
+                first_index = 0
+            try:
+                last_index = [False if x.time<=end else True for x in self.lp.frames].index(True) - 1
+            except ValueError:
+                last_index = len(self.lp.frames) - 1 
+
+            if last_index != first_index:
+                mask = self.smoothDepthData[first_index] - self.smoothDepthData[last_index]
+                
+            mask = np.absolute(mask)
+            mask[mask < day_threshold] = 0
+            mask[np.isnan(mask)] = 0
+            self.mask[i] = morphology.remove_small_objects(mask.astype(bool), min_pixels)
+
+            self.dailyChange[i] = (self.interpDepthData[first_index] - self.interpDepthData[last_index])
+
+            if i == self.lp.numDays - 1:
+                self.overnightChange[i] = self.interpDepthData[first_index] - self.interpDepthData[first_index]
+            else:
+                self.overnightChange[i] = self.interpDepthData[last_index] - self.interpDepthData[last_index+1]
+                print(str(self.lp.frames[last_index].time) + ' to ' + str(self.lp.frames[last_index+1].time))
+
+            
+        for i in range(self.lp.numDays):
+            for j in range(int(24/hourlyChange)):
+                start = self.firstDay + datetime.timedelta(hours = 24*i + j*hourlyChange)
+                end = self.firstDay + datetime.timedelta(hours = 24*i + (j+1)*hourlyChange)
+                try:
+                    first_index = max([False if x.time<=start else True for x in self.lp.frames].index(True), 0) #This ensures that we get overnight changes when kinect wasn't running
+                except ValueError:
+                    if self.lp.frames[0].time > start:
+                        first_index = 0
+                    elif self.lp.frames[-1].time < start:
+                        first_index = len(self.lp.frames) - 1
+                    else:
+                        print('Not sure what to make first_index. Quitting...')
+                        sys.exit()
+                try:
+                    last_index = [False if x.time<=end else True for x in self.lp.frames].index(True) - 1
+
+                except ValueError:
+                    if self.lp.frames[0].time > end:
+                        last_index = 0
+                    elif self.lp.frames[-1].time < end:
+                        last_index = len(self.lp.frames) - 1
+                    else:
+                        print('Not sure what to make first_index. Quitting...')
+                        sys.exit()
+                        
+                if abs(last_index - first_index) <= 1:
+                    last_index = first_index
+
+
+                #Calculate largest changing values
+                tchange = self.interpDepthData[first_index] - self.interpDepthData[last_index]
+
+                self.hourlyChange[i*int(24/hourlyChange) + j] = tchange
+
+
+        np.save(self.locAnalysisDir + self.totalChangeFile, self.smoothDepthData[0] - self.smoothDepthData[-1])
+        np.save(self.locAnalysisDir + self.dailyChangeFile, self.dailyChange)
+        np.save(self.locAnalysisDir + self.dailyMaskFile, self.mask)
+        np.save(self.locAnalysisDir + self.hourlyChangeFile, self.hourlyChange)
+        np.save(self.locAnalysisDir + self.overnightChangeFile, self.overnightChange)
+        
+        subprocess.call(['rclone', 'copy', self.locAnalysisDir, self.remote + ':' + self.remAnalysisDir], stderr = self.fnull)
+
     def _createInitialVideo(self):
-        self._identifyBowers()
         
         fig = plt.figure()
-        ax1 = fig.add_subplot(2,3,1)
-        ax2 = fig.add_subplot(2,3,2)
-        ax3 = fig.add_subplot(2,3,4)
-        ax4 = fig.add_subplot(2,3,5)
-        ax5 = fig.add_subplot(2,3,3)
-        ax6 = fig.add_subplot(2,3,6)
+        ax1 = fig.add_subplot(2,2,1)
+        ax2 = fig.add_subplot(2,2,2)
+        ax3 = fig.add_subplot(2,2,3)
+        ax4 = fig.add_subplot(2,2,4)
 
-        v_min = np.nanpercentile(self.rawDepthData, 0.1)
-        v_max = np.nanpercentile(self.rawDepthData, 99.9)
-
-        data_o = self.rawDepthData
-        data_s_0 = self.smoothDepthData[0]
+        fig.suptitle(self.projectID + ' ' + str(self.lp.frames[0].time))
         
-        img_0 = img.imread(self.lp.frames[0].pic_file)
-        ax3.imshow(img_0)
+        v_min = -2
+        v_max = 2
 
-        hm_0 = data_o[0]
-        ax1.imshow(hm_0, vmin = v_min, vmax = v_max)
+        try:
+            img_0 = img.imread(self.locMasterDir + self.lp.frames[0].pic_file)
+            ax1.imshow(img_0)
+        except:
+            ax1.imshow(self.interpDepthData[0] - self.interpDepthData[0], vmin = v_min, vmax = v_max)
 
-        hm_1 = data_s_0
-        ax2.imshow(hm_1, vmin = v_min, vmax = v_max)
+        hm_0 = np.load(self.locMasterDir + self.lp.frames[0].npy_file)
+        hm_0 = 100/(-0.0037*hm_0 + 3.33)
 
-        hm_2 = data_s_0 - data_s_0
-        ax4.imshow(hm_2, vmin = -10, vmax = 10)
+        ax2.imshow(hm_0 - hm_0, vmin = v_min, vmax = v_max)
 
-        ax5.imshow(self.pit_mask)
-        ax6.imshow(self.castle_mask)
+        hm_1 = self.interpDepthData[0] - self.interpDepthData[0]
+        ax3.imshow(hm_1, vmin = v_min, vmax = v_max)
+
+        hm_2 = self.smoothDepthData[0] - self.smoothDepthData[0]
+        ax4.imshow(hm_2, vmin = v_min, vmax = v_max)
         
         writer = animation.writers['ffmpeg'](fps=10, metadata=dict(artist='Patrick McGrath'), bitrate=1800)
-        anim = animation.FuncAnimation(fig, self._animate, frames = self.rawDepthData.shape[0], fargs = (fig, ax1, ax2, ax3, ax4, v_min, v_max), repeat = False)
-        anim.save(self.analysisVideo, writer = writer)        
+        anim = animation.FuncAnimation(fig, self._animate, frames = self.interpDepthData.shape[0], fargs = (fig, ax1, ax2, ax3, ax4, hm_0, v_min, v_max), repeat = False)
+        print(self.locOutputDir + self.analysisVideo)
+        anim.save(self.locOutputDir + self.analysisVideo, writer = writer)        
+        subprocess.call(['rclone', 'copy', self.locOutputDir + self.analysisVideo, self.remote + ':' + self.remOutputDir], stderr = self.fnull)
 
-    def _animate(self, i, fig, ax1, ax2, ax3, ax4, v_min, v_max):
-        print(str(i) + ' of ' + str(self.rawDepthData.shape[0]))
-        data_o = self.rawDepthData
-        data_s = self.smoothDepthData
-        data_s_0 = self.smoothDepthData[0]
+    def _animate(self, i, fig, ax1, ax2, ax3, ax4, hm_0_0, v_min, v_max):
+        if i % 80 == 0:
+            print(str(i) + ' of ' + str(self.interpDepthData.shape[0]))
         fig.clf()
+
+        fig.suptitle(self.projectID + ' ' + str(self.lp.frames[i].time))
+
+        ax1 = fig.add_subplot(2,2,1)
+        ax2 = fig.add_subplot(2,2,2)
+        ax3 = fig.add_subplot(2,2,3)
+        ax4 = fig.add_subplot(2,2,4)
+
+        try:
+            img_0 = img.imread(self.locMasterDir + self.lp.frames[0].pic_file)
+            ax1.imshow(img_0)
+        except:
+            ax1.imshow(self.interpDepthData[0] - self.interpDepthData[0], vmin = v_min, vmax = v_max)
+
+        hm_0 = np.load(self.locMasterDir + self.lp.frames[i].npy_file)
+        hm_0 = 100/(-0.0037*hm_0 + 3.33) - hm_0_0
         
+        ax2.imshow(hm_0, vmin = v_min, vmax = v_max)
 
-        ax1 = fig.add_subplot(2,3,1)
-        ax2 = fig.add_subplot(2,3,2)
-        ax3 = fig.add_subplot(2,3,4)
-        ax4 = fig.add_subplot(2,3,5)
-        ax5 = fig.add_subplot(2,3,3)
-        ax6 = fig.add_subplot(2,3,6)
-        
-        img_0 = img.imread(self.lp.frames[i].pic_file)
-        ax3.imshow(img_0)
+        hm_1 = self.interpDepthData[i] - self.interpDepthData[0]
+        ax3.imshow(hm_1, vmin = v_min, vmax = v_max)
 
-        hm_0 = data_o[i]
-        ax1.imshow(hm_0, vmin = v_min, vmax = v_max)
-
-        hm_1 = data_s[i]
-        ax2.imshow(hm_1, vmin = v_min, vmax = v_max)
-
-        hm_2 = data_s[i] - data_s_0
-        ax4.imshow(hm_2, vmin = -10, vmax = 10)
-
-        ax5.imshow(self.pit_mask)
-        ax6.imshow(self.castle_mask)
+        hm_2 = self.smoothDepthData[i] - self.smoothDepthData[0]
+        ax4.imshow(hm_2, vmin = v_min, vmax = v_max)
 
     def _createHistogramData(self):
         self._print('Creating histogram data file for ' + self.projectID)
@@ -567,7 +608,7 @@ class DataAnalyzer:
  #       rect2 = patches.Rectangle((self.bowerMask[1],self.bowerMask[0]),self.bowerMask[3] - self.bowerMask[1],self.bowerMask[2] - self.bowerMask[0],linewidth=1,edgecolor='r',facecolor='none')
         
         pic_ax = fig.add_subplot(grid[0:2, 0:self.lp.numDays*2])
-        ax = pic_ax.imshow(data[-1], vmin = -5, vmax = 5)
+        ax = pic_ax.imshow(data[-1][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]])
         #pic_ax.add_patch(rect)
         pic_ax.set_title('Final depth (cm)')
         pic_ax.set_xticklabels([])
@@ -575,7 +616,7 @@ class DataAnalyzer:
 
         plt.colorbar(ax, ax = pic_ax)
         pic_ax2 = fig.add_subplot(grid[0:2, self.lp.numDays*2:])
-        ax2 = pic_ax2.imshow(-1*(data[-1] - data[0]), vmin = -5, vmax = 5)
+        ax2 = pic_ax2.imshow(-1*(data[-1] - data[0])[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]], vmin = -5, vmax = 5)
         #pic_ax2.add_patch(rect2)
         pic_ax2.set_title('Total depth change (cm)')
         pic_ax2.set_xticklabels([])
@@ -599,44 +640,27 @@ class DataAnalyzer:
                 current_ax2.append(fig.add_subplot(grid[3, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax2[0]))
                 current_ax3.append(fig.add_subplot(grid[4, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax3[0]))
                 current_ax4.append(fig.add_subplot(grid[5, i*4:i*4+3], sharey = current_ax4[0]))
-         
+
             start = start_day + datetime.timedelta(hours = 24*i)
             end = start_day + datetime.timedelta(hours = 24*(i+1))
+
+            current_ax[i].set_title(str(start.date()))
             try:
-                first_index = max([False if x.time<=start else True for x in self.lp.frames].index(True) - 1, 0) #This ensures that we get overnight changes when kinect wasn't running
-            except ValueError:
-                first_index = 0
-            try:
-                last_index = [False if x.time<=end else True for x in self.lp.frames].index(True) - 1
-            except ValueError:
-                last_index = len(self.lp.frames) - 1 
+                last_index = max([False if x.time<=end else True for x in self.lp.frames].index(True) - 1, 0)
+            except:
+                last_index = -1
 
-            if last_index != first_index:
-                mask = self.smoothDepthData[first_index] - self.smoothDepthData[last_index]
-                
-            mask = np.absolute(mask)
-            mask[mask < day_threshold] = 0
-            mask[np.isnan(mask)] = 0
+            current_ax[i].imshow((self.smoothDepthData[0] - self.smoothDepthData[last_index])[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]], vmin = -4*day_threshold, vmax = 4*day_threshold)
+            current_ax2[i].imshow(self.dailyChange[i][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]], vmin = -4*day_threshold, vmax = 4*day_threshold)
+            current_ax3[i].imshow(self.mask[i][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]])
 
-
-            current_ax[i].imshow((self.smoothDepthData[first_index] - self.smoothDepthData[last_index]), vmin = -2*day_threshold, vmax = 2*day_threshold)
-            current_ax2[i].imshow((self.smoothDepthData[0] - self.smoothDepthData[last_index]), vmin = -2*day_threshold, vmax = 2*day_threshold)
-            mask2 = mask.copy().astype(bool)
-            mask2 = morphology.remove_small_objects(mask2, 150)
-            #nums = []
-            #for ms in [0,50,100,150,200,250,300]:
-            #    nums.append(np.count_nonzero(morphology.remove_small_objects(thresh,ms)))
-            #current_ax4[i].plot([0,50,100,150,200,250,300], nums)
-            current_ax3[i].imshow(mask2)
-
-            mask[mask2==False] = 0
-            bigPixels.append(np.count_nonzero(mask))
-            volumeChange.append(np.nansum(mask))
+            bigPixels.append(np.count_nonzero(self.mask[i]))
+            volumeChange.append(np.nansum(np.absolute(self.dailyChange[i][self.mask[i]==True])))
             
             
             #Calculate largest changing values
-            tdata = (self.smoothDepthData[first_index] - self.smoothDepthData[last_index])
-            tdata[mask2 == False] = 0
+            tdata = self.dailyChange[i].copy()
+            tdata[self.mask[i] == False] = 0
             tdata = tdata[~np.isnan(tdata)]
             abs_data = np.absolute(tdata)
             x_values = [-1, -1.33333, -1.666666, -2, -2.33333, -2.6666666, -3]
@@ -666,8 +690,6 @@ class DataAnalyzer:
             current_ax2[i].set_adjustable('box-forced')
             current_ax3[i].set_adjustable('box-forced')
 
-            current_t += datetime.timedelta(hours = 24)
-
         current_ax1 = fig.add_subplot(grid[6,0:self.lp.numDays*2])
         current_ax2 = fig.add_subplot(grid[6, self.lp.numDays*2:])
 
@@ -681,108 +703,47 @@ class DataAnalyzer:
         plt.clf()
 
         subprocess.call(['rclone', 'copy', self.locOutputDir + 'DailySummary.pdf', self.remote + ':' + self.remOutputDir], stderr = self.fnull)
-
-        return
-        t0 = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-
-        if self.lp.numDays == 1:
-            fig, ax = plt.subplots(nrows = self.lp.numDays+1, ncols = 24+2, sharex = True, sharey=True, figsize = (11,8.5))
-        else:
-            fig, ax = plt.subplots(nrows = self.lp.numDays, ncols = 24+2, sharex = True, sharey=True, figsize = (11,8.5))
-
-        wd = self.bowerMask[3] - self.bowerMask[1]
-        ht = self.bowerMask[2] - self.bowerMask[0]
+    
+        fig = plt.figure(figsize = (11,8.5)) 
+        fig.suptitle(self.projectID)
+        
+        grid = plt.GridSpec(self.lp.numDays, 14, wspace=0.02, hspace=0.02)
 
         changes = []
         for i in range(0, self.lp.numDays):
-            out_data = np.zeros(shape = (24,ht,wd))
-            changes.append([])
-            for j in range(0,24):
+            for j in range(12):
+                current_ax = fig.add_subplot(grid[i, j])
 
-                t1 = t0 + datetime.timedelta(hours = 1)
-                frames = [x for x in self.lp.frames if x.time > t0 and x.time < t1]
-                
-                if len(frames) != 0:
-                    data_i = data[self.lp.frames.index(frames[0])][self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]]
-                    data_f = data[self.lp.frames.index(frames[-1])][self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]]
-                    #data_i[self.castle_mask == False] = np.nan
-                    #data_f[self.castle_mask == False] = np.nan
-                    out_data[j] = -1*(data_f - data_i)*-1
-                    try:
-                        a,b = np.histogram(out_data[j][~np.isnan(out_data[j])], bins = hourly_bins)
-                    except ValueError:
-                        print(hourly_bins)
-                        print(j)
-                        print(len(out_data[j][~np.isnan(out_data[j])]))
-                        print(np.min(out_data[j][~np.isnan(out_data[j])]))
-                        print(np.max(out_data[j][~np.isnan(out_data[j])]))
+                current_ax.imshow(self.hourlyChange[i*12 + j][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]], vmin = -0.4, vmax = .4)
+                current_ax.set_adjustable('box-forced')
+                current_ax.set_xticklabels([])
+                current_ax.set_yticklabels([])
+                if i == 0:
+                    current_ax.set_title(str(j*2) + '-' + str((j+1)*2))
 
-                    hourly_hist.append(a)
-                    ax[i,j].imshow(out_data[j], vmin = -2*hour_threshold, vmax = 2*hour_threshold)
-                    tdata = out_data[j].copy()
-                    gd = tdata[~np.isnan(tdata)]
-                    big_pix = len(gd[(gd < -1*hour_threshold) | (gd > hour_threshold)])/len(gd)
-                    sum_pix = np.abs(gd[(gd < -1*hour_threshold) | (gd > hour_threshold)]).sum()
-                    changes[i].append(sum_pix)
-                    #build_data[i,j] = castle_total[self.lp.frames.index(frames[-1])] - castle_total[self.lp.frames.index(frames[0])]
-                else:
-                    #a = (castle_ind[0].min(),castle_ind[0].max(), castle_ind[1].min(),castle_ind[1].max())
-                    zerodata = np.zeros(shape = (1600,1600))
-                    ax[i,j].imshow(np.zeros(shape = (1600,1600))[self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]], vmin = -2*hour_threshold, vmax = 2*hour_threshold)
-                    changes[i].append(0)
-                ax[i,j].set_adjustable('box-forced')
-                ax[i,j].set_xticklabels([])
-                ax[i,j].set_yticklabels([])
+            current_ax = fig.add_subplot(grid[i, 12])
+            current_ax.imshow(self.mask[i][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]])
+            current_ax.set_adjustable('box-forced')
+            current_ax.set_xticklabels([])
+            current_ax.set_yticklabels([])
+            if i==0:
+                current_ax.set_title('Mask')
 
 
-                t0 = t1
+            current_ax = fig.add_subplot(grid[i, 13])
+            current_ax.imshow(self.overnightChange[i][self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]], vmin = -0.4, vmax = .4)
+            current_ax.set_adjustable('box-forced')
+            current_ax.set_xticklabels([])
+            current_ax.set_yticklabels([])
+            if i==0:
+                current_ax.set_title('O/N')
 
-            frames = [x for x in self.lp.frames if x.time > t1 - datetime.timedelta(hours = 24) and x.time < t1]
-            if len(frames) == 0:
-                out_data = np.zeros(shape = data[0].shape)
-            else:
-                data_i = data[self.lp.frames.index(frames[0])][self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]]
-                data_f = data[self.lp.frames.index(frames[-1])][self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]]
-                out_data = (data_f - data_i)
-            gd = out_data[~np.isnan(out_data)]
-            gd = out_data[~np.isnan(out_data)]
-            big_pix = len(gd[(gd < -5) | (gd > 5)])/len(gd)
 
-            ax[i,j+1].imshow(out_data, vmin = -2*day_threshold, vmax = 2*day_threshold)
-            ax[i,j+1].set_adjustable('box-forced')
-
-            data_i = data[0][self.bowerMask[0]:self.bowerMask[2],self.bowerMask[1]:self.bowerMask[3]]
-            out_data = (data_f - data_i)
-            ax[i,j+2].imshow(out_data, vmin = -4*day_threshold, vmax = 4*day_threshold)
-            ax[i,j+2].set_adjustable('box-forced')
-
-                #        plt.imshow(build_data)
-                #        plt.colorbar()
-        plt.subplots_adjust(wspace = 0, hspace = 0)
-
+            
         plt.savefig(self.locOutputDir + 'HourlySummary.pdf')
         subprocess.call(['rclone', 'copy', self.locOutputDir + 'HourlySummary.pdf', self.remote + ':' + self.remOutputDir], stderr = self.fnull)
 
         plt.clf()
-
-        seaborn.heatmap(changes)
-        plt.savefig(self.locOutputDir + 'HourlyHeatmap.pdf')
-        subprocess.call(['rclone', 'copy', self.locOutputDir + 'HourlyHeatmap.pdf', self.remote + ':' + self.remOutputDir], stderr = self.fnull)
-        plt.clf()
-        a,b = np.histogram(out_data[~np.isnan(out_data)], bins = total_bins)
-        total_hist = a
-        with open(self.locOutputDir + 'Histograms.txt', 'w') as f:
-            print('Total', file = f)
-            print('\t'.join([str(x) for x in total_bins]), file = f)
-            print('\t'.join([str(x) for x in total_hist]), file = f)
-            print('Daily', file = f)
-            print('\t'.join([str(x) for x in daily_bins]), file = f)
-            for i in range(0,len(daily_hist)):
-                print('\t'.join([str(x) for x in daily_hist[i]]), file = f)
-            print('Hourly', file = f)
-            print('\t'.join([str(x) for x in hourly_bins]), file = f)
-            for i in range(0,len(hourly_hist)):
-                print('\t'.join([str(x) for x in hourly_hist[i]]), file = f)
 
     def _print(self, outtext):
         now = datetime.datetime.now()

@@ -9,6 +9,7 @@ locMasterDir = os.getenv('HOME') + '/Temp/CichlidAnalyzer/'
 parser = argparse.ArgumentParser()
 parser.add_argument('InputFile', type = str, help = 'Excel file containing information on what you want analyzed')
 parser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to analyze.')
+parser.add_argument('-d', '--delete', action = 'store_true', help = 'Delete existing data and reanalyze.')
 parser.add_argument('-k', '--keep', action = 'store_true', help = 'Use this flag if you do not want the temp data to be deleted')
 parser.add_argument('-T', '--Tray', action = 'store_true', help = 'Use this flag if you  want to identify the trays for each project (Useful if you are not on a computer with a good internet connection or is slow')
 parser.add_argument('-D', '--Depth', action = 'store_true', help = 'Use this flag if you  want to analyze the depth data')
@@ -35,20 +36,25 @@ for row in dt.iterrows():
             projects[projectID] = groupID
             videos[projectID] = video
 
+if args.delete:
+    delete = True
+else:
+    delete = False
+            
 if args.Tray:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0]) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
             da_obj.prepareData()
 
 if args.Depth:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0]) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
             da_obj.prepareData()
             da_obj.processDepth()
 
 if args.Videos:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0]) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
             if videos[projectID] == [0]:
                 da_obj.processVideo()
             else:
@@ -57,7 +63,7 @@ if args.Videos:
 
 if args.Histogram:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0]) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
             histograms[projectID] = da_obj.retHistogramData()
 
             with open('histograms.pickle', 'wb') as handle:

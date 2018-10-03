@@ -172,7 +172,7 @@ class VideoProcessor:
         else:
             self.coords[:,0] = self.coords[:,0]*timeScale
             X = NearestNeighbors(radius=treeR, metric='minkowski', p=2, algorithm='kd_tree',leaf_size=leafNum,n_jobs=24).fit(self.coords)
-            dist = X.radius_neighbors_graph(coords, neighborR, 'distance')
+            dist = X.radius_neighbors_graph(self.coords, neighborR, 'distance')
             scipy.sparse.save_npz(self.clusterDirectory + 'PairwiseDistances.npz', dist)
             
         label = DBSCAN(eps=eps, min_samples=minPts, metric='precomputed', n_jobs=24).fit_predict(dist)
@@ -181,10 +181,11 @@ class VideoProcessor:
     def createFramesToAnnotate(self, n = 300):
         cap = pims.Video(self.videofile)
         counter = 0
-        for i in [int(x) for x in np.linspace(1.25*3600*self.framerate, self.frames - 1.25*3600*self.framerate, n)]:
-            frame = cap[frame]
+        for i in [int(x) for x in np.linspace(1.25*3600*self.frame_rate, self.frames - 1.25*3600*self.frame_rate, n)]:
+            frame = cap[i]
             t_image = Image.fromarray(frame)
-            im.save(self.annotationDirectory + 'AnnotateImage' + str(counter).zfill(4) + '.jpg')
+            t_image.save(self.annotationDirectory + 'AnnotateImage' + str(counter).zfill(4) + '.jpg')
+            counter += 1
         
     def summarize_data(self):
         try:
