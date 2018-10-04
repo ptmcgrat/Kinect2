@@ -622,8 +622,18 @@ class CichlidTracker:
         print(['rclone', 'copy', self.projectDirectory, 'remote:' + 'McGrath/Apps/CichlidPiData/' + self.projectID + '/'])
         subprocess.call(['rclone', 'copy', self.projectDirectory, 'remote:' + 'McGrath/Apps/CichlidPiData/' + self.projectID + '/'])
         
-        self._modifyPiGS(status = 'AwaitingCommand')
-
+        try:
+            """
+            The 'rclone check' command checks for differences between the hashes of both
+            source and destination files, after the files have been uploaded. If the
+            check fails, the program returns non-zero exit status and the error is stored
+            in CalledProcessError class of the subprocess module.
+            """
+            subprocess.run(['rclone', 'check', 'projectDirectory', 'remote:' + 'dropboxDirectory'], check=True)
+            self._modifyPiGS(status = 'UploadSuccessful, ready for delete')
+        except subprocess.CalledProcessError:
+            self._modifyPiGS(status = 'UploadFailed, Need to rerun')
+        
     def _closeFiles(self):
        try:
             self._print('MasterRecordStop: ' + str(datetime.datetime.now()))
