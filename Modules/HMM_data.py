@@ -2,26 +2,82 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class HMMdata:
-    def __init__(self, width, height, frames, frameblock = 25, max_transitions = 100):
-        self.data = np.empty(shape = (width * height * 50, 3), dtype = int)
+    def __init__(self, width = None, height = None, frames = None, frameblock = 25, filename = None, max_transitions = 100):
+        if filename is not None:
+            self.read_data(filename)
+        else:
+            if width is None or height is None or frames is None:
+                print(width)
+                print(height)
+                print(frames)
+                raise TypeError('If filename is not provided, width, height, and frames must be provided')
+            self.data_shape = (height, width)
+            self.frameblock = frameblock #If HMM created from smaller data set, how many frames were skipped
+            self.frames = frames
+            self.height = height
+            self.width = width
+            self.data = np.empty(shape = (width * height * 50, 3), dtype = int)
+            
         self.t = None
         self.l_diff = None
         self.abs_stop = None
-        self.frameblock = frameblock #If HMM created from smaller data set, how many frames were skipped
-        self.data_shape = (height, width)
-        self.frames = frames
         self.current_count = 0
 
-    def add_data(self, in_directory, out_directory, prefix = '', suffix = '.hmm.npy'):
+    def add_data(self, in_directory, outfile, prefix = '', suffix = '.hmm.npy'):
+        # This function creates a 1D numpy array of tuples (
         for i in range(self.data_shape[0]):
             data = np.load(in_directory + '/' + prefix + str(i) + suffix)
             self._add_row(data, i)
         self.data = np.delete(self.data, range(self.current_count, self.data.shape[0]), axis = 0)
-        np.save(out_directory + '/HMMData.npy', self.data)
 
-    def read_data(self, directory):
-        self.data = np.load(directory + '/HMMData.npy')
-              
+        self.write_data(outfile)
+        
+    def write_data(self, outfile):
+        if '.npy' not in outfile:
+            outfile += '.npy'
+        np.save(outfile, self.data)
+        with open(outfile.replace('.npy','.txt'), 'w') as f:
+            print('Width: ' + str(self.data_shape[1]), file = f)
+            print('Height: ' + str(self.data_shape[0]), file = f)
+            print('Frames: ' + str(self.frames), file = f)
+            print('FrameBlock: ' + str(self.frameblock), file = f)
+ 
+            
+    def read_data(self, infile):
+        self.data = np.load(infile)
+        with open(infile.replace('.npy','.txt')) as f:
+            for line in f:
+                if line.rstrip() != '':
+                    data, value = line.rstrip().split(': ')
+                    value = int(value)
+                    if data == 'Width':
+                        self.width = value
+                    if data == 'Height':
+                        self.height = value
+                    if data == 'Frames':
+                        self.frames = value
+                    if data == 'FrameBlock':
+                        self.frameblock = value
+        self.data_shape = (self.height, self.width)
+
+    def retDBScanMatrix(self, minMagnitude):
+        row = 0
+        column = -1
+        allCoords = np.zeros(shape = (int(self.data.shape[0] - self.width*self.height), 4), dtype = 'uint16')
+        i = 0
+        for d in self.data:
+            if d[0] == 0:
+                column+=1
+                if column == self.width:
+                    column = 0
+                    row += 1
+            else:
+                allCoords[i] = np.array((d[0], row, column, abs(d[2] - prev_mag)), dtype = 'uint16')
+                i+=1
+            prev_mag = d[2]
+        return allCoords
+        
+            
     def _add_row(self, data, row):
         for i, column in enumerate(data):
             self._add_pixel(data[i], (row, i))
@@ -99,3 +155,23 @@ class HMMdata:
         self.abs_changes = changes.reshape(self.data_shape)
         self.abs_stop = stop
         return self.abs_changes
+
+    def mag_density(self, frame, x0 = 20, t0 = 60):
+        outdata = []
+        
+        diffs = abs(self.ret_image(frame).astype(int) - self.ret_image(max(frame - self.frameblock, 0)).astype(int))
+        dens = self.ret_difference(max(frame - t0, 0), min(frame+t0,self.frames))
+        xs, ys = np.where(diffs!=0)
+
+        for x,y in zip(xs,ys):
+            density = dens[max(0,x-x0): min(x+x0,self.width), max(0,y-x0): min(y+x0, self.height)].sum()
+            outdata.append((diffs[x,y], density))
+
+        return outdata
+            
+    def summarizeData(self):
+        diffs = self.ret_difference(0, self.frames)
+        start_frame = 0
+        stop_frame = min(self.frames)
+        pass
+        
