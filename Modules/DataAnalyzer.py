@@ -173,9 +173,9 @@ class DataAnalyzer:
             self.vp_obj = VideoProcessor(self.locMasterDir + vo.mp4_file, self.locAnalysisDir + baseName)
             self.vp_obj.calculateHMM()
             self.vp_obj.createFramesToAnnotate()
-            self.vp_obj.clusterHMM()
+            #self.vp_obj.clusterHMM()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
-            shutil.rmtree(self.locAnalysisDir + basename)
+            shutil.rmtree(self.locAnalysisDir + baseName)
 
 
     def _identifyTray(self):
