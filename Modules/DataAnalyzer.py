@@ -141,7 +141,7 @@ class DataAnalyzer:
         if index is None:
             vos = self.lp.movies
         else:
-            vos = [self.lp.movies[index]]
+            vos = [self.lp.movies[index-1]]
         for vo in vos:
             if not os.path.isfile(self.locMasterDir + vo.mp4_file):
                 self._print(vo.mp4_file + ' not present in local path. Trying to find it remotely')
@@ -175,6 +175,10 @@ class DataAnalyzer:
             self.vp_obj.createFramesToAnnotate()
             #self.vp_obj.clusterHMM()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
+            if os.path.isfile(self.locMasterDir + vo.mp4_file):
+                os.remove(self.locMasterDir + vo.mp4_file)
+            if os.path.isfile(self.locMasterDir + vo.h264_file):
+                os.remove(self.locMasterDir + vo.h264_file)
             shutil.rmtree(self.locAnalysisDir + baseName)
 
 
