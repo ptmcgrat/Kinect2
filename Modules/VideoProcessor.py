@@ -68,7 +68,7 @@ class VideoProcessor:
         if not os.path.isfile(self.videofile):
             self._print(self.videofile + ' not present in remote path. Trying to find h264 file and convert it to mp4')
             if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
-                subprocess.call(['rclone', 'copy', self.remVideoDirectory + videoName.replace('.mp4', 'h264'), localDirectory], stderr = self.fnull)
+                subprocess.call(['rclone', 'copy', self.videofile.replace('.mp4', 'h264'), localDirectory], stderr = self.fnull)
             if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
                 self._print('Unable to find video file for vo.mp4_file. Unable to analyze')
                 raise Exception
