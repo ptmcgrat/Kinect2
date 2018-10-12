@@ -17,7 +17,7 @@ from Modules.VideoProcessor import VideoProcessor
 from Modules.roipoly import roipoly
 
 class DataAnalyzer:
-    def __init__(self, projectID, remote, locDir, cloudDir, videos, rewriteFlag = False):
+    def __init__(self, projectID, remote, locDir, cloudDir, rewriteFlag = False):
         
         # Store input
         self.projectID = projectID
@@ -54,18 +54,11 @@ class DataAnalyzer:
         if self.lp.projectID != self.projectID:
             self._print('ProjectID from logfile: ' + self.lp.projectID + 'does not match projectID folder: ' + self.projectID)
             sys.exit()
-
-        if videos == [0]:
-            self.videos = []
-        elif videos == [-1]:
-            self.videos = [self.lp.movies]
-        else:
-            self.videos = [self.lp.movies[int(x) - 1] for x in videos]
             
         #Print out some useful info to the user
         self._print('Beginning analysis of: ' + self.projectID + ' taken from tank: ' + self.lp.tankID)
         self._print(str(len(self.lp.frames)) + ' total frames for this project from ' + str(self.lp.frames[0].time) + ' to ' + str(self.lp.frames[-1].time))
-        self._print(str(len(self.lp.movies)) + ' total videos for this project, will analyze ' + str(len(self.videos)) + ' of them.')
+        self._print(str(len(self.lp.movies)) + ' total videos for this project.')
         if self.rewriteFlag:
             self._print('All data will be reanalyzed from start to finish')
 
@@ -137,43 +130,20 @@ class DataAnalyzer:
             
         raise FileNotFoundError('Cannot find DataHistogram file')
         
-    def processVideo(self, index = None):
+    def processVideo(self, clusterFlag, index = None):
         if index is None:
             vos = self.lp.movies
         else:
             vos = [self.lp.movies[index-1]]
         for vo in vos:
-            if not os.path.isfile(self.locMasterDir + vo.mp4_file):
-                self._print(vo.mp4_file + ' not present in local path. Trying to find it remotely')
-                subprocess.call(['rclone', 'copy', self.remote + ':' + self.remMasterDir + vo.mp4_file, self.locMasterDir + vo.movieDir], stderr = self.fnull)
-            if not os.path.isfile(self.locMasterDir + vo.mp4_file):
-                self._print(vo.mp4_file + ' not present in remote path. Trying to find h264 file and convert it to mp4')
-
-                if not os.path.isfile(self.locMasterDir + vo.h264_file):
-                    subprocess.call(['rclone', 'copy', self.remote + ':' + self.remMasterDir + vo.h264_file, self.locMasterDir + vo.movieDir], stderr = self.fnull)
-                    if not os.path.isfile(self.locMasterDir + vo.h264_file):
-                        self._print('Unable to find video file for vo.mp4_file. Unable to analyze')
-                        return
-                    
-                subprocess.call(['ffmpeg', '-framerate', str(vo.framerate),'-i', self.locMasterDir + vo.h264_file, '-c:v', 'copy', self.locMasterDir + vo.mp4_file])
-                
-                if os.stat(self.locMasterDir + vo.mp4_file).st_size >= os.stat(self.locMasterDir + vo.h264_file).st_size:
-                    try:
-                        vid = pims.Video(self.locMasterDir + vo.mp4_file)
-                        vid.close()
-                        os.remove(self.locMasterDir + vo.h264_file)
-                    except Exception as e:
-                        self._print(e)
-                        continue
-                    
-                subprocess.call(['rclone', 'copy', self.locMasterDir + vo.mp4_file, self.remote + ':' + self.remMasterDir + vo.movieDir], stderr = self.fnull)
 
             baseName = vo.mp4_file.split('/')[-1].split('.')[0]
             subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + baseName, self.locAnalysisDir + baseName], stderr = self.fnull)
-            self.vp_obj = VideoProcessor(self.locMasterDir + vo.mp4_file, self.locAnalysisDir + baseName)
+            self.vp_obj = VideoProcessor(self.locMasterDir + vo.mp4_file, self.locAnalysisDir + baseName, self.remote + ':' + self.remMasterDir + vo.movieDir)
             self.vp_obj.calculateHMM()
             self.vp_obj.createFramesToAnnotate()
-            #self.vp_obj.clusterHMM()
+            if clusterFlag:
+                self.vp_obj.clusterHMM()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
             if os.path.isfile(self.locMasterDir + vo.mp4_file):
                 os.remove(self.locMasterDir + vo.mp4_file)

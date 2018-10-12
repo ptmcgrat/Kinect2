@@ -20,14 +20,16 @@ class VideoProcessor:
     # 4. Uses DeepLabCut to annotate fish
 
     #Parameters - blocksize, 
-    def __init__(self, videofile, outDirectory, rewrite = False):
+    def __init__(self, videofile, outDirectory, remVideoDirectory, rewrite = False):
 
         # Store arguments
         self.videofile = videofile
         self.baseName = self.videofile.split('/')[-1].split('.')[0]
         self.outDirectory = outDirectory if outDirectory[-1] == '/' else outDirectory + '/'
+        self.remVideoDirectory = remVideoDirectory if remVideoDirectory[-1] == '/' else remVideoDirectory + '/'
+        
         self.rewrite = rewrite
-
+        
         # Set paramaters
         self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
 
@@ -46,6 +48,44 @@ class VideoProcessor:
         self.tempDirectory = self.outDirectory + 'Temp/'     
         shutil.rmtree(self.tempDirectory) if os.path.exists(self.tempDirectory) else None
         os.makedirs(self.tempDirectory)
+      
+        self.window = 120
+        self.hmm_time = 60*60
+        print('VideoProcessor: Analyzing ' + self.videofile, file = sys.stderr)
+
+        # For redirecting stderr to null
+        self.fnull = open(os.devnull, 'w')
+
+        
+
+    def downloadVideo(self):
+        videoName = self.videofile.split('/')[-1]
+        localDirectory = self.videofile.replace(videoName,'')
+        if os.path.isfile(self.videofile):
+            return
+        self._print(self.videofile + ' not present in local path. Trying to find it remotely')
+        subprocess.call(['rclone', 'copy', self.remVideoDirectory + videoName, localDirectory], stderr = self.fnull)                
+        if not os.path.isfile(self.videofile):
+            self._print(vo.filefile + ' not present in remote path. Trying to find h264 file and convert it to mp4')
+            if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
+                subprocess.call(['rclone', 'copy', self.remVideoDirectory + videoName.replace('.mp4', 'h264'), localDirectory], stderr = self.fnull)
+            if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
+                self._print('Unable to find video file for vo.mp4_file. Unable to analyze')
+                raise Exception
+                    
+            subprocess.call(['ffmpeg', '-framerate', str(self.framerate),'-i', self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', self.videofile])
+                
+            if os.stat(self.videofile).st_size >= os.stat(self.videofile.replace('.mp4', '.h264')).st_size:
+                try:
+                    vid = pims.Video(self.videofile)
+                    vid.close()
+                    os.remove(self.videofile.replace('.mp4', '.h264'))
+                except Exception as e:
+                    self._print(e)
+                    self._print('Unable to convert ' + self.videofile)
+                    raise Exception
+                subprocess.call(['rclone', 'copy', self.videofile, self.remVideoDirectory], stderr = self.fnull)
+            self._print(self.videofile + ' converted and uploaded to ' + self.remVideoDirectory)
 
         #Grab info on video
         cap = pims.Video(self.videofile)
@@ -57,10 +97,7 @@ class VideoProcessor:
         except AttributeError:
             self.frames = min(int(cap.duration*cap.frame_rate), 12*60*60*self.frame_rate)
         cap.close()
-        
-        self.window = 120
-        self.hmm_time = 60*60
-        print('VideoProcessor: Analyzing ' + self.videofile, file = sys.stderr)
+  
         
     def calculateHMM(self, blocksize = 5*60, delete = True):
         """
@@ -74,6 +111,8 @@ class VideoProcessor:
         if os.path.exists(self.hmmFile) and not self.rewrite:
             print('Hmmfile already exists. Will not recalculate it unless rewrite flag is True')
             return
+
+        self.downloadVideo()
         
         self.blocksize = blocksize
         total_blocks = math.ceil(self.frames/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
@@ -179,6 +218,15 @@ class VideoProcessor:
         np.save(self.clusterDirectory + 'Labels.npy', label)
         
     def createFramesToAnnotate(self, n = 300):
+        rerun = False
+        for i in range(n):
+            if not os.path.isfile(self.annotationDirectory + 'AnnotateImage' + str(i).zfill(4) + '.jpg'):
+                rerun = True
+                break
+        if not rerun:
+            self._print('AnnotationFrames already created... skipping')
+            return
+        self.downloadVideo()
         cap = pims.Video(self.videofile)
         counter = 0
         for i in [int(x) for x in np.linspace(1.25*3600*self.frame_rate, self.frames - 1.25*3600*self.frame_rate, n)]:
@@ -283,3 +331,7 @@ class VideoProcessor:
     def _row_fn(self, row):
         return self.tempDirectory + str(row) + '.npy'
 
+    def _print(self, outtext):
+        #       now = datetime.datetime.now()
+        #        print(str(now) + ': ' + outtext, file = self.anLF)
+        print(outtext, file = sys.stderr)
