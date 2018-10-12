@@ -72,7 +72,7 @@ class VideoProcessor:
             if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
                 self._print('Unable to find ' + self.remVideoDirectory + videoName.replace('.mp4', '.h264'))
                 raise Exception
-            subprocess.call(['ffmpeg', '-i', ''
+            
             subprocess.call(['ffmpeg', '-i', self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', self.videofile])
                 
             if os.stat(self.videofile).st_size >= os.stat(self.videofile.replace('.mp4', '.h264')).st_size:
