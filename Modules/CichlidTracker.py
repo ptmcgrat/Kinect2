@@ -8,7 +8,7 @@ import matplotlib.image
 class CichlidTracker:
     def __init__(self):
         # 1: Define valid commands and ignore warnings
-        self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'UploadData', 'LocalDelete']
+        self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'UploadData', 'LocalDelete', 'Snapshots']
         np.seterr(invalid='ignore')
 
         # 2: Determine which system this code is running on (This script is meant to be able to run on Raspberry Pi/Odroids/MacLaptops
@@ -117,7 +117,7 @@ class CichlidTracker:
                 shutil.rmtree(self.projectDirectory)
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
             return
-            
+        
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
 
         self.loggerFile = self.projectDirectory + 'Logfile.txt'
@@ -156,7 +156,7 @@ class CichlidTracker:
             self.videoCounter = logObj.lastVideoCounter + 1
             if self.system != logObj.system or self.device != logObj.device or self.piCamera != logObj.camera:
                 self._reinstructError('Restart error. System, device, or camera does not match what is in logfile')
-
+                
         self.lf = open(self.loggerFile, 'a')
         self._modifyPiGS(start = str(self.masterStart))
 
@@ -200,20 +200,38 @@ class CichlidTracker:
                     self.videoCounter += 1
 
             # Capture a frame and background if necessary
+            try:
+                command, projectID = self._returnCommand()
+            except KeyError:
+                continue                
+
+            if command == 'Snapshots':
+                self._modifyPiGS(command = 'None', status = 'Writing Snapshots')
+
+            
             if now > current_background_time:
-                out = self._captureFrame(current_frame_time, new_background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
+                if command == 'Snapshots':
+                    out = self._captureFrame(current_frame_time, new_background = True, max_frames = max_frames, stdev_threshold = stdev_threshold, snapshots = True)
+                else:
+                    out = self._captureFrame(current_frame_time, new_background = True, max_frames = max_frames, stdev_threshold = stdev_threshold)
                 if out is not None:
                     current_background_time += datetime.timedelta(seconds = 60 * background_delta)
                 subprocess.Popen(['python3', 'Modules/DriveUpdater.py', self.loggerFile])
             else:
-                out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
+                if command == 'Snapshots':
+                    out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold, snapshots = True)
+                else:    
+                    out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
             current_frame_time += datetime.timedelta(seconds = 60 * frame_delta)
 
+            self._modifyPiGS(status = '')
+
+            
             # Check google doc to determine if recording has changed.
             try:
                 command, projectID = self._returnCommand()
             except KeyError:
-                continue
+                continue                
             if command != 'None':
                 break
             else:
@@ -543,7 +561,7 @@ class CichlidTracker:
         self._print('FirstFrameCaptured: FirstFrame: Frames/FirstFrame.npy,,GoodDataCount: Frames/FirstDataCount.npy,,StdevCount: Frames/StdevCount.npy')
 
         
-    def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25):
+    def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25, snapshots = False):
         # Captures time averaged frame of depth data
         
         sums = np.zeros(shape = (self.r[3], self.r[2]))
@@ -553,14 +571,22 @@ class CichlidTracker:
         current_time = datetime.datetime.now()
         if current_time >= endtime:
             return
-        
+
+        counter = 1
         while True:
             all_data = np.empty(shape = (int(max_frames), self.r[3], self.r[2]))
             all_data[:] = np.nan
             for i in range(0, max_frames):
                 all_data[i] = self._returnDepth()
-
                 current_time = datetime.datetime.now()
+
+                if snapshots:
+                    self._print('SnapshotCaptured: NpyFile: Frames/Snapshot_' + str(counter).zfill(6) + '.npy,,Time: ' + str(current_time)  + ',,GP: ' + str(np.count_nonzero(~np.isnan(all_data[i]))))
+                    np.save(self.projectDirectory +'Frames/Snapshot_' + str(counter).zfill(6) + '.npy', all_data[i])
+
+                
+                counter += 1
+
                 if current_time >= endtime:
                     break
               
