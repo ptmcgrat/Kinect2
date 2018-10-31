@@ -655,7 +655,7 @@ class CichlidTracker:
             check fails, the program returns non-zero exit status and the error is stored
             in CalledProcessError class of the subprocess module.
             """
-            subprocess.run(['rclone', 'check', 'projectDirectory', 'remote:' + 'dropboxDirectory'], check=True)
+            subprocess.run(['rclone', 'check', self.projectDirectory, 'remote:' + 'McGrath/Apps/CichlidPiData/' + self.projectID + '/'], check=True)
             self._modifyPiGS(status = 'UploadSuccessful, ready for delete')
         except subprocess.CalledProcessError:
             self._modifyPiGS(status = 'UploadFailed, Need to rerun')
