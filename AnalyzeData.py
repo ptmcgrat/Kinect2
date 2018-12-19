@@ -15,8 +15,12 @@ parser.add_argument('-T', '--Tray', action = 'store_true', help = 'Use this flag
 parser.add_argument('-D', '--Depth', action = 'store_true', help = 'Use this flag if you  want to analyze the depth data')
 parser.add_argument('-H', '--Histogram', action = 'store_true', help = 'Use this flag if you  want analyze the data histograms')
 parser.add_argument('-V', '--Videos', action = 'store_true', help = 'Use this flag if you  want to analyze the video files for a project (Useful if you already analyzed the depth data')
+parser.add_argument('-C', '--Cluster', action = 'store_true', help = 'Use this flag if you  want to cluster the hmm files for a project (Useful if you already analyzed the depth data')
 
 args = parser.parse_args()
+
+if args.Cluster:
+    args.Videos = True
 
 projects = {}
 histograms = {}
@@ -43,27 +47,28 @@ else:
             
 if args.Tray:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
             da_obj.prepareData()
 
 if args.Depth:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
             da_obj.prepareData()
             da_obj.processDepth()
 
 if args.Videos:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
             if videos[projectID] == [0]:
-                da_obj.processVideo()
+                da_obj.processVideo(args.Cluster)
+
             else:
                 for index in videos[projectID]:
-                    da_obj.processVideo(index)
+                    da_obj.processVideo(args.Cluster, index)
 
 if args.Histogram:
     for projectID in projects:
-        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, [0], delete) as da_obj:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
             histograms[projectID] = da_obj.retHistogramData()
 
             with open('histograms.pickle', 'wb') as handle:
