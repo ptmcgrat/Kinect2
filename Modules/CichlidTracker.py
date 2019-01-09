@@ -183,6 +183,8 @@ class CichlidTracker:
         current_background_time = datetime.datetime.now()
         current_frame_time = current_background_time + datetime.timedelta(seconds = 60 * frame_delta)
 
+        command = ''
+        
         while True:
             self._modifyPiGS(command = 'None', status = 'Running', error = '')
             # Grab new time
@@ -200,14 +202,6 @@ class CichlidTracker:
                     self.videoCounter += 1
 
             # Capture a frame and background if necessary
-            try:
-                command, projectID = self._returnCommand()
-            except KeyError:
-                continue                
-
-            if command == 'Snapshots':
-                self._modifyPiGS(command = 'None', status = 'Writing Snapshots')
-
             
             if now > current_background_time:
                 if command == 'Snapshots':
@@ -224,7 +218,7 @@ class CichlidTracker:
                     out = self._captureFrame(current_frame_time, new_background = False, max_frames = max_frames, stdev_threshold = stdev_threshold)
             current_frame_time += datetime.timedelta(seconds = 60 * frame_delta)
 
-            self._modifyPiGS(status = '')
+            self._modifyPiGS(status = 'Running')
 
             
             # Check google doc to determine if recording has changed.
@@ -233,7 +227,11 @@ class CichlidTracker:
             except KeyError:
                 continue                
             if command != 'None':
-                break
+                if command == 'Snapshots':
+                    self._modifyPiGS(command = 'None', status = 'Writing Snapshots')
+                    continue
+                else:
+                    break
             else:
                 self._modifyPiGS(error = '')
 
