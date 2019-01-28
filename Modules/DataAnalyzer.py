@@ -77,6 +77,7 @@ class DataAnalyzer:
         self.hourlyChangeFile = 'HourlyChange.npy'
         self.overnightChangeFile = 'OvernightChange.npy'
         self.analysisVideo = 'InitialVideo.mp4'
+        self.clusterFile = 'LabeledClusters.csv'
         
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
@@ -88,7 +89,7 @@ class DataAnalyzer:
 
     def __del__(self):
         # Remove local files once object is destroyed
-        shutil.rmtree(self.locMasterDir)
+        #shutil.rmtree(self.locMasterDir)
         print('Deleting')
         pass
 
@@ -144,14 +145,27 @@ class DataAnalyzer:
             self.vp_obj.createFramesToAnnotate()
             if clusterFlag:
                 self.vp_obj.clusterHMM()
+                self.vp_obj.createClusterClipsToLabel()
             subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)
-            if os.path.isfile(self.locMasterDir + vo.mp4_file):
-                os.remove(self.locMasterDir + vo.mp4_file)
+            #if os.path.isfile(self.locMasterDir + vo.mp4_file):
+            #    os.remove(self.locMasterDir + vo.mp4_file)
             if os.path.isfile(self.locMasterDir + vo.h264_file):
                 os.remove(self.locMasterDir + vo.h264_file)
-            shutil.rmtree(self.locAnalysisDir + baseName)
+            #shutil.rmtree(self.locAnalysisDir + baseName)
 
-
+    def labelVideos(self, index = None):
+        
+        if index is None:
+            vos = self.lp.movies
+        else:
+            vos = [self.lp.movies[index-1]]
+        for vo in vos:
+            baseName = vo.mp4_file.split('/')[-1].split('.')[0]
+            subprocess.call(['rclone', 'copy', self.remote + ':' + self.remAnalysisDir + baseName, self.locAnalysisDir + baseName], stderr = self.fnull)
+            self.vp_obj = VideoProcessor(self.locMasterDir + vo.mp4_file, self.locAnalysisDir + baseName, self.remote + ':' + self.remMasterDir + vo.movieDir)
+            self.vp_obj.labelClusters()
+            subprocess.call(['rclone', 'copy', self.locAnalysisDir + baseName, self.remote + ':' + self.remAnalysisDir + baseName], stderr = self.fnull)                
+                
     def _identifyTray(self):
 
         # If tray attribute already exists, exit

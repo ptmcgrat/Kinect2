@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 class HMMdata:
     def __init__(self, width = None, height = None, frames = None, frameblock = 25, filename = None, max_transitions = 100):
@@ -60,10 +61,19 @@ class HMMdata:
                         self.frameblock = value
         self.data_shape = (self.height, self.width)
 
-    def retDBScanMatrix(self, minMagnitude):
+    def retDBScanMatrix(self, minMagnitude = 0, densityFilter = 1):
+        #minMagnitude is the size of the color change for a pixel to need to have
+        #densityFilter filters out time points that have to many changes occur across the frame (1 = 1% of all pixels)
+
+        print(str(self.data.shape[0] - self.width*self.height) + ' raw transitions', file = sys.stderr)
+        
+        #Identify total pixel changes in a unit of time
+        time, counts = np.unique(self.data[:,0], return_counts = True)
+        threshold = counts[0]*densityFilter/100
+        
         row = 0
         column = -1
-        allCoords = np.zeros(shape = (int(self.data.shape[0] - self.width*self.height), 4), dtype = 'uint16')
+        allCoords = np.zeros(shape = (int(self.data.shape[0] - self.width*self.height), 4), dtype = 'uint64')
         i = 0
         for d in self.data:
             if d[0] == 0:
@@ -72,11 +82,15 @@ class HMMdata:
                     column = 0
                     row += 1
             else:
-                allCoords[i] = np.array((d[0], row, column, abs(d[2] - prev_mag)), dtype = 'uint16')
-                i+=1
+                numChanges = counts[np.where(time==d[0])[0][0]]
+                if numChanges < threshold:
+                    allCoords[i] = np.array((d[0], row, column, abs(d[2] - prev_mag)), dtype = 'uint64')
+                    i+=1
             prev_mag = d[2]
+            
+        allCoords = allCoords[allCoords[:,3] > minMagnitude].copy()
+        print(str(allCoords.shape[0]) + ' HMM transitions passed filtering criteria', file = sys.stderr)
         return allCoords
-        
             
     def _add_row(self, data, row):
         for i, column in enumerate(data):

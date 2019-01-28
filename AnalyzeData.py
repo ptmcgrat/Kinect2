@@ -16,6 +16,7 @@ parser.add_argument('-D', '--Depth', action = 'store_true', help = 'Use this fla
 parser.add_argument('-H', '--Histogram', action = 'store_true', help = 'Use this flag if you  want analyze the data histograms')
 parser.add_argument('-V', '--Videos', action = 'store_true', help = 'Use this flag if you  want to analyze the video files for a project (Useful if you already analyzed the depth data')
 parser.add_argument('-C', '--Cluster', action = 'store_true', help = 'Use this flag if you  want to cluster the hmm files for a project (Useful if you already analyzed the depth data')
+parser.add_argument('-L', '--Label', action = 'store_true', help = 'Use this flag if you  want to label a subset of clusters for machine learning')
 
 args = parser.parse_args()
 
@@ -40,6 +41,10 @@ for row in dt.iterrows():
             projects[projectID] = groupID
             videos[projectID] = video
 
+for projectID in args.ProjectIDs:
+    if projectID not in projects:
+        print(projectID + ' not found in ' + args.InputFile + ' and will not be analyzed')
+            
 if args.delete:
     delete = True
 else:
@@ -66,6 +71,16 @@ if args.Videos:
                 for index in videos[projectID]:
                     da_obj.processVideo(args.Cluster, index)
 
+if args.Label:
+    for projectID in projects:
+        with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
+            if videos[projectID] == [0]:
+                da_obj.labelVideos()
+            else:
+                for index in videos[projectID]:
+                    da_obj.labelVideos(index)
+
+                
 if args.Histogram:
     for projectID in projects:
         with DA(projectID, rcloneName, locMasterDir, dBoxMasterDir, delete) as da_obj:
