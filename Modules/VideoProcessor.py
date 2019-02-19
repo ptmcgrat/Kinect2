@@ -1,16 +1,23 @@
-import pims, math, psutil, shutil, os, datetime, subprocess, sys, pickle, cv2
+import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket
+from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pandas as pd
-import scipy.ndimage
 from hmmlearn import hmm
-import matplotlib.pyplot as plt
-from multiprocessing.dummy import Pool as ThreadPool
 from Modules.HMM_data import HMMdata
-from PIL import Image
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import radius_neighbors_graph
 from sklearn.neighbors import NearestNeighbors
-#from pathos.multiprocessing import ProcessingPool as ThreadPool
+import scipy.ndimage
+
+#import pims, math, psutil, shutil, os, datetime, subprocess, sys, pickle, cv2
+#import scipy.ndimage
+#import matplotlib.pyplot as plt
+#from multiprocessing.dummy import Pool as ThreadPool
+#from Modules.HMM_data import HMMdata
+#from PIL import Image
+#from sklearn.cluster import DBSCAN
+#from sklearn.neighbors import radius_neighbors_graph
+#from sklearn.neighbors import NearestNeighbors
 np.warnings.filterwarnings('ignore')
 
 
@@ -21,75 +28,87 @@ class VideoProcessor:
     # 4. Uses DeepLabCut to annotate fish
 
     #Parameters - blocksize, 
-    def __init__(self, videofile, outDirectory, remVideoDirectory, rewrite = False):
+    def __init__(self, videofile, localMasterDirectory, cloudMasterDirectory):
 
         # Store arguments
         self.videofile = videofile
+        self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
+        self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
+
         self.baseName = self.videofile.split('/')[-1].split('.')[0]
-        self.outDirectory = outDirectory if outDirectory[-1] == '/' else outDirectory + '/'
-        self.remVideoDirectory = remVideoDirectory if remVideoDirectory[-1] == '/' else remVideoDirectory + '/'
+        self.localVideoDirectory = self.localMasterDirectory + 'VideoAnalysis/' + self.baseName + '/'
+        self.cloudVideoDirectory = self.cloudMasterDirectory + 'VideoAnalysis/' + self.baseName + '/'
         
-        self.rewrite = rewrite
+        self.localClusterDirectory = self.localVideoDirectory + 'ClusterData/'
+        self.cloudClusterDirectory = self.cloudVideoDirectory + 'ClusterData/'
+
+        self.tempDirectory = self.localVideoDirectory + 'Temp/'
+
+        self.localClusterClipDirectory = self.localClusterDirectory + 'Clips/'
+        self.cloudClusterClipDirectory = self.cloudClusterDirectory + 'Clips/'
         
+        os.makedirs(self.localClusterClipDirectory) if not os.path.exists(self.localClusterClipDirectory) else None
+        os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
+
         # Set paramaters
         self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
 
-        # Set directories and make sure they exist
-        os.makedirs(self.outDirectory) if not os.path.exists(self.outDirectory) else None
+        # Create file names
+        self.hmmFile = self.baseName + '.hmm.npy'
+        self.clusterFile = 'LabeledClusters.csv'
+        self.labeledCoordsFile = 'LabeledCoords.npy'
 
-        self.hmmFile = self.outDirectory + self.baseName + '.hmm.npy'
-        
-        self.clusterDirectory = self.outDirectory + 'ClusterData/'
-        os.makedirs(self.clusterDirectory) if not os.path.exists(self.clusterDirectory) else None
-        self.annotationDirectory = self.outDirectory + 'AnnotationData/'
-        os.makedirs(self.annotationDirectory) if not os.path.exists(self.annotationDirectory) else None
-        self.exampleDirectory = self.outDirectory + 'ExampleData/'
-        os.makedirs(self.exampleDirectory) if not os.path.exists(self.exampleDirectory) else None
-
-        self.tempDirectory = self.outDirectory + 'Temp/'     
-        shutil.rmtree(self.tempDirectory) if os.path.exists(self.tempDirectory) else None
-        os.makedirs(self.tempDirectory)
-      
-        self.window = 120
-        self.hmm_time = 60*60
         print('VideoProcessor: Analyzing ' + self.videofile, file = sys.stderr)
 
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
 
-        
+        self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
-    def downloadVideo(self):
-        videoName = self.videofile.split('/')[-1]
-        localDirectory = self.videofile.replace(videoName,'')
-        if not os.path.isfile(self.videofile):
-            
-            self._print(self.videofile + ' not present in local path. Trying to find it remotely')
-            subprocess.call(['rclone', 'copy', self.remVideoDirectory + videoName, localDirectory], stderr = self.fnull)                
-            if not os.path.isfile(self.videofile):
-                self._print(self.videofile + ' not present in remote path. Trying to find h264 file and convert it to mp4')
-                if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
-                    subprocess.call(['rclone', 'copy', self.remVideoDirectory + videoName.replace('.mp4', '.h264'), localDirectory], stderr = self.fnull)
-                if not os.path.isfile(self.videofile.replace('.mp4', '.h264')):
-                    self._print('Unable to find ' + self.remVideoDirectory + videoName.replace('.mp4', '.h264'))
+    def __del__(self):
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
+        #shutil.rmtree(self.localVideoDirectory)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+        
+    def loadVideo(self):
+        if os.path.isfile(self.localMasterDirectory + self.videofile):
+            print(self.videofile + ' present in local path.', file = sys.stderr)
+        else:
+            print(self.videofile + ' not present in local path. Trying to find it remotely', file = sys.stderr)
+            # Try to download it from the cloud
+            subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videofile, self.localMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)                
+            if not os.path.isfile(self.localMasterDirectory + self.videofile):
+                print(self.videofile + ' not present in remote path. Trying to find h264 file and convert it to mp4', file = sys.stderr)
+                if not os.path.isfile(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')):
+                    subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videofile.replace('.mp4', '.h264'), self.localMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)                
+
+                if not os.path.isfile(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')):
+                    print('Unable to find ' + self.videofile.replace('.mp4', '.h264'), file = sys.stderr)
                     raise Exception
-            
-                subprocess.call(['ffmpeg', '-i', self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', self.videofile])
+
+                # Convert it to mpeg
+                subprocess.call(['ffmpeg', '-i', self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', self.localMasterDirectory + self.videofile])
                 
-                if os.stat(self.videofile).st_size >= os.stat(self.videofile.replace('.mp4', '.h264')).st_size:
+                if os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')).st_size:
                     try:
-                        vid = pims.Video(self.videofile)
+                        vid = pims.Video(self.localMasterDirectory + self.videofile)
                         vid.close()
-                        os.remove(self.videofile.replace('.mp4', '.h264'))
+                        os.remove(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'))
                     except Exception as e:
                         self._print(e)
                         self._print('Unable to convert ' + self.videofile)
                         raise Exception
-                    subprocess.call(['rclone', 'copy', self.videofile, self.remVideoDirectory], stderr = self.fnull)
-                self._print(self.videofile + ' converted and uploaded to ' + self.remVideoDirectory)
+                    print('Uploading ' + self.videofile + ' to cloud', file = sys.stderr)
+                    subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)
+                self._print(self.videofile + ' converted and uploaded to cloud')
 
         #Grab info on video
-        cap = pims.Video(self.videofile)
+        cap = pims.Video(self.localMasterDirectory + self.videofile)
         self.height = int(cap.frame_shape[0])
         self.width = int(cap.frame_shape[1])
         self.frame_rate = int(cap.frame_rate)
@@ -98,30 +117,67 @@ class VideoProcessor:
         except AttributeError:
             self.frames = min(int(cap.duration*cap.frame_rate), 12*60*60*self.frame_rate)
         cap.close()
-  
-        
-    def calculateHMM(self, blocksize = 5*60, delete = True):
+
+    def loadHMM(self):
+        try:
+            self.obj
+        except AttributeError:
+            if not os.path.isfile(self.cloudVideoDirectory + self.hmmFile):
+                subprocess.call(['rclone', 'copy', self.cloudVideoDirectory + self.hmmFile, self.localVideoDirectory], stderr = self.fnull)
+                subprocess.call(['rclone', 'copy', self.cloudVideoDirectory + self.hmmFile.replace('.npy', '.txt'), self.localVideoDirectory], stderr = self.fnull)
+
+            if not os.path.isfile(self.localVideoDirectory + self.hmmFile):
+                self.createHMM()
+                return
+            else:
+                self.obj = HMMdata(filename = self.localVideoDirectory + self.hmmFile)
+
+    def loadClusterFile(self):
+        try:
+            self.clusterData
+        except AttributeError:
+            if not os.path.isfile(self.localClusterDirectory + self.clusterFile):
+                subprocess.call(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory], stderr = self.fnull)
+                
+            if not os.path.isfile(self.localClusterDirectory + self.clusterFile):
+                self.createClusterHMM()
+                return
+            else:
+                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        try:
+            self.labeledCoords
+        except AttributeError:
+            if not os.path.isfile(self.localClusterDirectory + self.labeledCoordsFile):
+                subprocess.call(['rclone', 'copy', self.cloudClusterDirectory + self.labeledCoordsFile, self.localClusterDirectory], stderr = self.fnull)
+                
+            if not os.path.isfile(self.localClusterDirectory + self.labeledCoordsFile):
+                self.createClusterHMM()
+                return
+            else:
+                self.labeledCoords = np.load(self.localClusterDirectory + self.labeledCoordsFile)
+
+                        
+    def createHMM(self, blocksize = 5*60, window = 120, hmm_time = 60*60):
         """
         This functon decompresses video into smaller chunks of data formated in the numpy array format.
         Each numpy array contains one row of data for the entire video.
         This function then smoothes the raw data
         Finally, an HMM is fit to the data and an HMMobject is created
         """
-        print(self.hmmFile)
-        print(os.path.exists(self.hmmFile))
-        if os.path.exists(self.hmmFile) and not self.rewrite:
-            print('Hmmfile already exists. Will not recalculate it unless rewrite flag is True')
-            return
-
-        self.downloadVideo()
+        
+        #Download video
+        self.loadVideo()
         
         self.blocksize = blocksize
+        self.window = window
+        self.hmm_time = hmm_time
+        
         total_blocks = math.ceil(self.frames/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
 
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        print('calculateHMM: Converting video into HMM data', file = sys.stderr)
+        self._print('calculateHMM: Converting video into HMM data')
         print('TotalBlocks: ' + str(total_blocks), file = sys.stderr)
         print('TotalThreads: ' + str(self.cores), file = sys.stderr)
         print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
@@ -172,80 +228,64 @@ class VideoProcessor:
 
         # Step 4: Create HMM object and delete temporary data if necessary
         start = datetime.datetime.now()
-        if delete:
-            print('Converting HMMs to internal data structure and deleting temporary data', file = sys.stderr)
-        else:
-            print('Converting HMMs to internal data structure and keeping temporary data', file = sys.stderr)
+        print('Converting HMMs to internal data structure and keeping temporary data', file = sys.stderr)
 
         print('StartTime: ' + str(start), file = sys.stderr)
         
         self.obj = HMMdata(self.width, self.height, self.frames, self.frame_rate)
-        self.obj.add_data(self.tempDirectory, self.hmmFile)
+        self.obj.add_data(self.localVideoDirectory, self.localVideoDirectory + self.hmmFile)
         # Copy example data to directory containing videofile
-        subprocess.call(['cp', self._row_fn(int(self.height/2)), self._row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self._row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.exampleDirectory])
+        subprocess.call(['cp', self._row_fn(int(self.height/2)), self._row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self._row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.localVideoDirectory])
 
-        if delete:
-            shutil.rmtree(self.tempDirectory)
+        shutil.rmtree(self.tempDirectory)
+
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory, self.localCloudDirectory], stderr = self.fnull)
+
         print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs', file = sys.stderr)
 
-    def clusterHMM(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
-        
-        if os.path.exists(self.clusterDirectory + 'LabeledClusters.csv') and not self.rewrite:
-            print('Cluster label file already exists. Will not recalculate')
-            return
+    def createClusterHMM(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
+        self.loadVideo()
+        self.loadHMM()
+        self._print('Clustering HMM transitions using DBScan')
+        coords = self.obj.retDBScanMatrix(minMagnitude)
+        np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
+                
 
-        if os.path.isfile(self.clusterDirectory + 'LabeledCoords.npy'):
-            print('Starting from preexisting LabeledCoords.npy file', file = sys.stderr)
-            labeledCoords = np.load(self.clusterDirectory + 'LabeledCoords.npy')
-        else:
-            if os.path.isfile(self.clusterDirectory + 'RawCoords.npy'):
-                print('Starting from preexisting RawCoords.npy file', file = sys.stderr)
-                coords = np.load(self.clusterDirectory + 'RawCoords.npy')
-            else:
-                print('Starting from HMM file', file = sys.stderr)
-                try:
-                    self.obj
-                except AttributeError:
-                    self.obj = HMMdata(filename = self.hmmFile)
+        sortData = coords[coords[:,0].argsort()][:,0:3] #sort data by time for batch processing, throwing out 4th column (magnitude)
+        numBatches = int(sortData[-1,0]/delta/3600) + 1 #delta is number of hours to batch together. Can be fraction.
 
-                print('Creating raw coordinate file', file = sys.stderr)
-                coords = self.obj.retDBScanMatrix(minMagnitude)
-                np.save(self.clusterDirectory + 'RawCoords.npy', coords)
-        
+        sortData[:,0] = sortData[:,0]*timeScale #scale time so that time distances between transitions are comparable to spatial differences
+        labels = np.zeros(shape = (sortData.shape[0],1), dtype = sortData.dtype)
 
-            sortData = coords[coords[:,0].argsort()][:,0:3] #sort data by time for batch processing, throwing out 4th column (magnitude)
-            numBatches = int(sortData[-1,0]/delta/3600) + 1 #delta is number of hours to batch together. Can be fraction.
-
-            sortData[:,0] = sortData[:,0]*timeScale #scale time so that time distances between transitions are comparable to spatial differences
-            labels = np.zeros(shape = (sortData.shape[0],1), dtype = sortData.dtype)
-
-            #Calculate clusters in batches to avoid RAM overuse
-            curr_label = 0 #Labels for each batch start from zero - need to offset these
+        #Calculate clusters in batches to avoid RAM overuse
+        curr_label = 0 #Labels for each batch start from zero - need to offset these
             
-            print('Calculating clusters in ' + str(numBatches) + ' total batches', file = sys.stderr)
-            for i in range(numBatches):
-                print('Batch: ' + str(i), file = sys.stderr)
-                min_time, max_time = i*delta*timeScale*3600, (i+1)*delta*timeScale*3600 # Have to deal with rescaling of time. 3600 = # seconds in an hour
-                hour_range = np.where((sortData[:,0] > min_time) & (sortData[:,0] <= max_time))
-                min_index, max_index = hour_range[0][0], hour_range[0][-1] + 1
-                X = NearestNeighbors(radius=treeR, metric='minkowski', p=2, algorithm='kd_tree',leaf_size=leafNum,n_jobs=24).fit(sortData[min_index:max_index])
-                dist = X.radius_neighbors_graph(sortData[min_index:max_index], neighborR, 'distance')
-                sub_label = DBSCAN(eps=eps, min_samples=minPts, metric='precomputed', n_jobs=24).fit_predict(dist)
-                new_labels = int(sub_label.max()) + 1
-                sub_label[sub_label != -1] += curr_label
-                labels[min_index:max_index,0] = sub_label
-                curr_label += new_labels
+        print('Calculating clusters in ' + str(numBatches) + ' total batches', file = sys.stderr)
+        for i in range(numBatches):
+            print('Batch: ' + str(i), file = sys.stderr)
+            min_time, max_time = i*delta*timeScale*3600, (i+1)*delta*timeScale*3600 # Have to deal with rescaling of time. 3600 = # seconds in an hour
+            hour_range = np.where((sortData[:,0] > min_time) & (sortData[:,0] <= max_time))
+            min_index, max_index = hour_range[0][0], hour_range[0][-1] + 1
+            X = NearestNeighbors(radius=treeR, metric='minkowski', p=2, algorithm='kd_tree',leaf_size=leafNum,n_jobs=24).fit(sortData[min_index:max_index])
+            dist = X.radius_neighbors_graph(sortData[min_index:max_index], neighborR, 'distance')
+            sub_label = DBSCAN(eps=eps, min_samples=minPts, metric='precomputed', n_jobs=24).fit_predict(dist)
+            new_labels = int(sub_label.max()) + 1
+            sub_label[sub_label != -1] += curr_label
+            labels[min_index:max_index,0] = sub_label
+            curr_label += new_labels
 
-            sortData[:,0] = sortData[:,0]/timeScale
-            labeledCoords = np.concatenate((sortData, labels), axis = 1).astype('int64')
-            np.save(self.clusterDirectory + 'LabeledCoords.npy', labeledCoords)
+        sortData[:,0] = sortData[:,0]/timeScale
+        self.labeledCoords = np.concatenate((sortData, labels), axis = 1).astype('int64')
+        np.save(self.localClusterDirectory + self.labeledCoordsFile, self.labeledCoords)
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-        uniqueLabels = set(labeledCoords[:,3])
+        uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
-        print(str(labeledCoords[labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters', file = sys.stderr)
+        print(str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters', file = sys.stderr)
 
-        df = pd.DataFrame(labeledCoords, columns=['T','X','Y','LID'])
-        clusterFile = df.groupby('LID').apply(lambda x: pd.Series({
+        df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])
+        self.clusterData = df.groupby('LID').apply(lambda x: pd.Series({
             'N': x['T'].count(),
             't': int(x['T'].mean()),
             'X': int(x['X'].mean()),
@@ -258,72 +298,87 @@ class VideoProcessor:
         })
         )
 
-        clusterFile.to_csv(self.clusterDirectory + 'LabeledClusters.csv', sep = '\t')
-
-    def createClusterClipsToLabel(self, N = 100, delta_t = 100, delta_xy = 100):
-        if not os.path.exists(self.clusterDirectory + 'LabeledClusters.csv'):
-            #Need to run cluster analysis first
-            raise Exception('Cluster file not present. Run cluster analysis first')
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
         
-        dt = pd.read_csv(self.clusterDirectory + 'LabeledClusters.csv', sep = '\t')
+    def createClusterClips(self, Nclips = 200, delta_xy = 100, delta_t = 60):
+        self.loadVideo()
+        self.loadHMM()
+        self.loadClusterFile()
+        self._print('Creating ' + str(Nclips) + ' clips')
 
-        shutil.rmtree(self.clusterDirectory + 'ClusterClipsToLabel/' )
-        os.makedirs(self.clusterDirectory + 'ClusterClipsToLabel/', exist_ok=True)
+        shutil.rmtree(self.localClusterClipDirectory )
+        os.makedirs(self.localClusterClipDirectory, exist_ok=True)
 
-        self.downloadVideo()
-        cap = cv2.VideoCapture(self.videofile)
+        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
         framerate = cap.get(cv2.CAP_PROP_FPS)
-        for n in range(N):
-            print(n)
-            row = dt.sample(1)
+        for n in range(Nclips):
+            row = self.clusterData.sample(1)
             
             LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
-            
-            out = cv2.VideoWriter(self.clusterDirectory + 'ClusterClipsToLabel/' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
+            while x - delta_xy < 0 or x + delta_xy > self.height or y - delta_xy < 0 or y + delta_xy > self.width or LID == -1 or t - delta_t <0 or t+delta_t >= self.frames:
+                row = self.clusterData.sample(1)
+                LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
 
-            print(framerate*(t) - delta_t)
+            out = cv2.VideoWriter(self.localClusterClipDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (4*delta_xy, 2*delta_xy))
+
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(framerate*(t) - delta_t))
+            HMMChanges = self.obj.ret_difference(framerate*(t) - delta_t, framerate*(t) + delta_t)
+            clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
+
             for i in range(delta_t*2):
                 
                 ret, frame = cap.read()
+                frame2 = frame.copy()
+                frame[HMMChanges != 0] = [300,125,125]
+                for coord in clusteredPoints:
+                    frame[coord[0], coord[1]] = [125,125,300]
                 if ret:
-                    out.write(frame[max(0,x-delta_xy):min(self.width,x+delta_xy), max(0,y-delta_xy):min(self.heigh,y+delta_xy)])
+                    #out.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+                    out.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
             out.release()
+
+        subprocess.call(['rclone', 'sync', self.localClusterClipDirectory, self.cloudClusterClipDirectory], stderr = self.fnull)
                 
         
     def labelClusters(self):
 
-        clips = [x for x in os.listdir(self.clusterDirectory + 'ClusterClipsToLabel/') if '.mp4' in x]
-        dt = pd.read_csv(self.clusterDirectory + 'LabeledClusters.csv', sep = '\t')
+        self._print('Labeling cluster')
+        self.loadClusterFile()
+        subprocess.call(['rclone', 'copy', self.cloudClusterClipDirectory, self.localClusterClipDirectory], stderr = self.fnull)
+
+        clips = [x for x in os.listdir(self.localClusterClipDirectory) if '.mp4' in x]
         
         for f in clips:
             print(f)
-            cap = cv2.VideoCapture(self.clusterDirectory + 'ClusterClipsToLabel/' + f)
+            cap = cv2.VideoCapture(self.localClusterClipDirectory + f)
             while(True):
 
                 ret, frame = cap.read()
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                cv2.imshow("Type 'c' for scoop; 'p' for spit; 'o' for other",frame)
+                cv2.imshow("Type 'c' for scoop; 'p' for spit; 'o' for other; 'q' to quit",frame)
                 info = cv2.waitKey(25)
             
-                if info in [ord('c'),ord('p'),ord('o')]:
+                if info in [ord('c'),ord('p'),ord('o'),ord('q')]:
                     for i in range(1,10):
                         cv2.destroyAllWindows()
                         cv2.waitKey(1)
                     break
 
+            if info == ord('q'):
+                break
             clusterID = int(f.split('_')[0])
-            row = dt.loc[dt['LID'] == clusterID]
+            row = self.clusterData.loc[self.clusterData['LID'] == clusterID]
             row['ManualLabel'][0] = chr(info)
 
-        dt.to_csv(self.clusterDirectory + 'LabeledClusters.csv', sep = '\t')
-                
-           
-                
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+                       
     def createFramesToAnnotate(self, n = 300):
         rerun = False
         for i in range(n):
@@ -356,12 +411,19 @@ class VideoProcessor:
             rel_diff[i-1] = self.obj.ret_difference((i-1)*60*60*25,i*60*60*25 - 1)
 
         return rel_diff
+
+    def cleanup(self):
+        shutil.rmtree(self.localVideoDirectory)
+        if os.path.exists(self.localMasterDirectory + self.videofile):
+            os.remove(self.localMasterDirectory + self.videofile)
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
+        
     
     def _readBlock(self, block):
         min_t = block*self.blocksize
         max_t = min((block+1)*self.blocksize, int(self.frames/self.frame_rate))
         ad = np.empty(shape = (self.height, self.width, max_t - min_t), dtype = 'uint8')
-        cap = pims.Video(self.videofile)
+        cap = pims.Video(self.localMasterDirectory + self.videofile)
         counter = 0
         for i in range(min_t, max_t):
             current_frame = i*self.frame_rate
@@ -439,30 +501,11 @@ class VideoProcessor:
         return self.tempDirectory + str(row) + '.npy'
 
     def _print(self, outtext):
-        #       now = datetime.datetime.now()
-        #        print(str(now) + ': ' + outtext, file = self.anLF)
+        print(str(getpass.getuser()) + ' analyzed ' + self.baseName + ' at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
         print(outtext, file = sys.stderr)
+        self.anLF.close() # Close and reopen file to flush it
+        self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
-    def _labelCluster(cap, t, x, y, surr = 200, t_del = 50):
-        frame_counter = 0
-        cap.set(2, t-t_del)
-        
-        while(True):
-            if frame_counter == 2*t_del:
-                cap.set(2, t-50)
-                frame_counter = 0
 
-            ret, frame = cap.read()
-            cv2.imshow("Type 'c' for scoop; 'p' for scoop; 'o' for other",frame[x-surr:x+surr, y-surr:y+surr])
-            info = cv2.waitKey(1)
-            
-            if info in [ord('c'),ord('p'),ord('o')]:
-                for i in range(1,10):
-                    cv2.destroyAllWindows()
-                    cv2.waitKey(1)
-                return chr(info)
-                    
-            frame_counter += 1
-        
 
         

@@ -64,6 +64,11 @@ class LogParser:
                 if info_type == 'FrameCaptured':
                     t_list = self._ret_data(line, ['NpyFile','PicFile','Time','AvgMed','AvgStd','GP'])
                     # Is this a Mark file?
+                    try:
+                        t_list[2].year
+                    except AttributeError:
+                        print(line)
+                        print('-' + t_list[2] + '-')
                     if t_list[2].year == 1900:
                         # Get date from directory files are stored in
                         t_date = dt.strptime(t_list[0].split('/')[0], '%B-%d-%Y')
@@ -117,8 +122,11 @@ class LogParser:
             try:
                 t_data = line.split(d + ': ')[1].split(',,')[0]
             except IndexError:
-                out_data.append('Error')
-                continue
+                try:
+                    t_data = line.split(d + ':')[1].split(',,')[0]
+                except IndexError:
+                    out_data.append('Error')
+                    continue
             # Is it a date?
             try:
                 out_data.append(dt.strptime(t_data, '%Y-%m-%d %H:%M:%S.%f'))
