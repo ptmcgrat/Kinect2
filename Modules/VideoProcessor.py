@@ -48,7 +48,6 @@ class VideoProcessor:
         self.cloudClusterClipDirectory = self.cloudClusterDirectory + 'Clips/'
         
         os.makedirs(self.localClusterClipDirectory) if not os.path.exists(self.localClusterClipDirectory) else None
-        os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
 
         # Set paramaters
         self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
@@ -167,6 +166,8 @@ class VideoProcessor:
         
         #Download video
         self.loadVideo()
+
+        os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
         
         self.blocksize = blocksize
         self.window = window
@@ -225,7 +226,7 @@ class VideoProcessor:
         print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes to calculate HMMs for ' + str(self.height) + ' rows', file = sys.stderr)
         pool.close() 
         pool.join()
-
+        
         # Step 4: Create HMM object and delete temporary data if necessary
         start = datetime.datetime.now()
         print('Converting HMMs to internal data structure and keeping temporary data', file = sys.stderr)
@@ -233,13 +234,13 @@ class VideoProcessor:
         print('StartTime: ' + str(start), file = sys.stderr)
         
         self.obj = HMMdata(self.width, self.height, self.frames, self.frame_rate)
-        self.obj.add_data(self.localVideoDirectory, self.localVideoDirectory + self.hmmFile)
+        self.obj.add_data(self.tempDirectory, self.localVideoDirectory + self.hmmFile)
         # Copy example data to directory containing videofile
         subprocess.call(['cp', self._row_fn(int(self.height/2)), self._row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self._row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.localVideoDirectory])
 
         shutil.rmtree(self.tempDirectory)
-
-        subprocess.call(['rclone', 'copy', self.localVideoDirectory, self.localCloudDirectory], stderr = self.fnull)
+      
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory, self.cloudVideoDirectory], stderr = self.fnull)
 
         print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs', file = sys.stderr)
 
@@ -361,10 +362,10 @@ class VideoProcessor:
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                cv2.imshow("Type 'c' for scoop; 'p' for spit; 'o' for other; 'q' to quit",frame)
+                cv2.imshow("Type 'c' for scoop; 'p' for spit; 'o' for other; 'm' for multiple clusters; 'q' to quit",cv2.resize(frame,(0,0),fx=4, fy=4))
                 info = cv2.waitKey(25)
             
-                if info in [ord('c'),ord('p'),ord('o'),ord('q')]:
+                if info in [ord('c'),ord('p'),ord('o'),ord('q'), ord('m')]:
                     for i in range(1,10):
                         cv2.destroyAllWindows()
                         cv2.waitKey(1)
@@ -373,8 +374,9 @@ class VideoProcessor:
             if info == ord('q'):
                 break
             clusterID = int(f.split('_')[0])
-            row = self.clusterData.loc[self.clusterData['LID'] == clusterID]
-            row['ManualLabel'][0] = chr(info)
+            self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
+            print(chr(info))
+            print(self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'])
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
