@@ -312,9 +312,16 @@ class VideoProcessor:
         self.loadClusterFile()
         self._print('Creating ' + str(Nclips) + ' clips')
 
-        shutil.rmtree(self.localClusterClipDirectory)
+        try:
+            shutil.rmtree(self.localClusterClipDirectory)
+        except FileNotFoundError:
+            pass
         os.makedirs(self.localClusterClipDirectory, exist_ok=True)
-        shutil.rmtree(self.localLabelDirectory)
+        try:
+            shutil.rmtree(self.localLabelDirectory)
+        except FileNotFoundError:
+            pass
+        
         os.makedirs(self.localLabelDirectory, exist_ok=True)
      
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
@@ -324,13 +331,13 @@ class VideoProcessor:
         np_clip2 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2))
 
         for n in range(Nclips):
-            np_clip1 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2))
-            np_clip2 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2))
+            np_clip1 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2, 3))
+            np_clip2 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2, 3))
 
             row = self.clusterData.sample(1)
             
             LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
-            while x - delta_xy < 0 or x + delta_xy > self.height or y - delta_xy < 0 or y + delta_xy > self.width or LID == -1 or t - delta_t <0 or t+delta_t >= self.frames:
+            while x - delta_xy < 0 or x + delta_xy > self.height or y - delta_xy < 0 or y + delta_xy > self.width or LID == -1 or framerate*t - delta_t <0 or framerate*t+delta_t >= self.frames:
                 row = self.clusterData.sample(1)
                 LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
 
@@ -374,7 +381,10 @@ class VideoProcessor:
         for f in clips:
             print(f)
             clusterID = int(f.split('_')[0])
-            if self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] in categories:
+            print(self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'])
+            print(self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'].values[0])
+
+            if self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'].values[0] in categories:
                 continue
             cap = cv2.VideoCapture(self.localClusterClipDirectory + f)
             while(True):
