@@ -1,4 +1,4 @@
-import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket
+import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket, random
 from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pandas as pd
@@ -49,8 +49,12 @@ class VideoProcessor:
 
         self.localLabelDirectory = self.localClusterDirectory + 'MLClips/'
         self.cloudLabelDirectory = self.cloudClusterDirectory + 'MLClips/'
-        
+
+        self.localAllClipsDirectory = self.localClusterDirectory + 'AllClips/'
+        self.cloudAllClipsDirectory = self.cloudClusterDirectory + 'AllClips/'
+
         os.makedirs(self.localClusterClipDirectory) if not os.path.exists(self.localClusterClipDirectory) else None
+        os.makedirs(self.localAllClipsDirectory) if not os.path.exists(self.localAllClipsDirectory) else None
 
         # Set paramaters
         self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
@@ -145,7 +149,8 @@ class VideoProcessor:
                 self.createClusterHMM()
                 return
             else:
-                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0).set_index('LID')
+                
         try:
             self.labeledCoords
         except AttributeError:
@@ -253,7 +258,7 @@ class VideoProcessor:
         self._print('Clustering HMM transitions using DBScan')
         coords = self.obj.retDBScanMatrix(minMagnitude)
         np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
+        #subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
                 
 
         sortData = coords[coords[:,0].argsort()][:,0:3] #sort data by time for batch processing, throwing out 4th column (magnitude)
@@ -289,7 +294,7 @@ class VideoProcessor:
         print(str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters', file = sys.stderr)
 
         df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])
-        self.clusterData = df.groupby('LID').apply(lambda x: pd.Series({
+        clusterData = df.groupby('LID').apply(lambda x: pd.Series({
             'N': x['T'].count(),
             't': int(x['T'].mean()),
             'X': int(x['X'].mean()),
@@ -302,15 +307,15 @@ class VideoProcessor:
         })
         )
 
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        subprocess.call(['rclone', 'sync', self.localClusterDirectory, self.cloudClusterDirectory], stderr = self.fnull)
+        self.loadClusterFile()
         
-    def createClusterClips(self, Nclips = 200, delta_xy = 100, delta_t = 60):
+    def createClusterClips(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
         self.loadVideo()
         self.loadHMM()
         self.loadClusterFile()
-        self._print('Creating ' + str(Nclips) + ' clips')
+        self._print('Creating clip videos for each cluster')
 
         try:
             shutil.rmtree(self.localClusterClipDirectory)
@@ -327,21 +332,34 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
         framerate = cap.get(cv2.CAP_PROP_FPS)
-        np_clip1 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2))
-        np_clip2 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2))
 
-        for n in range(Nclips):
-            np_clip1 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2, 3))
-            np_clip2 = np.zeros(shape = (delta_t*2, delta_xy*2, delta_xy*2, 3))
-
-            row = self.clusterData.sample(1)
+        randomizedDT = self.clusterData.sample(n = self.clusterData.shape[0])
+        # Make clips for manual labeling
+        manualClips = 0
+        smallClips = 0
+        for row in randomizedDT.itertuples():
+            if manualClips > 200:
+                break
             
-            LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
-            while x - delta_xy < 0 or x + delta_xy > self.height or y - delta_xy < 0 or y + delta_xy > self.width or LID == -1 or framerate*t - delta_t <0 or framerate*t+delta_t >= self.frames:
-                row = self.clusterData.sample(1)
-                LID, N, t, x, y = row['LID'].values[0], row['N'].values[0], row['t'].values[0], row['X'].values[0], row['Y'].values[0]
+            LID, N, t, x, y = row.Index, row.N, row.t, row.X, row.Y
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or framerate*t - delta_t <0 or framerate*t+delta_t >= self.frames:
+                continue
 
-            out = cv2.VideoWriter(self.localClusterClipDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (4*delta_xy, 2*delta_xy))
+            if manualClips < Nclips and (N > smallLimit or smallClips < Nclips/20):
+                #print(self.localClusterClipDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', file = sys.stderr)
+                outManual = cv2.VideoWriter(self.localClusterClipDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (4*delta_xy, 2*delta_xy))
+                manualFlag = True
+                manualClips +=1
+                if N < smallLimit:
+                    smallClips += 1
+            else:
+                manualFlag = False
+                continue
+                
+
+            outAll = cv2.VideoWriter(self.localLabelDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
+            outAllHMM = cv2.VideoWriter(self.localLabelDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_HMM.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
+
 
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(framerate*(t) - delta_t))
             HMMChanges = self.obj.ret_difference(framerate*(t) - delta_t, framerate*(t) + delta_t)
@@ -352,20 +370,34 @@ class VideoProcessor:
                 ret, frame = cap.read()
                 frame2 = frame.copy()
                 frame[HMMChanges != 0] = [300,125,125]
-                for coord in clusteredPoints:
+                for coord in clusteredPoints: # This can probably be improved to speed up clip generation (get rid of the python loop)
                     frame[coord[0], coord[1]] = [125,125,300]
                 if ret:
-                    #out.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
-                    out.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
-                    np_clip1[i] = frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]
-                    np_clip2[i] = frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]
+                    if manualFlag:
+                        outManual.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
+                    outAll.write(frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+                    outAllHMM.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
 
-            out.release()
-            np.save(self.localLabelDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.npy', np_clip1)
-            np.save(self.localLabelDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_HMM.npy', np_clip2)
 
+            if outManual:
+                outManual.release()
+            outAll.release()
+            outAllHMM.release()
+
+        for row in self.clusterData.itertuples():
+            LID, N, t, x, y = row.Index, row.N, row.t, row.X, row.Y
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or framerate*t - delta_t <0 or framerate*t+delta_t >= self.frames:
+                continue
+            outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(framerate*(t) - delta_t))
+            for i in range(delta_t*2):
+                ret, frame = cap.read()
+                outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+            outAll.release()
+            
         subprocess.call(['rclone', 'sync', self.localClusterClipDirectory, self.cloudClusterClipDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'sync', self.localLabelDirectory, self.cloudLabelDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'sync', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
                 
         
     def labelClusters(self):
@@ -381,10 +413,10 @@ class VideoProcessor:
         for f in clips:
             print(f)
             clusterID = int(f.split('_')[0])
-            print(self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'])
-            print(self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'].values[0])
+            print(self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'])
+            print(self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'].values[0])
 
-            if self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'].values[0] in categories:
+            if self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'].values[0] in categories:
                 continue
             cap = cv2.VideoCapture(self.localClusterClipDirectory + f)
             while(True):
@@ -405,7 +437,7 @@ class VideoProcessor:
             if info == ord('q'):
                 break
             
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
+            self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'] = chr(info)
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)

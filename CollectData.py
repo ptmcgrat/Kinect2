@@ -5,12 +5,12 @@ from Modules.CichlidTracker import CichlidTracker
 #First try to make the object:
 while True:
     tracker = CichlidTracker()
-    tracker.monitorCommand()
+#    tracker.monitorCommand()
 
-    try:
-        tracker = CichlidTracker()
-        tracker.monitorCommand()
-    except:
-        time.sleep(60)
+#    try:
+#        tracker = CichlidTracker()
+#        tracker.monitorCommand()
+#    except:
+#        time.sleep(60)
         
 
