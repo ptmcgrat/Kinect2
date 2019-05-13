@@ -1,4 +1,4 @@
-import argparse, os
+import argparse, os, socket
 
 
 rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to the dropbox or other cloud account
@@ -21,13 +21,14 @@ videoParser.add_argument('InputFile', type = str, help = 'Excel file containing 
 videoParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to analyze.')
 videoParser.add_argument('-a', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
 
-MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to label videos')
+MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
-predictParser = subparsers.add_parser('PredictLabels', help='This command allows a user to label videos')
+predictParser = subparsers.add_parser('PredictLabels', help='This command using machine learning to predict labels for each cluster')
 predictParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
+predictParser.add_argument('ModelName', type = str, help = 'Machine Learning Model to use to predict the cluster labels')
 predictParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 predictParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
@@ -47,7 +48,7 @@ elif args.command == 'CollectData':
     while True:
         tracker = CichlidTracker(rcloneRemote + ':' + cloudMasterDirectory)
 
-elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'LabelVideos']:
+elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'PredictLabels']:
 
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
@@ -93,12 +94,19 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'LabelVideos']:
                 da_obj.processVideos(videos[projectID], args.Rewrite)
                 da_obj.cleanup()
 
-    elif args.command == 'LabelVideos':
+    elif args.command == 'ManuallyLabelVideos':
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos[projectID], args.Rewrite, 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning')
+                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning')
 
-
+    elif args.command == 'PredictLabels':
+        if socket.gethostname() != 'biocomputesrg':
+            print('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
+            raise Exception
+        call(['source', 'activate', '3D-ResNets'])
+        for projectID in projects:
+            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
+                da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/' + args.ModelName + '/')
 elif args.command == 'SummarizeProjects':
     pass
         
