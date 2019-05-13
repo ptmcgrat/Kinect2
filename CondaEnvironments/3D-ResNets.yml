@@ -1,0 +1,49 @@
+name: 3D-ResNets
+channels:
+  - soumith
+  - defaults
+dependencies:
+  - blas=1.0=mkl
+  - ca-certificates=2018.03.07=0
+  - certifi=2018.8.24=py35_1
+  - cffi=1.11.5=py35he75722e_1
+  - cuda80=1.0=0
+  - cudatoolkit=8.0=3
+  - freetype=2.9.1=h8a8886c_1
+  - intel-openmp=2019.0=118
+  - jpeg=9b=h024ee3a_2
+  - libedit=3.1.20170329=h6b74fdf_2
+  - libffi=3.2.1=hd88cf55_4
+  - libgcc-ng=8.2.0=hdf63c60_1
+  - libgfortran-ng=7.3.0=hdf63c60_0
+  - libpng=1.6.35=hbc83047_0
+  - libstdcxx-ng=8.2.0=hdf63c60_1
+  - libtiff=4.0.9=he85c1e1_2
+  - mkl=2019.0=118
+  - mkl_fft=1.0.6=py35h7dd41cf_0
+  - mkl_random=1.0.1=py35h4414c95_1
+  - ncurses=6.1=hf484d3e_0
+  - ninja=1.8.2=py35h6bb024c_1
+  - numpy=1.15.2=py35h1d66e8a_0
+  - numpy-base=1.15.2=py35h81de0dd_0
+  - olefile=0.46=py35_0
+  - openssl=1.0.2p=h14c3975_0
+  - pandas=0.23.4=py35h04863e7_0
+  - pillow=5.2.0=py35heded4f4_0
+  - pip=10.0.1=py35_0
+  - pycparser=2.19=py35_0
+  - python=3.5.6=hc3d631a_0
+  - python-dateutil=2.7.3=py35_0
+  - pytorch=0.4.1=py35_cuda8.0.61_cudnn7.1.2_1
+  - pytz=2018.5=py35_0
+  - readline=7.0=h7b6447c_5
+  - setuptools=40.2.0=py35_0
+  - six=1.11.0=py35_1
+  - sqlite=3.25.2=h7b6447c_0
+  - tk=8.6.8=hbc83047_0
+  - torchvision=0.1.9=py35h72e4c6f_1
+  - wheel=0.31.1=py35_0
+  - xz=5.2.4=h14c3975_4
+  - zlib=1.2.11=ha838bed_2
+prefix: /data/home/llong35/miniconda3/envs/3D-ResNets
+
