@@ -114,7 +114,18 @@ class DataAnalyzer:
             vos = [self.videoObjs[x] for x in index]
             
         for vo in vos:
-            vo.labelClusters(self.rewrite, mainDT, cloudMLDirectory)
+            vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory)
+
+    def predictLabels(self, index, modelLocation):
+        self.videoObjs = [VP(self.projectID, x.mp4_file, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        if index is None:
+            vos = self.videoObjs
+        else:
+            vos = [self.videoObjs[x] for x in index]
+            
+        for vo in vos:
+            vo.predictLabels(modelLocation)
+
                 
     def summarizeData(self):
         pass

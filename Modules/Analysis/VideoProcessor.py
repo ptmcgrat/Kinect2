@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
+from Modules.Analysis.MachineLabel import MachineLabelAnalyzer as MLA
+
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import radius_neighbors_graph
 from sklearn.neighbors import NearestNeighbors
@@ -366,7 +368,7 @@ class VideoProcessor:
             outAll.release()
             
             if ml == 'Yes':
-                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
+                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (4*delta_xy, 2*delta_xy))
 
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(framerate*(t) - delta_t))
                 HMMChanges = self.obj.ret_difference(framerate*(t) - delta_t, framerate*(t) + delta_t)
@@ -388,13 +390,13 @@ class VideoProcessor:
         subprocess.call(['rclone', 'sync', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
                 
     def loadClusterClips(self):
-        subprocess.call(['rclone', 'sync', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localAllClipsDirectory], stderr = self.fnull)
 
         
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory):
 
         self._print('Labeling cluster')
-        self.loadClusterFile()
+        self.loadClusters()
         subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory], stderr = self.fnull)
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
@@ -404,14 +406,12 @@ class VideoProcessor:
         newClips = []
         for f in clips:
             clusterID = int(f.split('_')[0])
-            print(self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'])
-            print(self.clusterData.loc[self.clusterData.index == clusterID, 'ManualLabel'].values[0])
 
             # If already labeled and rewrite = False, then skip
-            if not rewrite and self.clusterData.loc[self.clusterData.LID == LID,'ManualLabel'] in categories:
+            if not rewrite and not self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'].isna().any():
                 continue
             
-            cap = cv2.VideoCapture(self.localClusterClipDirectory + f)
+            cap = cv2.VideoCapture(self.localManualLabelClipsDirectory + f)
             while(True):
 
                 ret, frame = cap.read()
@@ -449,6 +449,16 @@ class VideoProcessor:
 
         tempData2.to_csv(self.localClusterDirectory + mainDT, sep = '\t')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
+
+    def predictLabels(self, modelLocation):
+        self.loadClusters()
+        self.loadClusterClips()
+        subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localAllClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localAllClipsDirectory], stderr = self.fnull)
+        MLobj = MLA(self.projectID, self.videoID, self.localAllClipsDirectory, self.clusterFile)
+        MLobj.prepareData()
+        MLObj.makePredictions()
+
         
     def summarizeData(self):
         self.loadClusters()
