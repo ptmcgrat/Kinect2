@@ -1,4 +1,6 @@
 import subprocess, os, sys, datetime, shutil
+import numpy as np
+
 
 from Modules.Analysis.DepthProcessor import DepthProcessor as DP
 from Modules.LogParser import LogParser as LP
@@ -149,7 +151,6 @@ class DataAnalyzer:
 
         import cv2
         import matplotlib.pyplot as plt
-        import numpy as np
         from Modules.Analysis.roipoly import roipoly
 
         # Unable to load it from existing file, either because it doesn't exist or the rewrite flag was set
