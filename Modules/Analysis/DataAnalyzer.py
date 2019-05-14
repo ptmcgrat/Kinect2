@@ -114,6 +114,7 @@ class DataAnalyzer:
             vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory)
 
     def predictLabels(self, index, modelLocation):
+        print(modelLocation)
         self._loadRegistration()
         self.videoObjs = [VP(self.projectID, x.mp4_file, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
         if index is None:
