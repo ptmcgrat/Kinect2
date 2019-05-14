@@ -51,7 +51,6 @@ elif args.command == 'CollectData':
 
 elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'PredictLabels']:
 
-    call(['source', 'activate', '3D-ResNets'])
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
     from Modules.Analysis.LabelAnalyzer import LabelAnalyzer as LA
@@ -105,7 +104,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         if socket.gethostname() != 'biocomputesrg':
             print('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
             raise Exception
-        
+        print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/' + args.ModelName + '/')
