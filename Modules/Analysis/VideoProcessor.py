@@ -460,7 +460,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localAllClipsDirectory], stderr = self.fnull)
         MLobj = MLA(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
         MLobj.prepareData()
-        MLObj.makePredictions()
+        MLobj.makePredictions()
 
         
     def summarizeData(self):
