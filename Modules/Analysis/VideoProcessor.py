@@ -233,9 +233,9 @@ class VideoProcessor:
         print('StartTime: ' + str(start), file = sys.stderr)
         for i in range(0, self.height, self.cores):
             rows = list(range(i, min(i + self.cores, self.height)))
-            print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ' seconds, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), file = sys.stderr)
+            print('Hours since start: ' + str((datetime.datetime.now() - start).seconds/3600) + ' hours, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), file = sys.stderr)
             results = pool.map(self._hmmRow, rows)
-        print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes to calculate HMMs for ' + str(self.height) + ' rows', file = sys.stderr)
+        print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/3600) + ' hours to calculate HMMs for ' + str(self.height) + ' rows', file = sys.stderr)
         pool.close() 
         pool.join()
         

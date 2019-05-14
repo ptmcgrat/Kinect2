@@ -23,7 +23,7 @@ class MachineLabelAnalyzer:
             for mp4File in os.listdir(self.dataDirectory):
                 if '.mp4' not in mp4File:
                     continue
-                print('m/' + mp4File.replace('.mp4',,), file = f)
+                print('m/' + mp4File.replace('.mp4',''), file = f)
                 jpegDirectory = self.tempDataDirectory + 'm/' + mp4File.replace('.mp4','') + '/'
                 os.makedirs(jpegDirectory) if not os.path.exists(jpegDirectory) else None
                 call(['ffmpeg', '-i', self.dataDirectory + mp4File, jpegDirectory + 'image_%05d.jpg'])
