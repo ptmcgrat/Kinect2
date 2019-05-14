@@ -98,13 +98,14 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     elif args.command == 'ManuallyLabelVideos':
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning')
+                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/Models/')
 
     elif args.command == 'PredictLabels':
         if socket.gethostname() != 'biocomputesrg':
             print('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
             raise Exception
         print(os.environ['CONDA_DEFAULT_ENV'])
+        subprocess.cal
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/' + args.ModelName + '/')
