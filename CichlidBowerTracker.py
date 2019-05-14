@@ -98,7 +98,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     elif args.command == 'ManuallyLabelVideos':
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/Models/')
+                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/')
 
     elif args.command == 'PredictLabels':
         if socket.gethostname() != 'biocomputesrg':
@@ -107,7 +107,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/' + args.ModelName + '/')
+                da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/Models/' + args.ModelName + '/')
 elif args.command == 'SummarizeProjects':
     pass
         
