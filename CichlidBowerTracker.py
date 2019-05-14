@@ -105,7 +105,6 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
             print('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
             raise Exception
         print(os.environ['CONDA_DEFAULT_ENV'])
-        subprocess.cal
         for projectID in projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/' + args.ModelName + '/')
