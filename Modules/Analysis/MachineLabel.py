@@ -14,7 +14,7 @@ class MachineLabelAnalyzer:
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
 
-        os.environ['CUDA_VISIBLE_DEVICES'] = 6
+        os.environ['CUDA_VISIBLE_DEVICES'] = '6'
         call(['cp', dataDirectory + 'model.pth', self.tempMasterDirectory])
 
 
