@@ -10,7 +10,7 @@ class MachineLabelAnalyzer:
 
         self.tempMasterDirectory = os.getenv("HOME") + '/Temp/MachinePrediction/' + projectID + '/' + videoID + '/'
         self.tempDataDirectory = self.tempMasterDirectory + 'jpgs/'
-        os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
+        os.makedirs(self.tempDataDirectory) if not os.path.exists(self.tempDataDirectory) else None
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
 
