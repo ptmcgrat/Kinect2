@@ -14,9 +14,10 @@ class MachineLabelAnalyzer:
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
 
-        os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+        #os.environ['CUDA_VISIBLE_DEVICES'] = '6'
         call(['cp', dataDirectory + 'model.pth', self.tempMasterDirectory])
 
+        self.fnull = open(os.devnull, 'w')
 
     def prepareData(self):
         print('Preparing data')
@@ -27,7 +28,7 @@ class MachineLabelAnalyzer:
                 print('m/' + mp4File.replace('.mp4',''), file = f)
                 jpegDirectory = self.tempDataDirectory + 'm/' + mp4File.replace('.mp4','') + '/'
                 os.makedirs(jpegDirectory) if not os.path.exists(jpegDirectory) else None
-                call(['ffmpeg', '-i', self.dataDirectory + mp4File, jpegDirectory + 'image_%05d.jpg'])
+                call(['ffmpeg', '-i', self.dataDirectory + mp4File, jpegDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                 # Add n_frames info
                 with open(jpegDirectory + 'n_frames', 'w') as g:
