@@ -1,4 +1,5 @@
 import argparse, os, socket
+from subprocess import call
 
 
 rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to the dropbox or other cloud account
