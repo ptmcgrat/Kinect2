@@ -19,6 +19,7 @@ class MachineLabelAnalyzer:
 
 
     def prepareData(self):
+        print('Preparing data')
         with open(self.tempMasterDirectory + 'cichlids_test_list.txt', 'w') as f:
             for mp4File in os.listdir(self.dataDirectory):
                 if '.mp4' not in mp4File:
@@ -38,5 +39,6 @@ class MachineLabelAnalyzer:
         call(['python',self.machineLearningDirectory + 'utils/cichlids_json.py', self.tempDataDirectory, self.dataDirectory + 'classInd.txt'])       
         
     def makePredictions(self):
+        print('Making predictions')
         call(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train'])
         

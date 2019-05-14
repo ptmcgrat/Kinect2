@@ -451,11 +451,14 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
 
     def predictLabels(self, modelLocation):
+        print('Loading Cluster file')
         self.loadClusters()
+        print('Loading Cluster files')
         self.loadClusterClips()
+        print('Copying model data')
         subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localAllClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localAllClipsDirectory], stderr = self.fnull)
-        MLobj = MLA(self.projectID, self.videoID, self.localAllClipsDirectory, self.clusterFile)
+        MLobj = MLA(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
         MLobj.prepareData()
         MLObj.makePredictions()
 
