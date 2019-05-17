@@ -343,7 +343,7 @@ class VideoProcessor:
                 break
             
             LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
-            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or framerate*t - delta_t <0:
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame)rate*t - delta_t <0:
                 continue
             if N < smallLimit:
                 if smallClips > Nclips/20:
@@ -366,12 +366,10 @@ class VideoProcessor:
         self.loadClusterSummary()
         self._print('Creating clip videos for each cluster')
 
-        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
-        framerate = cap.get(cv2.CAP_PROP_FPS)
         
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, ml = row.Index, row.N, row.t, row.X, row.Y, row.ManualAnnotation
-            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or framerate*t - delta_t <0 or framerate*t+delta_t >= self.frames:
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 continue
             outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), framerate, (2*delta_xy, 2*delta_xy))
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(framerate*(t) - delta_t))
