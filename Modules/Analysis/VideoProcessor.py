@@ -372,7 +372,7 @@ class VideoProcessor:
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 continue
             outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame)rate*(t) - delta_t))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
             for i in range(delta_t*2):
                 ret, frame = cap.read()
                 outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
@@ -382,7 +382,7 @@ class VideoProcessor:
                 outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
 
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
-                HMMChanges = self.obj.ret_difference(self.frame)rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
+                HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
                 clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
 
                 for i in range(delta_t*2):
