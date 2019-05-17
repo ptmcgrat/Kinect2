@@ -20,7 +20,8 @@ depthParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use t
 videoParser = subparsers.add_parser('VideoAnalysis', help='This command runs video analysis for a project')
 videoParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each video that should be analyzed')
 videoParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to analyze.')
-videoParser.add_argument('-a', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
+videoParser.add_argument('-a', '--RewriteAll', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
+videoParser.add_argument('-c', '--RewriteClusters', action = 'store_true', help = 'Use this flag if you need to rerun the creation of clusters')
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
@@ -91,8 +92,8 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
 
     elif args.command == 'VideoAnalysis':
         for projectID in projects:
-            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.processVideos(videos[projectID], args.Rewrite)
+            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.RewriteAll) as da_obj:
+                da_obj.processVideos(videos[projectID], args.RewriteClusters)
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':

@@ -78,7 +78,7 @@ class DataAnalyzer:
 
         self.depthObj.createDataSummary()
         
-    def processVideos(self, index, rewrite):
+    def processVideos(self, index, rewriteClusters):
 
         self._loadRegistration()
 
@@ -91,12 +91,17 @@ class DataAnalyzer:
             vos = [self.videoObjs[x-1] for x in index]
 
         for vo in vos:
-            if rewrite:
+            if self.rewriteFlag:
                 vo.createHMM()
-                vo.createClusters()
+                vo.createClusterSummary()
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
+            elif rewriteClusters:
+                vo.createClusterSummary()
+                vo.createClusterClips()
+                vo.cleanup()
+
             else:
                 vo.createClusterSummary()
                 vo.createClusterClips()
