@@ -371,7 +371,7 @@ class VideoProcessor:
             LID, N, t, x, y, ml = row.Index, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 continue
-            outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame)rate, (2*delta_xy, 2*delta_xy))
+            outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame)rate*(t) - delta_t))
             for i in range(delta_t*2):
                 ret, frame = cap.read()
