@@ -82,11 +82,11 @@ class LogParser:
                 if info_type == 'PiCameraStarted':
                     if 'VideoFile' in line:
                         #Patricks logfile
-                        t_list = self._ret_data(line,['Time','VideoFile', 'PicFile', 'FrameRate'])
+                        t_list = self._ret_data(line,['Time','VideoFile', 'PicFile', 'FrameRate', 'Resolution'])
                     else:
                         #Marks logfile
                         t_list = self._ret_data(line,['Time','File'])
-                        t_list.extend(['Unknown', 30])
+                        t_list.extend(['Unknown', 30, (1296, 972)])
 
                     self.movies.append(MovieObj(*t_list))
 
@@ -157,6 +157,12 @@ class LogParser:
             # Is it a float?
             try:
                 out_data.append(float(t_data))
+                continue
+            except ValueError:
+                pass
+            # Is it a resolution (e.g. 1296x972)
+            try:
+                out_data.append((int(t_data.split('x')[0]), int(t_data.split('x')[1])))
             except ValueError:
                 # Keep it as a string
                 out_data.append(t_data)
@@ -175,7 +181,7 @@ class FrameObj:
 
 
 class MovieObj:
-    def __init__(self, time, movie_file, pic_file, framerate):
+    def __init__(self, time, movie_file, pic_file, framerate, resolution):
         self.time = time
         if '.mp4' in movie_file:
             self.mp4_file = movie_file
@@ -187,3 +193,5 @@ class MovieObj:
         self.framerate = framerate
         self.hmm_file = self.mp4_file.replace('.mp4', '.hmm')
         self.movieDir = movie_file.replace(movie_file.split('/')[-1],'')
+        self.height = resolution[1]
+        self.width = resolution[0]
