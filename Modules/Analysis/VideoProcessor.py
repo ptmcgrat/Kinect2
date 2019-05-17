@@ -366,7 +366,8 @@ class VideoProcessor:
         self.loadClusterSummary()
         self._print('Creating clip videos for each cluster')
 
-        
+        cap = cv2.VideoCapture(self.videofile)
+
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, ml = row.Index, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
