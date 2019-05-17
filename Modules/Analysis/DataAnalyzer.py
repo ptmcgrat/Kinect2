@@ -92,17 +92,21 @@ class DataAnalyzer:
 
         for vo in vos:
             if self.rewriteFlag:
+                print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createHMM()
                 vo.createClusterSummary()
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
+                print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
+                vo.createClusters()
                 vo.createClusterSummary()
                 vo.createClusterClips()
                 vo.cleanup()
 
             else:
+                print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusterSummary()
                 vo.createClusterClips()
                 vo.cleanup()

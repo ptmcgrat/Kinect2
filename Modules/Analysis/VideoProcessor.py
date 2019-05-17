@@ -170,7 +170,7 @@ class VideoProcessor:
                 self.createClusters()
                 return
             else:
-                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0)
+                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0, index_col = 0)
                 
 
                         
@@ -327,7 +327,7 @@ class VideoProcessor:
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
 
         clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
-        clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0, index_col = 0)
+        clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0)
         
         # Identify rows for manual labeling
         manualClips = 0
