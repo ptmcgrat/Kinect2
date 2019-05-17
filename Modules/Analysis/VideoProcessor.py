@@ -343,7 +343,7 @@ class VideoProcessor:
                 break
             
             LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
-            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame)rate*t - delta_t <0:
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0:
                 continue
             if N < smallLimit:
                 if smallClips > Nclips/20:
