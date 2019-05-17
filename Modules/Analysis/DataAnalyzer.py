@@ -79,36 +79,37 @@ class DataAnalyzer:
         self.depthObj.createDataSummary()
         
     def processVideos(self, index, rewrite):
-        
+
         self._loadRegistration()
 
         # Create Video objects (low overhead even if video is not processed)
-        self.videoObjs = [VP(self.projectID, x.mp4_file, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
 
         if index is None:
             vos = self.videoObjs
         else:
-            vos = [self.videoObjs[x] for x in index]
+            vos = [self.videoObjs[x-1] for x in index]
 
         for vo in vos:
             if rewrite:
                 vo.createHMM()
                 vo.createClusters()
-                #vo.createLabels()
+                vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             else:
+                vo.createClusterSummary()
                 vo.createClusterClips()
                 vo.cleanup()
 
     def labelVideos(self, index, mainDT, cloudMLDirectory):
         self._loadRegistration()
         # Create Video objects (low overhead even if video is not processed)
-        self.videoObjs = [VP(self.projectID, x.mp4_file, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
         if index is None:
             vos = self.videoObjs
         else:
-            vos = [self.videoObjs[x] for x in index]
+            vos = [self.videoObjs[x-1] for x in index]
             
         for vo in vos:
             vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory)
@@ -116,11 +117,11 @@ class DataAnalyzer:
     def predictLabels(self, index, modelLocation):
         print(modelLocation)
         self._loadRegistration()
-        self.videoObjs = [VP(self.projectID, x.mp4_file, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
         if index is None:
             vos = self.videoObjs
         else:
-            vos = [self.videoObjs[x] for x in index]
+            vos = [self.videoObjs[x-1] for x in index]
             
         for vo in vos:
             vo.predictLabels(modelLocation)
