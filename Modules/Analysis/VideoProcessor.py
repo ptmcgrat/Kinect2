@@ -300,6 +300,8 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def createClusterSummary(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
+        self.loadVideo()
+        self.loadHMM()
         self.loadClusters()
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
@@ -333,8 +335,6 @@ class VideoProcessor:
         manualClips = 0
         smallClips = 0
 
-        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
-        framerate = cap.get(cv2.CAP_PROP_FPS)
         print('Identifying clusters for manual annotation', file = sys.stderr)
 
         print(clusterData.shape[0], file = sys.stderr)
