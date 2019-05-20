@@ -453,7 +453,7 @@ class VideoProcessor:
         print('Updating ML directories...')
         for clip in newClips:
             print(['rclone', 'copy', clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/'])
-            subprocess.call(['rclone', 'copy', clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/'])
+            subprocess.call(['rclone', 'copy', clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = '\t', header = 0)
