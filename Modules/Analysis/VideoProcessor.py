@@ -445,14 +445,14 @@ class VideoProcessor:
                 break
             
             self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
-            newClips.append(self.cloudAllClipsDirectory + f.replace('_ManualLabel',''))
+            newClips.append(f.replace('_ManualLabel',''))
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         print('Updating ML directories...')
         for clip in newClips:
-            print(['rclone', 'copy', clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/'])
+            print(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/'])
             subprocess.call(['rclone', 'copy', clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)

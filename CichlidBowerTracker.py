@@ -1,10 +1,43 @@
 import argparse, os, socket
 from subprocess import call
 
+class ProjectData:
+    def __init__(self, excelFile, projects, machLearningID = None):
+        dt = pd.read_excel(excelFile, header = 1)
+        self.projects = {}
+        self.clusterData = {}
+        self.manPredData = {}
+        self.mLearningData = {}
+        for row in dt.iterrows():
+            if row[1].Include == True:
+                projectID = row[1].ProjectID
+                if projects is not None and projectID not in projects:
+                    continue
+                groupID = row[1].GroupID
+                self.projects[projectID] = groupID
+                try:
+                    self.clusterData[projectID] = [int(x) for x in str(row[1].ClusterAnalysis).split(',')]
+                except ValueError:
+                    pass
+                try:
+                    self.manPredData[projectID] = [int(x) for x in str(row[1].ManualPrediction).split(',')]
+                except ValueError:
+                    pass
+                if machLearningID is not None:
+                    try:
+                        self.mLearningData[projectID] = [int(x) for x in str(row[1][machLearningID]).split(',')]
+                    except ValueError:
+                        pass
+                    except KeyError:
+                        raise KeyError(machLearningID + ' not a column in Excel data file')
+   
+
 
 rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to the dropbox or other cloud account
 cloudMasterDirectory = 'McGrath/Apps/CichlidPiData/' # The master directory on the cloud account that stores video and depth data
-localMasterDirectory = os.getenv('HOME') + '/Temp/CichlidAnalyzer/' # 
+localMasterDirectory = os.getenv('HOME') + '/Temp/CichlidAnalyzer/' #
+machineLearningDirectory = '__MachineLearning/'
+manualLabelFile = 'ManualLabeledClusters.csv' # The name of the file that contains info on all manually annotated data
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='Available Commands', dest='command')
@@ -17,11 +50,12 @@ depthParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = '
 depthParser.add_argument('-i', '--InitialPrep', action = 'store_true', help = 'Use this flag if you only want to identify trays and register RGB with depth data')
 depthParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun everything from the start (Otherwise only analysis files are recreated')
 
-videoParser = subparsers.add_parser('VideoAnalysis', help='This command runs video analysis for a project')
+videoParser = subparsers.add_parser('VideoAnalysis', help='This command runs video analysis for a project: HMM->IdentifyClusters->SummarizeClusters->CreateVideoClips. Default is to use existing data except for the final step of creating clips.')
 videoParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each video that should be analyzed')
 videoParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to analyze.')
-videoParser.add_argument('-a', '--RewriteAll', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
-videoParser.add_argument('-c', '--RewriteClusters', action = 'store_true', help = 'Use this flag if you need to rerun the creation of clusters')
+videoParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
+videoParser.add_argument('-c', '--RewriteClusters', action = 'store_true', help = 'Use this flag if you need to rerun the creation of clusters, summary of clusters, and creation of clips')
+videoParser.add_argument('-s', '--RewriteClusterSummaries', action = 'store_true', help = 'Use this flag if you need to rerun the creation of summary of clusters and creation of clips')
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
@@ -38,7 +72,10 @@ summarizeParser = subparsers.add_parser('SummarizeProjects', help='This command 
 summarizeParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 summarizeParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 
-trainParser = subparsers.add_parser('TrainModel', help='This command trains the 3DCNN model on a GPU machine')
+trainParser = subparsers.add_parser('CreateModel', help='This command trains the 3DCNN model on a GPU machine')
+trainParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project. This file must include a column with the ModelName with all of the videos that should be included in the model.')
+trainParser.add_argument('ModelName', type = str, help = 'Name of model that will be trained')
+
 
 args = parser.parse_args()
 
@@ -50,68 +87,54 @@ elif args.command == 'CollectData':
     while True:
         tracker = CichlidTracker(rcloneRemote + ':' + cloudMasterDirectory)
 
-elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'PredictLabels']:
+elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'PredictLabels', 'CreateModel']:
 
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
     from Modules.Analysis.LabelAnalyzer import LabelAnalyzer as LA
 
-    projects = {}
-    videos = {}
-    dt = pd.read_excel(args.InputFile)
-
-    for row in dt.iterrows():
-        if row[1].Include == True:
-            projectID = row[1].ProjectID
-            groupID = row[1].GroupID
-            try:
-                video = [int(x) for x in str(row[1].Videos).split(',')]
-            except ValueError:
-                video = None
-            if args.ProjectIDs is None or projectID in args.ProjectIDs:
-                projects[projectID] = groupID
-                videos[projectID] = video
-
-    if args.ProjectIDs is not None:
-        for projectID in args.ProjectIDs:
-            if projectID not in projects:
-                print(projectID + ' not found in ' + args.InputFile + ' and will not be analyzed')
-
+    if args.command != 'CreateModel':
+        inputData = ProjectData(args.InputFile, args.ProjectIDs)
+    else:
+        inputData = Projectdata(args.InputFile, args.ProjectIDs, args.ModelName)
+    
     if args.command == 'DepthAnalysis':
         # Depth Analysis requires user input. First get user input for all projects then allow depth analysis to run in the background
-        for projectID in projects:
+        for projectID in inputData.projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.prepareData()
                 da_obj.cleanup()
-
-        for projectID in projects:
-            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                if not args.InitialPrep:
+                
+        if not args.InitialPrep:
+            for projectID in inputData.projects:
+                with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                     da_obj.processDepth()
-                da_obj.cleanup()
+                    da_obj.cleanup()
 
     elif args.command == 'VideoAnalysis':
-        for projectID in projects:
-            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.RewriteAll) as da_obj:
-                da_obj.processVideos(videos[projectID], args.RewriteClusters)
+        for projectID, videos in inputData.clusterData.items():
+            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
+                da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries)
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':
-        for projectID in projects:
+        for projectID, videos in inputData.manPredData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos[projectID], 'ManualLabeledClusters.csv', rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/')
+                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
                 da_obj.cleanup()
-
+                
     elif args.command == 'PredictLabels':
         if socket.gethostname() != 'biocomputesrg':
-            print('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
-            raise Exception
+            raise Exception('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
         print(os.environ['CONDA_DEFAULT_ENV'])
-        for projectID in projects:
+        for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + '__MachineLearning/Models/' + args.ModelName + '/')
+                da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
+                
+    elif args.command == 'TrainModel':
+        pass
+                
 elif args.command == 'SummarizeProjects':
     pass
         
-elif args.command == 'TrainModel':
-    pass
+
