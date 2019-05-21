@@ -78,17 +78,12 @@ class DataAnalyzer:
 
         self.depthObj.createDataSummary()
         
-    def processVideos(self, index, rewriteClusters):
+    def processVideos(self, index, rewriteClusters, rewriteSummaries):
 
         self._loadRegistration()
 
         # Create Video objects (low overhead even if video is not processed)
-        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
-
-        if index is None:
-            vos = self.videoObjs
-        else:
-            vos = [self.videoObjs[x-1] for x in index]
+        vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
 
         for vo in vos:
             if self.rewriteFlag:
@@ -105,9 +100,14 @@ class DataAnalyzer:
                 vo.createClusterClips()
                 vo.cleanup()
 
-            else:
+            elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusterSummary()
+                vo.createClusterClips()
+                vo.cleanup()
+
+            else:
+                print('Rewriting cluster clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusterClips()
                 vo.cleanup()
 
@@ -126,11 +126,7 @@ class DataAnalyzer:
     def predictLabels(self, index, modelLocation):
         print(modelLocation)
         self._loadRegistration()
-        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
-        if index is None:
-            vos = self.videoObjs
-        else:
-            vos = [self.videoObjs[x-1] for x in index]
+        vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
             
         for vo in vos:
             vo.predictLabels(modelLocation)
