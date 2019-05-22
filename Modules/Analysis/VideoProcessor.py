@@ -167,7 +167,7 @@ class VideoProcessor:
                 subprocess.call(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory], stderr = self.fnull)
                 
             if not os.path.isfile(self.localClusterDirectory + self.clusterFile):
-                self.createClusters()
+                self.createClusterSummary()
                 return
             else:
                 self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0, index_col = 0)
