@@ -3,7 +3,8 @@ from subprocess import call
 
 class ProjectData:
     def __init__(self, excelFile, projects, machLearningID = None):
-        dt = pd.read_excel(excelFile, header = 1)
+        print(projects)
+        dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
         self.projects = {}
         self.clusterData = {}
         self.manPredData = {}
@@ -13,6 +14,7 @@ class ProjectData:
                 projectID = row[1].ProjectID
                 if projects is not None and projectID not in projects:
                     continue
+                print(row[1].ManualPrediction)
                 groupID = row[1].GroupID
                 self.projects[projectID] = groupID
                 try:
@@ -118,6 +120,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':
+        print(inputData.manPredData)
         for projectID, videos in inputData.manPredData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
