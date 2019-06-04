@@ -411,10 +411,20 @@ class VideoProcessor:
         self.loadClusterSummary()
         subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory], stderr = self.fnull)
 
+        if 'MLabeler' not in self.clusterData:
+            self.clusterData['MLabeler'] = ''
+
+        if 'MLabelTime' not in self.clusterData:
+            self.clusterData['MLabelTime'] = ''
+            
+            
+        
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
 
-        categories = ['c','p','o','b','m','f','r','q']
+        categories = ['c','p','s','u','w','n','t','e','o','b','m','f','r','q']
 
+        print("Type 'c' for scoop; 'p' for spit; 's' for spit multiple; 'u' for quivering, 'w' for body/fin/swim', 'n' for no fish, 't' for stationary fish, 'e' for event reflection, 'o' for other; 'b' for build multiple clusters; 'm' for feed multiple; 'f' for feed spit; 'r' for spit run; 'q' to quit")
+        
         newClips = []
         for f in clips:
             clusterID = int(f.split('_')[0])
@@ -431,8 +441,7 @@ class VideoProcessor:
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                
-                cv2.imshow("Type 'c' for scoop; 'p' for spit; 'o' for other; 'b' for build multiple clusters; 'm' for feed multiple; 'f' for feed spit; 'r' for spit run; 'q' to quit",cv2.resize(frame,(0,0),fx=4, fy=4))
+                cv2.imshow("Type 'c' for scoop; 'p' for spit; 's' for spit multiple; 'u' for quivering, 'w' for body/fin/swim', 'n' for no fish, 't' for stationary fish, 'e' for event reflection, 'o' for other; 'b' for build multiple clusters; 'm' for feed multiple; 'f' for feed spit; 'r' for spit run; 'q' to quit",cv2.resize(frame,(0,0),fx=4, fy=4))
                 info = cv2.waitKey(25)
             
                 if info in [ord(x) for x in categories]:
@@ -445,6 +454,9 @@ class VideoProcessor:
                 break
             
             self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
+            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
+            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
+            
             newClips.append(f.replace('_ManualLabel',''))
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
@@ -456,7 +468,7 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
-        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = '\t', header = 0)
+        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = '\t', header = 0, index_col = 0)
 
         tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
         tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
@@ -476,7 +488,6 @@ class VideoProcessor:
         MLobj.prepareData()
         MLobj.makePredictions()
 
-        
     def summarizeData(self):
         self.loadClusters()
         pass
@@ -493,8 +504,7 @@ class VideoProcessor:
         if os.path.exists(self.localMasterDirectory + self.videofile):
             os.remove(self.localMasterDirectory + self.videofile)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
-        
-    
+            
     def _readBlock(self, block):
         min_t = block*self.blocksize
         max_t = min((block+1)*self.blocksize, int(self.frames/self.frame_rate))
