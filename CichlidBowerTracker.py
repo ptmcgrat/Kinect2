@@ -4,17 +4,19 @@ from subprocess import call
 class ProjectData:
     def __init__(self, excelFile, projects, machLearningID = None):
         print(projects)
-        dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
+        if machLearningID is None:
+            dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
+        else:
+            dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str, machLearningID:str})
         self.projects = {}
         self.clusterData = {}
         self.manPredData = {}
-        self.mLearningData = {}
+        self.mLearningData = []
         for row in dt.iterrows():
             if row[1].Include == True:
                 projectID = row[1].ProjectID
                 if projects is not None and projectID not in projects:
                     continue
-                print(row[1].ManualPrediction)
                 groupID = row[1].GroupID
                 self.projects[projectID] = groupID
                 try:
@@ -27,9 +29,8 @@ class ProjectData:
                     pass
                 if machLearningID is not None:
                     try:
-                        self.mLearningData[projectID] = [int(x) for x in str(row[1][machLearningID]).split(',')]
-                    except ValueError:
-                        pass
+                        if str(row[1][machLearningID]).lower() == 'true':
+                            self.mLearningData.append(projectID)
                     except KeyError:
                         raise KeyError(machLearningID + ' not a column in Excel data file')
    
@@ -77,7 +78,6 @@ summarizeParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help
 trainParser = subparsers.add_parser('CreateModel', help='This command trains the 3DCNN model on a GPU machine')
 trainParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project. This file must include a column with the ModelName with all of the videos that should be included in the model.')
 trainParser.add_argument('ModelName', type = str, help = 'Name of model that will be trained')
-trainParser.add_argument('Network', type = str, help = 'Description of network to use')
 
 
 args = parser.parse_args()
@@ -95,24 +95,26 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
     from Modules.Analysis.LabelAnalyzer import LabelAnalyzer as LA
+    from Modules.Analysis.MachineLabel import MachineLabelCreator as MLC
 
     if args.command != 'CreateModel':
         inputData = ProjectData(args.InputFile, args.ProjectIDs)
     else:
-        inputData = Projectdata(args.InputFile, args.ProjectIDs, args.ModelName)
+        inputData = ProjectData(args.InputFile, None, args.ModelName)
     
     if args.command == 'DepthAnalysis':
         # Depth Analysis requires user input. First get user input for all projects then allow depth analysis to run in the background
         for projectID in inputData.projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.prepareData()
-                da_obj.cleanup()
+                if args.InitialPrep:
+                    da_obj.cleanup()
                 
         if not args.InitialPrep:
             for projectID in inputData.projects:
                 with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                     da_obj.processDepth()
-                    da_obj.cleanup()
+                    #da_obj.cleanup()
 
     elif args.command == 'VideoAnalysis':
         for projectID, videos in inputData.clusterData.items():
@@ -135,8 +137,16 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
                 
-    elif args.command == 'TrainModel':
-        pass
+    elif args.command == 'CreateModel':
+        #if socket.gethostname() != 'biocomputesrg':
+        #    raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
+        #print(os.environ['CONDA_DEFAULT_ENV'])
+        print(inputData.mLearningData)
+        ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile)
+        ml_obj.prepareData()
+        #for projectID, videos in inputData.clusterData.items():
+        #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
+        #        da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
                 
 elif args.command == 'SummarizeProjects':
     pass

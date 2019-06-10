@@ -38,19 +38,17 @@ class DataAnalyzer:
         #print(str(len(self.lp.frames)) + ' total frames for this project from ' + str(self.lp.frames[0].time) + ' to ' + str(self.lp.frames[-1].time), file = sys.stderr)
         #print(str(len(self.lp.movies)) + ' total videos for this project.', file = sys.stderr)
         if self.rewriteFlag:
-            self._print('Requested data will be reanalyzed from start to finish', file = sys.stderr)
+            print('Requested data will be reanalyzed from start to finish', file = sys.stderr)
         
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
 
         # Create Depth object (low overhead even if video is just processed)
         self.depthObj = DP(self.localMasterDirectory, self.cloudMasterDirectory, self.logfile)
-
-        
+   
     def __del__(self):
         # Remove local files once object is destroyed
         #shutil.rmtree(self.localMasterDirectory)
-        print('Deleting')
         pass
 
     def __enter__(self):
@@ -74,7 +72,6 @@ class DataAnalyzer:
             self.depthObj.createBowerLocations()
         else:
             self.depthObj.loadSmoothedArray()
-            self.depthObj.loadBowerLocations()
 
         self.depthObj.createDataSummary()
         
@@ -90,25 +87,26 @@ class DataAnalyzer:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createHMM()
                 vo.createClusterSummary()
-                vo.createClusterClips()
+                vo.createClusterClips(Nclips = int(2000/len(vos)))
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
                 print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusters()
                 vo.createClusterSummary()
-                vo.createClusterClips()
+                vo.createClusterClips(Nclips = int(2000/len(vos)))
                 vo.cleanup()
 
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusterSummary()
-                vo.createClusterClips()
+                print(int(2000/len(vos)))
+                vo.createClusterClips(Nclips = int(2000/len(vos)))
                 vo.cleanup()
 
             else:
                 print('Rewriting cluster clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterClips()
+                vo.createClusterClips(Nclips = int(2000/len(vos)))
                 vo.cleanup()
 
     def labelVideos(self, index, mainDT, cloudMLDirectory):
@@ -130,8 +128,8 @@ class DataAnalyzer:
             
         for vo in vos:
             vo.predictLabels(modelLocation)
+         
 
-                
     def summarizeData(self):
         pass
     

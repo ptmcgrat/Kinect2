@@ -8,6 +8,8 @@ import pandas as pd
 
 from skimage import morphology
 
+from collections import OrderedDict
+
 np.warnings.filterwarnings('ignore')
 
 class DepthProcessor:
@@ -32,8 +34,13 @@ class DepthProcessor:
         self.trayFile = 'trayInfo.txt'
         self.interpDepthFile = 'interpDepthData.npy'
         self.smoothDepthFile = 'smoothedDepthData.npy'
-        self.bowerLocationFile = 'bowerLocations.npy'
-        self.histogramFile = 'dataHistograms.xlsx'
+        self.dataSummary = 'summarizedData.xlsx'
+        self.dailySummary = 'DailySummary.pdf'
+        self.hourlySummary = 'HourlySummary.pdf'
+        self.totalHeightChange = 'totalHeightChange.npy'
+        self.totalBowerLocation = 'totalBowerLocations.npy'
+
+        self.convertPixel = 0.1030168618 # cm / pixel
 
         self.anLF = open(self.localDepthDirectory + 'DepthAnalysisLog.txt', 'a')
         self.fnull = open(os.devnull, 'a')
@@ -41,13 +48,13 @@ class DepthProcessor:
     def createTray(self):
         
         # Log info 
-        self._print('Manual identification of the tray from depth data')
+        self._print('Created ' + self.trayFile)
 
         # Download first and last depth data frame to use for tray identification
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.lp.frames[0].npy_file, self.localMasterDirectory + self.lp.frames[0].frameDir], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.lp.frames[-1].npy_file, self.localMasterDirectory + self.lp.frames[-1].frameDir], stderr = self.fnull)
         if not os.path.isfile(self.localMasterDirectory + self.lp.frames[0].npy_file) or not os.path.isfile(self.localMasterDirectory + self.lp.frames[-1].npy_file):
-            self._print('Cant find files needed to find the tray!')
+            self._print('Error: Cant find files needed to find the tray!')
             raise Exception
 
         # Create color image of depth change
@@ -86,7 +93,8 @@ class DepthProcessor:
         self.loadTray()
         
         # Download raw data and create new array to store it
-        self._print('Calculating smoothed depth array from raw data')
+        self._print('Created ' + self.interpDepthFile)
+        self._print('Created ' + self.smoothDepthFile)
         rawDepthData = np.empty(shape = (len(self.lp.frames), self.lp.height, self.lp.width))
         frameDirectories = set()
         for i, frame in enumerate(self.lp.frames):
@@ -155,263 +163,6 @@ class DepthProcessor:
 
         self._cloudUpdate()
 
-    def createBowerLocations(self, totalThreshold = 1.0, dayThreshold = 0.4, minPixels = 500):
-
-        self._print('Identifying bower locations from depth data')
-
-        self.loadTray()
-        self.loadSmoothedArray() # Load depth data if necessary
-
-        self.bowerLocations = np.zeros(shape = (self.lp.numDays + 1, self.lp.height, self.lp.width), dtype = "int8")
-        print(self.lp.numDays)
-        print(self.bowerLocations.shape)
-        
-        bins = np.array(list(range(-100, 101, 1)))*.2 # for getting histogram info
-        self.histograms = pd.DataFrame(index = bins[0:-1]) # for getting histogram info
-
-        #TotalChange
-        tFirst = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-        tLast = self.lp.frames[-1].time.replace(hour = 23, minute = 59, second = 59, microsecond = 999999)
-        tChange = self._returnHeightChange(tFirst, tLast)
-
-        tCastle = tChange.copy()
-        tCastle[tCastle < totalThreshold] = 0
-        tCastle[np.isnan(tCastle)] = 0
-        tCastle[tCastle!=0] = 1
-        tCastle = morphology.remove_small_objects(tCastle.astype(bool), minPixels)
-
-        tPit = tChange.copy()
-        tPit[tPit > -1*totalThreshold] = 0
-        tPit[np.isnan(tPit)] = 0
-        tPit[tPit!=0] = 1
-        tPit = morphology.remove_small_objects(tPit.astype(bool), minPixels)
-
-        self.bowerLocations[0][tCastle == True] = 1
-        self.bowerLocations[0][tPit == True] = -1
-
-        # Histogram information
-        a,b = np.histogram(tChange[~np.isnan(tChange)], bins = bins)
-        self.histograms['Total'] = pd.Series(a, index = bins[:-1])
-
-        #DailyChange        
-        for i in range(self.lp.numDays):
-            
-            start = tFirst + datetime.timedelta(hours = 24*i)
-            end = tFirst + datetime.timedelta(hours = 24*(i+1))
-
-            tChange = self._returnHeightChange(start, end)
-            tCastle = tChange.copy()
-            tCastle[tCastle < dayThreshold] = 0
-
-            tCastle[np.isnan(tCastle)] = 0
-            tCastle[tCastle!=0] = 1
-            tCastle = morphology.remove_small_objects(tCastle.astype(bool), minPixels)
-
-            tPit = tChange.copy()
-            tPit[tPit > -1*dayThreshold] = 0
-            tPit[np.isnan(tPit)] = 0
-            tPit[tPit!=0] = 1
-            tPit = morphology.remove_small_objects(tPit.astype(bool), minPixels)
-
-            self.bowerLocations[i+1][tCastle == True] = 1
-            self.bowerLocations[i+1][tPit == True] = -1
-
-            a,b = np.histogram(tChange[~np.isnan(tChange)], bins = bins)
-            self.histograms['Day' + str(i+1)] = pd.Series(a, index = bins[:-1])
-
-        np.save(self.localDepthDirectory + self.bowerLocationFile, self.bowerLocations)
-
-        writer = pd.ExcelWriter(self.localDepthDirectory + self.histogramFile)
-        self.histograms.to_excel(writer, 'Histogram')
-        writer.save()
-        
-        self._cloudUpdate()
-
-    def createDataSummary(self, dayThreshold = 0.4):
-        self._print('Creating Data Summary')
-
-        self.loadTray()
-        self.loadSmoothedArray()
-        self.loadBowerLocations()
-        
-        # Create summary figure of daily values
-        fig = plt.figure(figsize = (11,8.5)) 
-        fig.suptitle(self.lp.projectID)
-        
-        grid = plt.GridSpec(10, self.lp.numDays*4, wspace=0.02, hspace=0.02)
-
-        start_day = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-
-        # Show picture of final depth
-        pic_ax = fig.add_subplot(grid[0:2, 0:self.lp.numDays*1])
-        ax = pic_ax.imshow(self._returnHeightChange(-1, tray = True), vmin = 50, vmax = 70)
-        pic_ax.set_title('Final depth (cm)')
-        pic_ax.set_xticklabels([])
-        pic_ax.set_yticklabels([])
-        plt.colorbar(ax, ax = pic_ax)
-
-        # Show picture of total depth change
-        pic_ax2 = fig.add_subplot(grid[0:2, self.lp.numDays*1:self.lp.numDays*2])
-        ax2 = pic_ax2.imshow(self._returnHeightChange(start_day, -1, tray = True), vmin = -5, vmax = 5)
-        pic_ax2.set_title('Depth change (cm)')
-        pic_ax2.set_xticklabels([])
-        pic_ax2.set_yticklabels([])
-        plt.colorbar(ax2, ax = pic_ax2)
-
-        pic_ax3 = fig.add_subplot(grid[0:2, self.lp.numDays*2:self.lp.numDays*3])
-        ax3 = pic_ax3.imshow(self._returnMask(tray = True), vmin = -1, vmax = 1)
-        pic_ax3.set_title('Mask')
-        pic_ax3.set_xticklabels([])
-        pic_ax3.set_yticklabels([])
-        plt.colorbar(ax3, ax = pic_ax3)
-
-        pic_ax4 = fig.add_subplot(grid[0:2, self.lp.numDays*3:self.lp.numDays*4])
-        tdata = self._returnHeightChange(start_day, start_day + datetime.timedelta(hours = 24*self.lp.numDays), tray = True)
-        tdata[np.isnan(tdata)] = 0
-        x_values = [1.0, 2.0, 3.0, 4.0, 5.0]
-        y_values = []
-        for thresh in x_values:
-            tdata[(tdata<thresh) & (tdata > -1*thresh)] = 0
-            y_values.append(tdata.sum())
-        print(x_values)
-        print(y_values)
-        pic_ax4.plot(x_values, y_values)  
-            
-        bigPixels = []
-        volumeChange = []
-
-        #DailyChange        
-        for i in range(self.lp.numDays):
-            tdata[(tdata<dayThreshold*thresh) & (tdata > dayThreshold*-1*thresh)] = 0
-            
-            if i == 0:
-                current_ax = [fig.add_subplot(grid[3, i*4:i*4+3])]
-                current_ax2 = [fig.add_subplot(grid[4, i*4:i*4+3], sharex = current_ax[i])]
-                current_ax3 = [fig.add_subplot(grid[5, i*4:i*4+3], sharex = current_ax[i])]
-                current_ax4 = [fig.add_subplot(grid[6, i*4:i*4+3])]
-                current_ax5 = [fig.add_subplot(grid[7, i*4:i*4+3])]
-                current_ax6 = [fig.add_subplot(grid[8, i*4:i*4+3])]
-
-            else:
-                current_ax.append(fig.add_subplot(grid[3, i*4:i*4+3], sharey = current_ax[0]))
-                current_ax2.append(fig.add_subplot(grid[4, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax2[0]))
-                current_ax3.append(fig.add_subplot(grid[5, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax3[0]))
-                current_ax4.append(fig.add_subplot(grid[6, i*4:i*4+3], sharey = current_ax4[0]))
-                current_ax5.append(fig.add_subplot(grid[7, i*4:i*4+3], sharey = current_ax5[0]))
-                current_ax6.append(fig.add_subplot(grid[8, i*4:i*4+3], sharey = current_ax6[0]))
-
-            start = start_day + datetime.timedelta(hours = 24*i)
-            stop = start_day + datetime.timedelta(hours = 24*(i+1))
-
-            
-            
-
-            
-            current_ax[i].set_title('Day ' + str(i+1))
-
-            current_ax[i].imshow(self._returnHeightChange(start_day, stop, tray = True), vmin = -4*dayThreshold, vmax = 4*dayThreshold)
-            current_ax2[i].imshow(self._returnHeightChange(start, stop, tray = True), vmin = -4*dayThreshold, vmax = 4*dayThreshold)
-            current_ax3[i].imshow(self._returnHeightChange(start, stop, masked = True, tray = True), vmin = -4*dayThreshold, vmax = 4*dayThreshold)
-
-            bigPixels.append(np.count_nonzero(self._returnMask(start, tray = True)))
-            volumeChange.append(np.nansum(np.absolute(self._returnHeightChange(start, stop, tray = True))))
-   
-           
-            #Calculate largest changing values
-            tdata = self._returnHeightChange(start, stop, tray = True, masked = True)
-            volumeChange.append(tdata.sum())
-            bigPixels.append(np.count_nonzero(tdata))
-            x_values = [1, 1.5, 2, 2.5, 3.0]
-            y_values = []
-            n_values = []
-            b_values = []
-            for thresh in x_values:
-                tdata[(tdata<dayThreshold*thresh) & (tdata > dayThreshold*-1*thresh)] = 0
-                
-                y_values.append(tdata.sum())
-                n_values.append(np.count_nonzero(tdata))
-                b_values.append(tdata.sum()/np.count_nonzero(tdata))
-                
-            current_ax4[i].plot(x_values, y_values)
-            current_ax5[i].plot(x_values, n_values)
-            current_ax6[i].plot(x_values, b_values)
-                            
-            
-            current_ax[i].set_xticklabels([])
-            current_ax2[i].set_xticklabels([])
-            current_ax3[i].set_xticklabels([])
-
-            #if i != 0:
-            #    current_ax4[i].set_yticklabels([])
-            #    current_ax5[i].set_yticklabels([])
-            #    current_ax6[i].set_yticklabels([])
-
-            current_ax[i].set_yticklabels([])
-            current_ax2[i].set_yticklabels([])
-            current_ax3[i].set_yticklabels([])
-            current_ax[i].set_adjustable('box-forced')
-            current_ax2[i].set_adjustable('box-forced')
-            current_ax3[i].set_adjustable('box-forced')
-
-        #current_ax1 = fig.add_subplot(grid[6,0:self.lp.numDays*2])
-        #current_ax2 = fig.add_subplot(grid[6, self.lp.numDays*2:])
-
-        #current_ax1.plot(bigPixels)
-        #current_ax2.plot(volumeChange)
-        
-        plt.tight_layout()
-        #plt.show()
-            
-        plt.savefig(self.localDepthDirectory + 'DailySummary.pdf')
-        plt.clf()
-
-        self._cloudUpdate()
-
-        fig = plt.figure(figsize = (11,8.5)) 
-        fig.suptitle(self.lp.projectID)
-        
-        grid = plt.GridSpec(self.lp.numDays, 14, wspace=0.02, hspace=0.02)
-
-        changes = []
-        start_day = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-
-        for i in range(0, self.lp.numDays):
-            for j in range(12):
-                start = start_day + datetime.timedelta(hours = 24*i + j*2)
-                stop = start_day + datetime.timedelta(hours = 24*i + (j+1)*2)
-
-                current_ax = fig.add_subplot(grid[i, j])
-
-                current_ax.imshow(self._returnHeightChange(start, stop, tray = True), vmin = -2*dayThreshold, vmax = 2*dayThreshold)
-                current_ax.set_adjustable('box-forced')
-                current_ax.set_xticklabels([])
-                current_ax.set_yticklabels([])
-                if i == 0:
-                    current_ax.set_title(str(j*2) + '-' + str((j+1)*2))
-
-            current_ax = fig.add_subplot(grid[i, 12])
-            current_ax.imshow(self._returnMask(start, tray = True), vmin = -1, vmax = 1)
-            current_ax.set_adjustable('box-forced')
-            current_ax.set_xticklabels([])
-            current_ax.set_yticklabels([])
-            if i==0:
-                current_ax.set_title('Mask')
-
-
-            current_ax = fig.add_subplot(grid[i, 13])
-            current_ax.imshow(self._returnHeightChange(stop - datetime.timedelta(hours = 24), stop, tray = True), vmin = -2*dayThreshold, vmax = 2*dayThreshold)
-            current_ax.set_adjustable('box-forced')
-            current_ax.set_xticklabels([])
-            current_ax.set_yticklabels([])
-            if i==0:
-                current_ax.set_title('DailyChange')
-
-
-            
-        plt.savefig(self.localDepthDirectory + 'HourlySummary.pdf')
-        self._cloudUpdate()
-        plt.clf()
-        
     def loadTray(self):
         # If tray attribute already exists, exit
         try:
@@ -448,104 +199,339 @@ class DepthProcessor:
         else:
             self.createSmoothedArray() # Needs to be created
 
-    def loadBowerLocations(self):
-        try:
-            self.bowerLocations
-            return
-        except AttributeError:
-            pass
+    def createDataSummary(self, hourlyDelta = 2):
 
-        if not os.path.isfile(self.localDepthDirectory + self.bowerLocationFile):
-            print('Downloading depth file from Dropbox', file = sys.stderr)
-            subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.bowerLocationFile, self.localDepthDirectory], stderr = self.fnull)
+        self._print('Creating ' + self.dataSummary)
+        self._print('Creating ' + self.dailySummary)
+        self._print('Creating ' + self.hourlySummary)
+        self._print('Creating ' + self.totalHeightChange)
+        self._print('Creating ' + self.totalBowerLocation)
+
+        np.save(self.localDepthDirectory + self.totalHeightChange, self._returnHeightChange(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True))
+        np.save(self.localDepthDirectory + self.totalBowerLocation, self._returnBowerLocations(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True))
+
+        # Create summary figure of daily values
+        figDaily = plt.figure(figsize = (11,8.5)) 
+        figDaily.suptitle(self.lp.projectID + ' DailySummary')
+        gridDaily = plt.GridSpec(10, self.lp.numDays*4, wspace=0.02, hspace=0.02)
+
+        # Create summary figure of hourly values
+        figHourly = plt.figure(figsize = (11,8.5)) 
+        figHourly.suptitle(self.lp.projectID + ' HourlySummary')
+        gridHourly = plt.GridSpec(self.lp.numDays, int(24/hourlyDelta) + 2, wspace=0.02, hspace=0.02)
+
+
+        start_day = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
+        totalChangeData = self._summarizeBuilding(self.lp.frames[0].time, self.lp.frames[-1].time, extremePixels = 2000)
+
+        # Show picture of final depth
+        topAx1 = figDaily.add_subplot(gridDaily[0:2, 0:self.lp.numDays*1-1])
+        topAx1_ax = topAx1.imshow(self._returnHeight(self.lp.frames[-1].time, cropped = True), vmin = 50, vmax = 70)
+        topAx1.set_title('Final depth (cm)')
+        topAx1.set_xticklabels([])
+        topAx1.set_yticklabels([])
+        plt.colorbar(topAx1_ax, ax = topAx1)
+
+        # Show picture of total depth change
+        topAx2 = figDaily.add_subplot(gridDaily[0:2, self.lp.numDays*1:self.lp.numDays*2-1])
+        topAx2_ax = topAx2.imshow(self._returnHeightChange(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True), vmin = -5, vmax = 5)
+        topAx2.set_title('Total depth change (cm)')
+        topAx2.set_xticklabels([])
+        topAx2.set_yticklabels([])
+        plt.colorbar(topAx2_ax, ax = topAx2)
+
+        # Show picture of pit and castle mask
+        topAx3 = figDaily.add_subplot(gridDaily[0:2, self.lp.numDays*2:self.lp.numDays*3-1])
+        topAx3_ax = topAx3.imshow(self._returnHeightChanges(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True, masked = True), vmin = -5, vmax = 5)
+        topAx3.set_title('Mask')
+        topAx3.set_xticklabels([])
+        topAx3.set_yticklabels([])
+        #plt.colorbar(topAx3_ax, ax = topAx3)
+
+        # Bower index based upon higher thresholds
+        topAx4 = figDaily.add_subplot(gridDaily[0:2, self.lp.numDays*3:self.lp.numDays*4])
+        x_values = [1.0, 3.0, 5.0]
+        y_values = []
+        for thresh in x_values:
+            tdata = self._summarizeBuilding(self.lp.frames[0].time, self.lp.frames[-1].time, totalThreshold = thresh)
+            y_values.append(tdata['bowerIndex'])
+            totalChangeData['bowerIndex_' + str(thresh)] = tdata['bowerIndex']
+        topAx4.plot(x_values, y_values)
+        topAx4.set_title('BowerIndex vs. Threshold (cm)')
+        figDaily.tight_layout()    
+
+        # Create figures and get data for daily Changes
+        dailyChangeData = []
+        for i in range(self.lp.numDays):
+            if i == 0:
+                current_ax = [figDaily.add_subplot(gridDaily[3, i*4:i*4+3])]
+                current_ax2 = [figDaily.add_subplot(gridDaily[4, i*4:i*4+3], sharex = current_ax[i])]
+                current_ax3 = [figDaily.add_subplot(gridDaily[5, i*4:i*4+3], sharex = current_ax[i])]
+                
+            else:
+                current_ax.append(figDaily.add_subplot(gridDaily[3, i*4:i*4+3], sharey = current_ax[0]))
+                current_ax2.append(figDaily.add_subplot(gridDaily[4, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax2[0]))
+                current_ax3.append(figDaily.add_subplot(gridDaily[5, i*4:i*4+3], sharex = current_ax[i], sharey = current_ax3[0]))
+                
+            start = start_day + datetime.timedelta(hours = 24*i)
+            stop = start_day + datetime.timedelta(hours = 24*(i+1))
             
-        if os.path.isfile(self.localDepthDirectory + self.bowerLocationFile):
-            self.bowerLocations = np.load(self.localDepthDirectory + self.bowerLocationFile)
+            dailyChangeData.append(self._summarizeBuilding(start,stop, extremePixels = 2000))
+            dailyChangeData[i]['Day'] = i+1
+            dailyChangeData[i]['Midpoint'] = i+1 + .5
+            dailyChangeData[i]['StartTime'] = str(start)
+            for thresh in [0.4, 0.8, 1.2]:
+               tempData = self._summarizeBuilding(start,stop, totalThreshold = thresh)
+               dailyChangeData[i]['bowerIndex_' + str(thresh)] = tempData['bowerIndex']
+
+
+            current_ax[i].set_title('Day ' + str(i+1))
+
+            current_ax[i].imshow(self._returnHeightChange(start_day, stop, cropped = True), vmin = -2, vmax = 2)
+            current_ax2[i].imshow(self._returnHeightChange(start, stop, cropped = True), vmin = -2, vmax = 2)
+            current_ax3[i].imshow(self._returnHeightChange(start, stop, masked = True, cropped = True), vmin = -2, vmax = 2)
+           
+            current_ax[i].set_xticklabels([])
+            current_ax2[i].set_xticklabels([])
+            current_ax3[i].set_xticklabels([])
+
+            current_ax[i].set_yticklabels([])
+            current_ax2[i].set_yticklabels([])
+            current_ax3[i].set_yticklabels([])
+
+            current_ax[i].set_adjustable('box-forced')
+            current_ax2[i].set_adjustable('box-forced')
+            current_ax3[i].set_adjustable('box-forced')
+
+        figDaily.tight_layout()
+        hourlyChangeData = []
+
+        for i in range(0, self.lp.numDays):
+            for j in range(int(24/hourlyDelta)):
+                start = start_day + datetime.timedelta(hours = 24*i + j*hourlyDelta)
+                stop = start_day + datetime.timedelta(hours = 24*i + (j+1)*hourlyDelta)
+
+                hourlyChangeData.append(self._summarizeBuilding(start,stop, extremePixels = 2000))
+                hourlyChangeData[-1]['Day'] = i+1
+                hourlyChangeData[-1]['Midpoint'] = i+1 + ((j + 0.5) * hourlyDelta)/24
+                hourlyChangeData[-1]['StartTime'] = str(start)
+
+                for thresh in [0.2, 0.4, 0.8]:
+                    tempData = self._summarizeBuilding(start,stop,totalThreshold = thresh)
+                    hourlyChangeData[-1]['bowerIndex_' + str(thresh)] = tempData['bowerIndex']
+
+                current_ax = figHourly.add_subplot(gridHourly[i, j])
+
+                current_ax.imshow(self._returnHeightChange(start, stop, cropped = True), vmin = -1, vmax = 1)
+                current_ax.set_adjustable('box-forced')
+                current_ax.set_xticklabels([])
+                current_ax.set_yticklabels([])
+                if i == 0:
+                    current_ax.set_title(str(j*hourlyDelta) + '-' + str((j+1)*hourlyDelta))
+
+            current_ax = figHourly.add_subplot(gridHourly[i, int(24/hourlyDelta)])
+            current_ax.imshow(self._returnBowerLocations(stop - datetime.timedelta(hours = 24), stop, cropped = True), vmin = -1, vmax = 1)
+            current_ax.set_adjustable('box-forced')
+            current_ax.set_xticklabels([])
+            current_ax.set_yticklabels([])
+            if i==0:
+                current_ax.set_title('DMask')
+
+
+            current_ax = figHourly.add_subplot(gridHourly[i, int(24/hourlyDelta)+1])
+            current_ax.imshow(self._returnHeightChange(stop - datetime.timedelta(hours = 24), stop, cropped = True), vmin = -1, vmax = 1)
+            current_ax.set_adjustable('box-forced')
+            current_ax.set_xticklabels([])
+            current_ax.set_yticklabels([])
+            if i==0:
+                current_ax.set_title('DChange')
+
+        totalDT = pd.DataFrame([totalChangeData])
+        dailyDT = pd.DataFrame(dailyChangeData)
+        hourlyDT = pd.DataFrame(hourlyChangeData)
+
+        writer = pd.ExcelWriter(self.localDepthDirectory + self.dataSummary)
+        totalDT.to_excel(writer,'Total')
+        dailyDT.to_excel(writer,'Daily')
+        hourlyDT.to_excel(writer,'Hourly')
+        writer.save()
+
+        volAx = figDaily.add_subplot(gridDaily[6:8, 0:self.lp.numDays*4])
+        volAx.plot(dailyDT['Midpoint'], dailyDT['totalVolume'])
+        volAx.plot(hourlyDT['Midpoint'], hourlyDT['totalVolume'])
+        volAx.set_ylabel('Volume Change')
+
+        bIAx = figDaily.add_subplot(gridDaily[8:10, 0:self.lp.numDays*4], sharex = volAx)
+        bIAx.scatter(dailyDT['Midpoint'], dailyDT['bowerIndex'])
+        bIAx.scatter(hourlyDT['Midpoint'], hourlyDT['bowerIndex'])
+        bIAx.set_xlabel('Day')
+        bIAx.set_ylabel('Bower Index')
+
+
+
+        figDaily.savefig(self.localDepthDirectory + self.dailySummary)  
+        figHourly.savefig(self.localDepthDirectory + self.hourlySummary)  
+
+        self._cloudUpdate()
+        plt.clf()
+    
+    def _summarizeBuilding(self, t0, t1, totalThreshold = None, minPixels = None, extremePixels = 0):  
+        # Check times are good
+        self._checkTimes(t0,t1)
+
+        data = OrderedDict()
+        # Get data
+        data['projectID'] = self.lp.projectID
+        bowerLocations = self._returnBowerLocations(t0, t1, cropped = True, totalThreshold = totalThreshold, minPixels = minPixels)
+        heightChange = self._returnHeightChange(t0, t1, masked = True, cropped = True, totalThreshold = totalThreshold, minPixels = minPixels)
+        data['castleArea'] = np.count_nonzero(bowerLocations == 1)*self.convertPixel*self.convertPixel
+        data['pitArea'] = np.count_nonzero(bowerLocations == -1)*self.convertPixel*self.convertPixel
+        data['totalArea'] = heightChange.shape[0]*heightChange.shape[1]*self.convertPixel*self.convertPixel
+        data['castleVolume'] = np.nansum(heightChange[bowerLocations == 1])*self.convertPixel*self.convertPixel
+        data['pitVolume'] = np.nansum(heightChange[bowerLocations == -1])*-1*self.convertPixel*self.convertPixel
+        data['totalVolume'] = data['castleVolume'] + data['pitVolume']
+        if extremePixels == 0:
+            data['bowerIndex'] = (data['castleVolume'] - data['pitVolume'])/data['totalVolume']
         else:
-            self.createBowerLocations()
+            sortedData = np.sort(np.abs(heightChange[~np.isnan(heightChange)].flatten()))
+            try:
+                threshold = sortedData[-1*extremePixels]
+            except IndexError:
+                threshold = sortedData[0]
+            numerator = np.nansum(heightChange[(bowerLocations == 1) & (heightChange > threshold)]) - -1*np.nansum(heightChange[(bowerLocations == -1) & (heightChange < -1*threshold)])
+            denom = np.nansum(heightChange[(bowerLocations == 1) & (heightChange > threshold)]) + -1*np.nansum(heightChange[(bowerLocations == -1) & (heightChange < -1*threshold)])
+            data['bowerIndex'] = numerator/denom
+        return data
 
-    def returnHeight(self, t, x, y):
-        self.loadBowerLocations()
-        
-            
-    def _returnHeightChange(self, t0=None, t1 = None, masked = False, tray = False):
-        self.loadSmoothedArray() #Make sure array is loaded
+    def _returnBowerLocations(self, t0, t1, cropped = False, totalThreshold = None, minPixels = None):
+        # Check times are good
+        self._checkTimes(t0,t1)
 
-        if masked:
-            self.loadBowerLocations()
+        if cropped:
+            self.loadTray()
 
-        if tray:
+        # Identify total height change and time change
+        totalHeightChange = self._returnHeightChange(t0, t1, masked=False, cropped=False)
+        timeChange = t1 - t0
+
+        # Determine threshold and minimum size of bower to use based upon timeChange
+        if timeChange.total_seconds() < 7300:
+            # ~2 hours or less
+            if totalThreshold is None:
+                totalThreshold = 0.2
+            if minPixels is None:
+                minPixels = 1000
+        elif timeChange.total_seconds() < 129600:
+            # 2 hours to 1.5 days
+            if totalThreshold is None:
+                totalThreshold = 0.4
+            if minPixels is None:
+                minPixels = 1000
+        else:
+            #  1.5 days or more
+            if totalThreshold is None:
+                totalThreshold = 1.0
+            if minPixels is None:
+                minPixels = 1000
+
+        tCastle = totalHeightChange.copy()
+        tCastle[tCastle < totalThreshold] = 0
+        tCastle[np.isnan(tCastle)] = 0
+        tCastle[tCastle!=0] = 1
+        tCastle = morphology.remove_small_objects(tCastle.astype(bool), minPixels)
+
+        tPit = totalHeightChange.copy()
+        tPit[tPit > -1*totalThreshold] = 0
+        tPit[np.isnan(tPit)] = 0
+        tPit[tPit!=0] = 1
+        tPit = morphology.remove_small_objects(tPit.astype(bool), minPixels)
+
+        totalHeightChange[tCastle == False] = 0
+        totalHeightChange[tPit == False] = 0
+
+        totalHeightChange[tCastle == True] = 1
+        totalHeightChange[tPit == True] = -1
+
+        if cropped:
+            totalHeightChange = totalHeightChange[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]]
+
+        return totalHeightChange
+         
+    def _returnHeightChange(self, t0, t1, masked = False, cropped = False, totalThreshold = None, minPixels = None):
+        # Check times are good
+        self._checkTimes(t0,t1)
+
+        # Load necessary data
+        self.loadSmoothedArray()
+        if cropped:
             self.loadTray()
         
         # Find closest frames to desired times
         try:
-            if t0 == -1:
-                first_index = -1
-            else:
-                first_index = max([False if x.time<=t0 else True for x in self.lp.frames].index(True) - 1, 0) #This ensures that we get overnight changes when kinect wasn't running
+            first_index = max([False if x.time<=t0 else True for x in self.lp.frames].index(True) - 1, 0) #This ensures that we get overnight changes when kinect wasn't running
         except ValueError:
             if t0 > self.lp.frames[-1].time:
                 first_index = -1
             else:
                 first_index = 0
 
-        if t1 is not None:
-            try:
-                if t1 == -1:
-                    last_index = -1
-                else:
-                    last_index = max([False if x.time<=t1 else True for x in self.lp.frames].index(True) - 1, 0)
-            except ValueError:
-                last_index = len(self.lp.frames) - 1
+        try:
+            last_index = max([False if x.time<=t1 else True for x in self.lp.frames].index(True) - 1, 0)
+        except ValueError:
+            last_index = len(self.lp.frames) - 1
             
-            change = self.smoothDepthData[first_index] - self.smoothDepthData[last_index]
-
-        else:
-            change = self.smoothDepthData[first_index]  
+        change = self.smoothDepthData[first_index] - self.smoothDepthData[last_index]
         
         if masked:
-            if (t1 - t0).total_seconds() > 86400: # if difference between times is greater than 24 hours use total mask 
-                change[self._returnMask() == 0] = 0
-            else:
-                change[self._returnMask(t0) == 0] = 0
+            change[self._returnBowerLocations(t0, t1, totalThreshold = totalThreshold, minPixels = minPixels) == 0] = 0
 
-        if tray:
+        if cropped:
+            change = change[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]]
+            
+        return change
+      
+    def _returnHeight(self, t, cropped = False):
+
+        # Check times are good
+        self._checkTimes(t)
+
+        # Load necessary data
+        self.loadSmoothedArray()
+        if cropped:
+            self.loadTray()
+
+       # Find closest frames to desired times
+        try:
+            first_index = max([False if x.time<=t else True for x in self.lp.frames].index(True) - 1, 0) #This ensures that we get overnight changes when kinect wasn't running
+        except ValueError:
+            if t > self.lp.frames[-1].time:
+                first_index = -1
+            else:
+                first_index = 0
+
+        change = self.smoothDepthData[first_index]
+        
+        if cropped:
             change = change[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]]
             
         return change
 
-    def _returnMask(self, t1 = None, tray = False):
-        self.loadBowerLocations()
-
-        if tray:
-            self.loadTray()
-
-
-        if t1 is None:
-            out = self.bowerLocations[0]
-        else:
-            startTime = self.lp.frames[0].time.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-            index = (t1 - startTime).days + 1
-            try:
-                out = self.bowerLocations[index]
-            except IndexError:
-                print(t1)
-                print(self.lp.frames[0].time)
-                print(index)
-                print(t1 - self.lp.frames[0].time)
-                raise IndexError
-
-        if tray:
-            return out[self.tray_r[0]:self.tray_r[2],self.tray_r[1]:self.tray_r[3]]
-        else:
-            return out
-        
     def _cloudUpdate(self):
         print('Syncing with cloud', file = sys.stderr)
         subprocess.call(['rclone', 'copy', self.localDepthDirectory, self.cloudDepthDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', self.localOutputDirectory, self.cloudOutputDirectory], stderr = self.fnull)
 
-        
+    def _checkTimes(self, t0, t1 = None):
+        if t1 is None:
+            if type(t0) != datetime.datetime:
+                raise Exception('Timepoints to must be datetime.datetime objects')
+            return
+        # Make sure times are appropriate datetime objects
+        if type(t0) != datetime.datetime or type(t1) != datetime.datetime:
+            raise Exception('Timepoints to must be datetime.datetime objects')
+        if t0 > t1:
+            raise Exception('Second timepoint must be greater than first timepoint')
+
     def _print(self, outtext):
         print(str(getpass.getuser()) + ' analyzed at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
         print(outtext, file = sys.stderr)

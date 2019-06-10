@@ -40,6 +40,7 @@ class VideoProcessor:
         self.height = videoObj.height
         self.width = videoObj.width
         self.frame_rate = videoObj.framerate
+        self.startTime = videoObj.time
 
         self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
         self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
@@ -171,9 +172,7 @@ class VideoProcessor:
                 return
             else:
                 self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0, index_col = 0)
-                
-
-                        
+                                  
     def createHMM(self, blocksize = 5*60, window = 120, hmm_time = 60*60):
         """
         This functon decompresses video into smaller chunks of data formated in the numpy array format.
@@ -196,7 +195,7 @@ class VideoProcessor:
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        self._print('calculateHMM: Converting video into HMM data')
+        self._print('Created ' + self.hmmFile)
         print('TotalBlocks: ' + str(total_blocks), file = sys.stderr)
         print('TotalThreads: ' + str(self.cores), file = sys.stderr)
         print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
@@ -263,9 +262,9 @@ class VideoProcessor:
         print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs', file = sys.stderr)
 
     def createClusters(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
-        self.loadVideo()
+        #self.loadVideo()
         self.loadHMM()
-        self._print('Clustering HMM transitions using DBScan')
+        self._print('Created ' + self.labeledCoordsFile)
         coords = self.obj.retDBScanMatrix(minMagnitude)
         np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
         #subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
@@ -300,9 +299,11 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def createClusterSummary(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
-        self.loadVideo()
+        #self.loadVideo()
         self.loadHMM()
         self.loadClusters()
+        self._print('Created ' + self.clusterFile)
+
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
         print(self.projectID + '\t' + self.baseName + ': ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters', file = sys.stderr)
@@ -321,12 +322,14 @@ class VideoProcessor:
             'Y_span': int(x['Y'].max() - x['Y'].min()),
             'ManualAnnotation': 'No',
             'ManualLabel': '',
+            'ClipCreated': '',
         })
         )
         print('Calculating new coordinates', file = sys.stderr)
 
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.X + self.transM[0][1]*row.Y + self.transM[0][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
+        clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
 
         clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
         clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0)
@@ -355,7 +358,7 @@ class VideoProcessor:
 
         
         clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
-        subprocess.call(['rclone', 'sync', self.localClusterDirectory, self.cloudClusterDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         self.clusterData = clusterData
         
     def createClusterClips(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
@@ -367,20 +370,42 @@ class VideoProcessor:
         self._print('Creating clip videos for each cluster')
 
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
-        
+        count = 0
         for row in self.clusterData.itertuples():
-            LID, N, t, x, y, ml = row.Index, row.N, row.t, row.X, row.Y, row.ManualAnnotation
+            #if count ==30:
+            #    break
+            LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
+                #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
+                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
                 continue
-            outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
+            #print('ffmpeg')
+            #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
+            #t1 = datetime.datetime.now()
+            #subprocess.call(command, stderr = self.fnull)
+            #t2 = datetime.datetime.now()
+            #try:
+            #    ffmpegTime += t2-t1
+            #except:
+            #    ffmpegTime = t2 - t1
+
+            outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
             for i in range(delta_t*2):
                 ret, frame = cap.read()
                 outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
             outAll.release()
-            
+            count+=1
+            #t3 = datetime.datetime.now()
+            #try:
+            #    cvTime += t3-t2
+            #except:
+            #    cvTime = t3 - t2
+            #print('ff: ' + str(ffmpegTime) + ' cv: ' + str(cvTime))
+            self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
+
             if ml == 'Yes':
-                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
+                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
 
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
                 HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
@@ -398,13 +423,17 @@ class VideoProcessor:
 
                 outAllHMM.release()
 
-        subprocess.call(['rclone', 'sync', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'sync', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
+        print('Syncing data', file = sys.stderr)
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        subprocess.call(['rclone', 'delete', self.cloudManualLabelClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
                 
     def loadClusterClips(self):
         subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localAllClipsDirectory], stderr = self.fnull)
-
-        
+   
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory):
 
         self._print('Labeling cluster')
@@ -417,13 +446,18 @@ class VideoProcessor:
         if 'MLabelTime' not in self.clusterData:
             self.clusterData['MLabelTime'] = ''
             
-            
-        
+        if rewrite:
+            self.clusterData['ManualLabel'] = ''
+            self.clusterData['MLabelTime'] = ''
+            self.clusterData['MLabeler'] = ''
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
 
-        categories = ['c','p','s','u','w','n','t','e','o','b','m','f','r','q']
+        catetories = ['c','f','p','t','b','m','s','x','o','q']
 
-        print("Type 'c' for scoop; 'p' for spit; 's' for spit multiple; 'u' for quivering, 'w' for body/fin/swim', 'n' for no fish, 't' for stationary fish, 'e' for event reflection, 'o' for other; 'b' for build multiple clusters; 'm' for feed multiple; 'f' for feed spit; 'r' for spit run; 'q' to quit")
+        print("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
         
         newClips = []
         for f in clips:
@@ -441,7 +475,7 @@ class VideoProcessor:
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                cv2.imshow("Type 'c' for scoop; 'p' for spit; 's' for spit multiple; 'u' for quivering, 'w' for body/fin/swim', 'n' for no fish, 't' for stationary fish, 'e' for event reflection, 'o' for other; 'b' for build multiple clusters; 'm' for feed multiple; 'f' for feed spit; 'r' for spit run; 'q' to quit",cv2.resize(frame,(0,0),fx=4, fy=4))
+                cv2.imshow("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit",cv2.resize(frame,(0,0),fx=4, fy=4))
                 info = cv2.waitKey(25)
             
                 if info in [ord(x) for x in categories]:
@@ -590,6 +624,7 @@ class VideoProcessor:
         print(str(getpass.getuser()) + ' analyzed ' + self.baseName + ' at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
         print(outtext, file = sys.stderr)
         self.anLF.close() # Close and reopen file to flush it
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
 
