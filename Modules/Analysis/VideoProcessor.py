@@ -455,9 +455,9 @@ class VideoProcessor:
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
 
-        catetories = ['c','f','p','t','b','m','s','x','o','q']
+        categories = ['c','f','p','t','b','m','s','x','o','q']
 
-        print("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
+        print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
         
         newClips = []
         for f in clips:

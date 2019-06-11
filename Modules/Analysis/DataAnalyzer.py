@@ -16,6 +16,7 @@ class DataAnalyzer:
         self.localMasterDirectory = locDir + projectID + '/'
         self.cloudMasterDirectory = remote + ':' + cloudDir + projectID + '/'
         self.transMFile = 'depthVideoTransformation.npy'
+        self.transFig = 'depthVideoTransformation.pdf'
         
         self.rewriteFlag = rewriteFlag
                 
@@ -58,12 +59,15 @@ class DataAnalyzer:
         return False
         
     def prepareData(self):
+        print('Preparing ' + self.projectID, file = sys.stderr)
         if self.rewriteFlag:
             self.depthObj.createTray()
         else:
             self.depthObj.loadTray()
         
     def processDepth(self):
+        print('Processing ' + self.projectID, file = sys.stderr)
+
         self.depthObj.loadTray()
         if self.rewriteFlag:
             self.depthObj.createSmoothedArray()
@@ -220,6 +224,8 @@ class DataAnalyzer:
             ax1.imshow(im1_gray, cmap='gray')
             ax2.imshow(newImage, cmap='gray')
             
+            fig.savefig(self.localMasterDirectory + self.transFig)
+
             plt.show()
 
             userInput = input('Type q if this is acceptable: ')
@@ -229,6 +235,7 @@ class DataAnalyzer:
 
         np.save(self.localMasterDirectory + self.transMFile, self.transM)
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.transMFile, self.cloudMasterDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.transFig, self.cloudMasterDirectory], stderr = self.fnull)
 
                 
 

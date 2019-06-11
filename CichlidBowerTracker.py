@@ -18,8 +18,6 @@ class ProjectData:
                 projectID = row[1].ProjectID
                 excelProjects.add(projectID)
                 if projects is not None and projectID not in projects:
-                    print('Cant find projectID: ' + projectID)
-                    print('Options are ' ','.join(projects))
                     continue
                 groupID = row[1].GroupID
                 self.projects[projectID] = groupID
