@@ -455,9 +455,9 @@ class VideoProcessor:
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
 
-        categories = ['c','f','p','t','b','m','s','x','o','q']
+        categories = ['c','f','p','t','b','m','s','x','o','d','q']
 
-        print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
+        print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
         
         newClips = []
         for f in clips:
@@ -475,7 +475,7 @@ class VideoProcessor:
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                cv2.imshow("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 's': spawn; 'o': fish other; 'x': nofish other; 'q': quit",cv2.resize(frame,(0,0),fx=4, fy=4))
+                cv2.imshow("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit",cv2.resize(frame,(0,0),fx=4, fy=4))
                 info = cv2.waitKey(25)
             
                 if info in [ord(x) for x in categories]:
