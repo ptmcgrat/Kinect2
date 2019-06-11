@@ -171,7 +171,7 @@ class VideoProcessor:
                 self.createClusterSummary()
                 return
             else:
-                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0, index_col = 0)
+                self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0, index_col = 0)
                                   
     def createHMM(self, blocksize = 5*60, window = 120, hmm_time = 60*60):
         """
@@ -331,8 +331,8 @@ class VideoProcessor:
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
 
-        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
-        clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = '\t', header = 0)
+        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0)
         
         # Identify rows for manual labeling
         manualClips = 0
@@ -357,7 +357,7 @@ class VideoProcessor:
                 smallClips += 1
 
         
-        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         self.clusterData = clusterData
         
@@ -424,7 +424,7 @@ class VideoProcessor:
                 outAllHMM.release()
 
         print('Syncing data', file = sys.stderr)
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'delete', self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
@@ -450,7 +450,7 @@ class VideoProcessor:
             self.clusterData['ManualLabel'] = ''
             self.clusterData['MLabelTime'] = ''
             self.clusterData['MLabeler'] = ''
-            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
             subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
@@ -493,7 +493,7 @@ class VideoProcessor:
             
             newClips.append(f.replace('_ManualLabel',''))
 
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = '\t')
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         print('Updating ML directories...')
@@ -502,12 +502,12 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
-        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = '\t', header = 0, index_col = 0)
+        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
 
         tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
         tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
 
-        tempData2.to_csv(self.localClusterDirectory + mainDT, sep = '\t')
+        tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
 
     def predictLabels(self, modelLocation):
