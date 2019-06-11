@@ -60,10 +60,8 @@ class DataAnalyzer:
     def prepareData(self):
         if self.rewriteFlag:
             self.depthObj.createTray()
-            self._createRegistration()
         else:
             self.depthObj.loadTray()
-            self._loadRegistration()
         
     def processDepth(self):
         self.depthObj.loadTray()
@@ -110,7 +108,6 @@ class DataAnalyzer:
                 vo.cleanup()
 
     def labelVideos(self, index, mainDT, cloudMLDirectory):
-        self._loadRegistration()
         # Create Video objects (low overhead even if video is not processed)
         self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
         if index is None:
@@ -123,7 +120,6 @@ class DataAnalyzer:
 
     def predictLabels(self, index, modelLocation):
         print(modelLocation)
-        self._loadRegistration()
         vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
             
         for vo in vos:
