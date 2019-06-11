@@ -3,7 +3,7 @@ from subprocess import call
 
 class ProjectData:
     def __init__(self, excelFile, projects, machLearningID = None):
-        print(projects)
+        excelProjects = set()
         if machLearningID is None:
             dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
         else:
@@ -14,8 +14,12 @@ class ProjectData:
         self.mLearningData = []
         for row in dt.iterrows():
             if row[1].Include == True:
+
                 projectID = row[1].ProjectID
+                excelProjects.add(projectID)
                 if projects is not None and projectID not in projects:
+                    print('Cant find projectID: ' + projectID)
+                    print('Options are ' ','.join(projects))
                     continue
                 groupID = row[1].GroupID
                 self.projects[projectID] = groupID
@@ -33,7 +37,10 @@ class ProjectData:
                             self.mLearningData.append(projectID)
                     except KeyError:
                         raise KeyError(machLearningID + ' not a column in Excel data file')
-   
+        for projectID in projects:
+            if projectID not in excelProjects:
+                    print('Cant find projectID: ' + projectID)
+                    print('Options are ' ','.join(projects))
 
 
 rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to the dropbox or other cloud account
@@ -114,7 +121,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
             for projectID in inputData.projects:
                 with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                     da_obj.processDepth()
-                    #da_obj.cleanup()
+                    da_obj.cleanup()
 
     elif args.command == 'VideoAnalysis':
         for projectID, videos in inputData.clusterData.items():
