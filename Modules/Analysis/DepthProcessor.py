@@ -242,7 +242,7 @@ class DepthProcessor:
 
         # Show picture of pit and castle mask
         topAx3 = figDaily.add_subplot(gridDaily[0:2, self.lp.numDays*2:self.lp.numDays*3-1])
-        topAx3_ax = topAx3.imshow(self._returnHeightChanges(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True, masked = True), vmin = -5, vmax = 5)
+        topAx3_ax = topAx3.imshow(self._returnHeightChange(self.lp.frames[0].time, self.lp.frames[-1].time, cropped = True, masked = True), vmin = -5, vmax = 5)
         topAx3.set_title('Mask')
         topAx3.set_xticklabels([])
         topAx3.set_yticklabels([])
