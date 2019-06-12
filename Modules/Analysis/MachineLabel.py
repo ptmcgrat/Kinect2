@@ -1,4 +1,4 @@
-import os, subprocess
+import os, subprocess, sys
 import pandas as pd
 from random import randint
 
@@ -67,11 +67,11 @@ class MachineLabelCreator:
 
     def prepareData(self):
         allClips = set()
-        print('Downloading ' + self.labeledClusterFile)
+        print('Downloading ' + self.labeledClusterFile, file = sys.stderr)
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localMasterDirectory], stderr = self.fnull)
         self.dt = pd.read_csv(self.localMasterDirectory + self.labeledClusterFile, sep = ',')
 
-        print('Creating: ' + self.localMasterDirectory + 'cichlids_train_list.txt', vile = sys.stderr)
+        print('Creating: ' + self.localMasterDirectory + 'cichlids_train_list.txt', file = sys.stderr)
         with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
 
             for projectID in self.projects:
