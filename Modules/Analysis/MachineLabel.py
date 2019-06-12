@@ -90,12 +90,13 @@ class MachineLabelCreator:
                         try:
                             label = self.dt.loc[(self.dt.projectID == projectID) & (self.dt.videoID == videoID) & (self.dt.LID == LID)]['ManualLabel'].values[0]
                         except IndexError:
+                            print('LabelError: ' + projectID + ' ' + videoID + str(LID))
                             continue
                             raise Exception('No Label for ' + clip)
                         print(label)
 
                         if randint(0,4) == 4:
-                            print('m/' + mp4File.replace('.mp4',''), file = g)
+                            print(label + '/' + clip.replace('.mp4',''), file = g)
                             outDirectory = self.localJpegDirectory + 'm/' + clips.remove('.mp4') + '/'
                             os.makedirs(outDirectory) 
                             subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
@@ -103,7 +104,7 @@ class MachineLabelCreator:
                             with open(outDirectory + 'n_frames', 'w') as h:
                                 print('120', file = h)
                         else:
-                            print(label + '/' + clip.replace('.mp4',''), file = g)
+                            print(label + '/' + clip.replace('.mp4',''), file = f)
                             outDirectory = self.localJpegDirectory + label + '/' + clips.remove('.mp4') + '/'
                             os.makedirs(outDirectory) 
                             subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
@@ -115,7 +116,8 @@ class MachineLabelCreator:
     def runTraining(self):
         command = []
         command += ['python', self.machineLearningDirectory + 'utils/cichlids_json.py']
-        command += [self.tempMasterDirectory, self.dataDirectory + 'classInd.txt']
+        command += [self.tempMasterDirectory, self.classIndFile]
+        print(command)
 
         command = []
 
@@ -139,5 +141,6 @@ class MachineLabelCreator:
         command += ['--n_val_samples', '1']
         command += ['--n_finetune_classes', '7']
         command += ['--no_train']
+        print(command)
       
 
