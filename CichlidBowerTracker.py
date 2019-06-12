@@ -83,7 +83,7 @@ summarizeParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help
 trainParser = subparsers.add_parser('CreateModel', help='This command trains the 3DCNN model on a GPU machine')
 trainParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project. This file must include a column with the ModelName with all of the videos that should be included in the model.')
 trainParser.add_argument('ModelName', type = str, help = 'Name of model that will be trained')
-
+trainParser.add_argument('classIndFile', type = str, help = 'Name of class file that contains info on labels')
 
 args = parser.parse_args()
 
@@ -147,7 +147,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         #    raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
         #print(os.environ['CONDA_DEFAULT_ENV'])
         print(inputData.mLearningData)
-        ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile)
+        ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
         ml_obj.prepareData()
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:

@@ -47,7 +47,7 @@ class MachineLabelAnalyzer:
         call(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train'])
         
 class MachineLabelCreator:
-    def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, labeledClusterFile):
+    def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, labeledClusterFile, classIndFile):
         self.modelID = modelID
         self.projects = projects
         self.localMasterDirectory = localMasterDirectory
@@ -56,6 +56,7 @@ class MachineLabelCreator:
         self.cloudClipsDirectory = cloudMasterDirectory + 'Clips/'
         self.localJpegDirectory = self.localMasterDirectory + 'jpgs/'
         self.labeledClusterFile = labeledClusterFile
+        self.classIndFile = classIndFile
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
 
