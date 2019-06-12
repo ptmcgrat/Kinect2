@@ -125,18 +125,15 @@ class MachineLabelCreator:
         command += ['--n_classes', '7'] 
         command += ['--batch_size', '12']
         command += ['--n_threads', '5']
+        command += ['checkpoint', '5']
         command += ['--dataset', 'cichlids']
         command += ['--sample_duration', '120']
         command += ['--mean_dataset', 'cichlids']
         command += ['--train_crop' ,'random']
-        command += ['--n_epochs' ,'1'] 
-        command += ['--pretrain_path', 'model.pth']
-        command += ['--weight_decay' ,'1e-12']
+        command += ['--n_epochs' ,'100'] 
+        command += ['--weight_decay' ,'1e-20']
         command += ['--n_val_samples', '1']
-        command += ['--n_finetune_classes', '7']
-        command += ['--no_train']
         print(command)
         subprocess.call(command)
-
       
 
