@@ -86,14 +86,12 @@ class MachineLabelCreator:
                         if 'mp4' not in clip:
                             continue
                         LID = int(clip.split('_')[0])
-                        print(LID)
                         try:
                             label = self.dt.loc[(self.dt.projectID == projectID) & (self.dt.videoID == videoID) & (self.dt.LID == LID)]['ManualLabel'].values[0]
                         except IndexError:
                             print('LabelError: ' + projectID + ' ' + videoID + str(LID))
                             continue
                             raise Exception('No Label for ' + clip)
-                        print(label)
 
                         if randint(0,4) == 4:
                             print(label + '/' + clip.replace('.mp4',''), file = g)
