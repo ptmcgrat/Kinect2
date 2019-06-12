@@ -95,19 +95,15 @@ class MachineLabelCreator:
 
                         if randint(0,4) == 4:
                             print(label + '/' + clip.replace('.mp4',''), file = g)
-                            outDirectory = self.localJpegDirectory + 'm/' + clip.replace('.mp4','') + '/'
-                            os.makedirs(outDirectory) 
-                            subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
-                            # Add n_frames info
-                            with open(outDirectory + 'n_frames', 'w') as h:
-                                print('120', file = h)
                         else:
                             print(label + '/' + clip.replace('.mp4',''), file = f)
-                            outDirectory = self.localJpegDirectory + label + '/' + clip.replace('.mp4','') + '/'
-                            os.makedirs(outDirectory) 
-                            subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
-                            with open(outDirectory + 'n_frames', 'w') as h:
-                                print('120', file = h)
+                            
+                        outDirectory = self.localJpegDirectory + label + '/' + clip.replace('.mp4','') + '/'
+                        shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                        os.makedirs(outDirectory) 
+                        subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                        with open(outDirectory + 'n_frames', 'w') as h:
+                            print('120', file = h)
 
                         allClips.add((projectID, videoID, int(clip.split('_')[0])))
 
