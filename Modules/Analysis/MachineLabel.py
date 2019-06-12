@@ -75,13 +75,16 @@ class MachineLabelCreator:
         with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
 
             for projectID in self.projects:
-                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
+                print('Downloading clips from: ' + self.cloudClipsDirectory + projectID, file = sys.stderr)
+                #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
                 videos = os.listdir(self.localClipsDirectory + projectID)
 
                 for videoID in videos:
                     clips = os.listdir(self.localClipsDirectory + projectID + '/' + videoID)
 
                     for clip in clips:
+                        if 'mp4' not in clips:
+                            continue
                         LID = int(clip.split('_')[0])
                         print(LID)
                         try:
@@ -100,7 +103,7 @@ class MachineLabelCreator:
                             with open(outDirectory + 'n_frames', 'w') as h:
                                 print('120', file = h)
                         else:
-                            print(label + '/' + mp4File.replace('.mp4',''), file = g)
+                            print(label + '/' + clip.replace('.mp4',''), file = g)
                             outDirectory = self.localJpegDirectory + label + '/' + clips.remove('.mp4') + '/'
                             os.makedirs(outDirectory) 
                             subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
