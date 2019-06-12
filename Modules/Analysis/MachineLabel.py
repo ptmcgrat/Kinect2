@@ -67,9 +67,11 @@ class MachineLabelCreator:
 
     def prepareData(self):
         allClips = set()
+        print('Downloading ' + self.labeledClusterFile)
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localMasterDirectory], stderr = self.fnull)
-        self.dt = pd.read_csv(self.localMasterDirectory + self.labeledClusterFile, sep = '\t')
+        self.dt = pd.read_csv(self.localMasterDirectory + self.labeledClusterFile, sep = ',')
 
+        print('Creating: ' + self.localMasterDirectory + 'cichlids_train_list.txt', vile = sys.stderr)
         with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
 
             for projectID in self.projects:
