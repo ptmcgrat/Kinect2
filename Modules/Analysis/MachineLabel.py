@@ -136,5 +136,7 @@ class MachineLabelCreator:
         command += ['--n_finetune_classes', '7']
         command += ['--no_train']
         print(command)
+        subprocess.call(command)
+
       
 
