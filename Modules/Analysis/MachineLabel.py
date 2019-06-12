@@ -125,7 +125,7 @@ class MachineLabelCreator:
         command += ['--n_classes', '7'] 
         command += ['--batch_size', '12']
         command += ['--n_threads', '5']
-        command += ['checkpoint', '5']
+        command += ['--checkpoint', '5']
         command += ['--dataset', 'cichlids']
         command += ['--sample_duration', '120']
         command += ['--mean_dataset', 'cichlids']
