@@ -81,7 +81,6 @@ class MachineLabelCreator:
 
                 for videoID in sorted(videos):
                     clips = os.listdir(self.localClipsDirectory + projectID + '/' + videoID)
-                    print(clips)
                     for clip in clips:
                         if 'mp4' not in clip:
                             continue

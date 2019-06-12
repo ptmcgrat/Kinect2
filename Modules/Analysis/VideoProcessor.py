@@ -503,8 +503,8 @@ class VideoProcessor:
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
-
         tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
+        
         tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
 
         tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
