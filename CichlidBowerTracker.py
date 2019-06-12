@@ -35,10 +35,11 @@ class ProjectData:
                             self.mLearningData.append(projectID)
                     except KeyError:
                         raise KeyError(machLearningID + ' not a column in Excel data file')
-        for projectID in projects:
-            if projectID not in excelProjects:
-                    print('Cant find projectID: ' + projectID)
-                    print('Options are ' ','.join(projects))
+        if machLearningID is None:
+            for projectID in projects:
+                if projectID not in excelProjects:
+                        print('Cant find projectID: ' + projectID)
+                        print('Options are ' ','.join(projects))
 
 
 rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to the dropbox or other cloud account
