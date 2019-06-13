@@ -475,7 +475,7 @@ class VideoProcessor:
                 if not ret:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     continue
-                cv2.imshow("Type 'c': build scoop; 'f': feed spit; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit",cv2.resize(frame,(0,0),fx=4, fy=4))
+                cv2.imshow("LID: " + str(clusterID) + "; Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit",cv2.resize(frame,(0,0),fx=4, fy=4))
                 info = cv2.waitKey(25)
             
                 if info in [ord(x) for x in categories]:
@@ -627,6 +627,23 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
+    def _fixMC6_5(self):
+        # This command fixes some issues with the MC6_5 cluster summary files. Zack already annotated ~2000 clips so we did not want to rerun
+        if self.projectID != 'MC6_5':
+            raise Exception('_fixMC6_5 command can ONLY be run on MC6_5. Talk to Patrick if you want to run this.')
+        self._print('Labeling cluster')
+        self.loadClusterSummary()
 
+        # Fix -depth and timestamp
+        self.clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.X + self.transM[0][1]*row.Y + self.transM[0][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
+        self.clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
+        self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
+
+        # Add info on Zack annotation
+
+        # Copy videos to __Machine Learinng
+
+        if videoID == '0010_vid':
+            pass
 
         
