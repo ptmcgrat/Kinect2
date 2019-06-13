@@ -147,7 +147,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         if socket.gethostname() != 'biocomputesrg':
             raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
         if os.environ['CUDA_VISIBLE_DEVICES'] != '6':
-            raise Exception('Must set CUDA_VISIBLE_DEVICES to 6 before running. Run ')
+            raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
         #print(os.environ['CONDA_DEFAULT_ENV'])
         print(inputData.mLearningData)
         ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)

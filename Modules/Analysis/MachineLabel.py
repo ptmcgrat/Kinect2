@@ -110,6 +110,7 @@ class MachineLabelCreator:
     def runTraining(self):
         command = []
         command += ['python', self.machineLearningDirectory + 'utils/cichlids_json.py']
+        command += [self.localMasterDirectory]
         command += [self.classIndFile]
         print(command)
         subprocess.call(command)
