@@ -101,7 +101,7 @@ class MachineLabelCreator:
                         shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
                         os.makedirs(outDirectory) 
                         #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                        #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                        subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
                         with open(outDirectory + 'n_frames', 'w') as h:
                             print('120', file = h)
 
@@ -115,7 +115,6 @@ class MachineLabelCreator:
         print(command)
         subprocess.call(command)
         command = []
-
         command += ['python',self.machineLearningDirectory + 'main.py']
         command += ['--root_path', self.localMasterDirectory]
         command += ['--video_path', 'jpgs']
