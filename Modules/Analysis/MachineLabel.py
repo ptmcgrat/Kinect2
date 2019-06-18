@@ -141,6 +141,6 @@ class MachineLabelCreator:
         command += ['--weight_decay' , str(weightDecay)]
         command += ['--n_val_samples', '1']
         print(command)
-        subprocess.Popen(command, env = trainEnv, stdout = open(self.localResultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localResultsDirectory + 'RunningLogError.txt', 'w'))
+        subprocess.Popen(command, env = trainEnv, stdout = open(self.localMasterDirectory + self.localResultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localMasterDirectory + self.localResultsDirectory + 'RunningLogError.txt', 'w'))
       
 
