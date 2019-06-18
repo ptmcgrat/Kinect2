@@ -461,7 +461,6 @@ class VideoProcessor:
 
         self._print('Labeling cluster')
         self.loadClusterSummary()
-        print(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory])
         subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory], stderr = self.fnull)
 
         if 'MLabeler' not in self.clusterData:
@@ -488,8 +487,7 @@ class VideoProcessor:
             clusterID = int(f.split('_')[0])
 
             # If already labeled and rewrite = False, then skip
-            if not rewrite and self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'] != np.na and self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'] not in 'cfptbmsxod':
-                print('Skipping ' + f + ': Label=' + str(self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel']), file = sys.stderr)
+            if not rewrite and not (self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'].values[0] is np.nan or self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'].values[0] == ''):
                 continue
             
             cap = cv2.VideoCapture(self.localManualLabelClipsDirectory + f)
@@ -681,6 +679,7 @@ class VideoProcessor:
             self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
             subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
+
             if self.baseName == '0010_vid':
                 self.createClusterClips()
                 for row in self.clusterData.itertuples():
@@ -689,12 +688,11 @@ class VideoProcessor:
                     if manualAnnotation == 'Yes':
                         print(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName ])
                         subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-            else:
-                self.createClusterClips(manualOnly = True)
+        
 
 
         # add code to increase number of clips for MC16_2
-        #if self.projectID == 'MC16_2':
-        #    self._identifyManualClusters(Nclips = 350)
-        #    self.createClusterClips(manualOnly = True)
+        if self.projectID == 'MC16_2':
+            self._identifyManualClusters(Nclips = 350)
+            self.createClusterClips(manualOnly = True)
 

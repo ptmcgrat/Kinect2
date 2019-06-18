@@ -107,19 +107,26 @@ class MachineLabelCreator:
 
                         allClips.add((projectID, videoID, int(clip.split('_')[0])))
 
-    def runTraining(self):
         command = []
         command += ['python', self.machineLearningDirectory + 'utils/cichlids_json.py']
         command += [self.localMasterDirectory]
         command += [self.classIndFile]
         print(command)
         subprocess.call(command)
+
+    def runTraining(self, GPUCard = 0, weightDecay = 1e-20):
+
+        self.localResultsDirectory = str(weightDecay) + '_results/'
+        os.makedirs(self.localMasterDirectory) if not os.path.exists(self.localMasterDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPUCard)
+
         command = []
         command += ['python',self.machineLearningDirectory + 'main.py']
         command += ['--root_path', self.localMasterDirectory]
         command += ['--video_path', 'jpgs']
         command += ['--annotation_path', 'cichlids.json']
-        command += ['--result_path', 'result']
+        command += ['--result_path', self.localResultsDirectory]
         command += ['--model', 'resnet'] 
         command += ['--model_depth', '18'] 
         command += ['--n_classes', '7'] 
@@ -131,9 +138,9 @@ class MachineLabelCreator:
         command += ['--mean_dataset', 'cichlids']
         command += ['--train_crop' ,'random']
         command += ['--n_epochs' ,'100'] 
-        command += ['--weight_decay' ,'1e-20']
+        command += ['--weight_decay' ,weightDecay]
         command += ['--n_val_samples', '1']
         print(command)
-        subprocess.call(command)
+        subprocess.Popen(command, env = trainEnv, stderr = open(self.localResultsDirectory + 'RunningLog.txt', 'w'))
       
 

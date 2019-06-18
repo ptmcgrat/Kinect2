@@ -65,6 +65,7 @@ videoParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = '
 videoParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun from the start')
 videoParser.add_argument('-c', '--RewriteClusters', action = 'store_true', help = 'Use this flag if you need to rerun the creation of clusters, summary of clusters, and creation of clips')
 videoParser.add_argument('-s', '--RewriteClusterSummaries', action = 'store_true', help = 'Use this flag if you need to rerun the creation of summary of clusters and creation of clips')
+videoParser.add_argument('-f', '--FixIssues', action = 'store_true', help = 'Use this flag if you want to fix issues with the MC6_5 and MC16_2 cluster files')
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
@@ -125,7 +126,10 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     elif args.command == 'VideoAnalysis':
         for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries)
+                if args.FixIssues:
+                    da_obj.fixIssues(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
+                else:
+                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries)
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':
@@ -146,13 +150,16 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     elif args.command == 'CreateModel':
         if socket.gethostname() != 'biocomputesrg':
             raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
-        if os.environ['CUDA_VISIBLE_DEVICES'] != '6':
-            raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
+        #if os.environ['CUDA_VISIBLE_DEVICES'] != '6':
+        #    raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
         #print(os.environ['CONDA_DEFAULT_ENV'])
         print(inputData.mLearningData)
         ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
         ml_obj.prepareData()
-        ml_obj.runTraining()
+        for i in range(8):
+            weightDecay = 10**(-1*(23-i))
+            print(weightDecay)
+            ml_obj.runTraining(i, weightDecay)
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
         #        da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
