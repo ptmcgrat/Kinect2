@@ -55,7 +55,7 @@ class MachineLabelCreator:
         self.localClipsDirectory = localMasterDirectory + 'Clips/'
         self.cloudClipsDirectory = cloudMasterDirectory + 'Clips/'
         self.localJpegDirectory = self.localMasterDirectory + 'jpgs/'
-        self.labeledClusterFile = labeledClusterFile
+        self.labeledClusterFile = 'Backup/ManualLabeledClustersOriginalMC6_5Labels.csv'
         self.classIndFile = classIndFile
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
