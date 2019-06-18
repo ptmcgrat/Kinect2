@@ -51,11 +51,11 @@ class MachineLabelCreator:
         self.modelID = modelID
         self.projects = projects
         self.localMasterDirectory = localMasterDirectory
-        self.cloudMasterDirectory = cloudMasterDirectory
+        self.cloudMasterDirectory = cloudMasterDirectory + 'Backup'
         self.localClipsDirectory = localMasterDirectory + 'Clips/'
         self.cloudClipsDirectory = cloudMasterDirectory + 'Clips/'
         self.localJpegDirectory = self.localMasterDirectory + 'jpgs/'
-        self.labeledClusterFile = 'Backup/ManualLabeledClustersOriginalMC6_5Labels.csv'
+        self.labeledClusterFile = 'ManualLabeledClustersOriginalMC6_5Labels.csv'
         self.classIndFile = classIndFile
 
         self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
@@ -117,7 +117,7 @@ class MachineLabelCreator:
     def runTraining(self, GPUCard = 0, weightDecay = 1e-20):
 
         self.localResultsDirectory = str(weightDecay) + '_results/'
-        os.makedirs(self.localMasterDirectory) if not os.path.exists(self.localMasterDirectory) else None
+        os.makedirs(self.localResultsDirectory) if not os.path.exists(self.localResultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPUCard)
 
