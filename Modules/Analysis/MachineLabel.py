@@ -117,7 +117,7 @@ class MachineLabelCreator:
     def runTraining(self, GPUCard = 0, weightDecay = 1e-20):
 
         self.localResultsDirectory = str(weightDecay) + '_results/'
-        os.makedirs(self.localResultsDirectory) if not os.path.exists(self.localResultsDirectory) else None
+        os.makedirs(self.localMasterDirectory + self.localResultsDirectory) if not os.path.exists(self.localMasterDirectory +self.localResultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPUCard)
 
@@ -141,6 +141,6 @@ class MachineLabelCreator:
         command += ['--weight_decay' , str(weightDecay)]
         command += ['--n_val_samples', '1']
         print(command)
-        subprocess.Popen(command, env = trainEnv, stderr = open(self.localResultsDirectory + 'RunningLog.txt', 'w'))
+        subprocess.Popen(command, env = trainEnv, stdout = stderr = open(self.localResultsDirectory + 'RunningLogOut.txt', 'w'), open(self.localResultsDirectory + 'RunningLogError.txt', 'w'))
       
 
