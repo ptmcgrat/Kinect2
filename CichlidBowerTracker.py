@@ -156,10 +156,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(inputData.mLearningData)
         ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
         ml_obj.prepareData()
-        for i in range(8):
-            weightDecay = 10**(-1*(23-i))
-            print(weightDecay)
-            ml_obj.runTraining(i, weightDecay)
+        ml_obj.runTraining()
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
         #        da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
