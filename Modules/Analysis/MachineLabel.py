@@ -101,7 +101,7 @@ class MachineLabelCreator:
                         shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
                         os.makedirs(outDirectory) 
                         #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                        subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                        #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
                         with open(outDirectory + 'n_frames', 'w') as h:
                             print('120', file = h)
 
@@ -138,7 +138,7 @@ class MachineLabelCreator:
         command += ['--mean_dataset', 'cichlids']
         command += ['--train_crop' ,'random']
         command += ['--n_epochs' ,'100'] 
-        command += ['--weight_decay' ,weightDecay]
+        command += ['--weight_decay' , str(weightDecay)]
         command += ['--n_val_samples', '1']
         print(command)
         subprocess.Popen(command, env = trainEnv, stderr = open(self.localResultsDirectory + 'RunningLog.txt', 'w'))
