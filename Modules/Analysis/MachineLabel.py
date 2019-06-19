@@ -214,7 +214,7 @@ class MachineLabelCreator:
                     self.nFrames = len(frames)
 
                 for i, frame in enumerate(frames):
-                    img = io.imread(frame)
+                    img = io.imread(outDirectory + frame)
                     means[i] = img.mean(axis = (0,1))
                     stds[i] = img.std(axis = (0,1))
 
