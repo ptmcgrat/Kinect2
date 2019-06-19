@@ -1,4 +1,4 @@
-import os, subprocess, sys, shutil
+import os, subprocess, sys, shutil, socket, getpass, datetime
 import pandas as pd
 from random import randint
 
@@ -48,68 +48,57 @@ class MachineLabelAnalyzer:
         
 class MachineLabelCreator:
     def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, labeledClusterFile, classIndFile):
-        self.modelID = modelID
-        self.projects = projects
-        self.localMasterDirectory = localMasterDirectory
-        self.cloudMasterDirectory = cloudMasterDirectory + 'Backup'
-        self.localClipsDirectory = localMasterDirectory + 'Clips/'
-        self.cloudClipsDirectory = cloudMasterDirectory + 'Clips/'
-        self.localJpegDirectory = self.localMasterDirectory + 'jpgs/'
-        self.labeledClusterFile = 'ManualLabeledClustersOriginalMC6_5Labels.csv'
-        self.classIndFile = classIndFile
 
-        self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
+        if modelID[0:5].lower() != 'model':
+            raise Exception('modelID must start with "model", user named modelID=' + modelID)
+        # Include code to check if model exists already
 
-        self.fnull = open(os.devnull, 'w')
+        self.modelID = modelID # Name of machine learning model
+        self.projects = projects # Projects that will be included in this data
 
-        os.makedirs(self.localMasterDirectory) if not os.path.exists(self.localMasterDirectory) else None
-        os.makedirs(self.localJpegDirectory) if not os.path.exists(self.localJpegDirectory) else None
+        # Store relevant directories for cloud and local data   
+        self.cloudMasterDirectory = cloudMasterDirectory + '/' if cloudMasterDirectory[-1] != '/' else cloudMasterDirectory # Master directory
+        self.cloudOutputDirectory = self.cloudMasterDirectory + '/' + modelID + '/' # Where data will be stored once model is trained
+        self.cloudClipsDirectory = self.cloudClipsDirectory + 'Clips/' # Where manually labeled clips are stored
+
+        self.localMasterDirectory = localMasterDirectory + '/' if localMasterDirectory[-1] != '/' else localMasterDirectory
+        self.localOutputDirectory = self.localMasterDirectory + '/' + modelID + '/' # Where all model data will be stored
+        self.localClipsDirectory = self.localOutputDirectory + 'Clips/' # Where mp4 clips and created jpg images will be stored
+
+        # Create directories if necessary
+        os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
+
+        # Directory containg python3 scripts for creating 3D Resnet 
+        self.resnetDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
+
+        # Store file names
+        self.labeledClusterFile = 'ManualLabeledClusters.csv' # This file that contains the manual label information for each clip
+        self.classIndFile = classIndFile # This file lists the allowed label classes
+
+        self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
+
+        self._print('ModelCreation: modelID: ' + modelID + ',,projectsUsed:' + ','.join(projects))
 
     def prepareData(self):
-        allClips = set()
-        print('Downloading ' + self.labeledClusterFile, file = sys.stderr)
-        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localMasterDirectory], stderr = self.fnull)
-        self.dt = pd.read_csv(self.localMasterDirectory + self.labeledClusterFile, sep = ',')
 
-        print('Creating: ' + self.localMasterDirectory + 'cichlids_train_list.txt', file = sys.stderr)
-        with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
+        # Determine how many label classes are possible
+        self.classes, self.numClasses = self._identifyClasses()
 
-            for projectID in self.projects:
-                print('Downloading clips from: ' + self.cloudClipsDirectory + projectID, file = sys.stderr)
-                #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
-                videos = os.listdir(self.localClipsDirectory + projectID)
+        # Download and open manual label file
+        self.labeledData, self.numLabeledClusters = self._loadClusterFile()
+ 
+        # Download clips
+        for projectID in self.projects:
+            self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
+            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory], stderr = self.fnull)
 
-                for videoID in sorted(videos):
-                    clips = os.listdir(self.localClipsDirectory + projectID + '/' + videoID)
-                    for clip in clips:
-                        if 'mp4' not in clip:
-                            continue
-                        LID = int(clip.split('_')[0])
-                        try:
-                            label = self.dt.loc[(self.dt.projectID == projectID) & (self.dt.videoID == videoID) & (self.dt.LID == LID)]['ManualLabel'].values[0]
-                        except IndexError:
-                            print('LabelError: ' + projectID + ' ' + videoID + str(LID))
-                            continue
-                            raise Exception('No Label for ' + clip)
+        self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
+        self._convertClips()
 
-                        if randint(0,4) == 4:
-                            print(label + '/' + clip.replace('.mp4',''), file = g)
-                        else:
-                            print(label + '/' + clip.replace('.mp4',''), file = f)
-                            
-                        outDirectory = self.localJpegDirectory + label + '/' + clip.replace('.mp4','') + '/'
-                        #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                        #os.makedirs(outDirectory) 
-                        #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                        #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
-                        with open(outDirectory + 'n_frames', 'w') as h:
-                            print('120', file = h)
-
-                        allClips.add((projectID, videoID, int(clip.split('_')[0])))
-
+        # Run cichlids_json script to create json info for all clips
         command = []
         command += ['python', self.machineLearningDirectory + 'utils/cichlids_json.py']
-        command += [self.localMasterDirectory]
+        command += [self.localOutputDirectory]
         command += [self.classIndFile]
         print(command)
         subprocess.call(command)
@@ -157,8 +146,88 @@ class MachineLabelCreator:
             process.communicate()
 
     def summarizeResults(self):
+
         for rD in self.resultDirectories:
             with open(self.localMasterDirectory + rD + 'val.log') as f:
                 for line in f:
                     epoch = line.split()[0]
-                    accuracy = line.split('tensor')
+                    accuracy = float(line.split('tensor(')[-1].split(',')[0])
+
+    def _countClasses(self):
+        classes = set()
+        with open(self.classIndFile) as f:
+            for line in f:
+                classes.add(line.rstrip().split()[-1])
+        self._print('ModelCreation: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(list(classes))))
+        return classes, len(classes)
+
+    def _loadClusterFile(self):
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localModelDirectory], stderr = self.fnull)
+        dt = pd.read_csv(self.localModelDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
+        dt = dt[self.dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
+        dt.to_csv(self.localModelDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
+        return dt, len(dt)
+
+    def _convertClips(self):
+
+        clips = []
+        for projectID in self.projects:
+            for videoID in os.listdir(self.localClipsDirectory + projectID):
+                clips.extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
+        
+        if len(clips) != self.numLabeledClusters:
+            raise Exception('The number of clips, ' + str(len(clips)) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
+
+        self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
+
+        means = np.array(shape = (len(clips),3))
+        stds = np.array(shape = (len(clips),3))
+
+
+        with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
+            for clip in clips:
+                LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('_')[0:5]]
+                subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.x == x) & (self.labeledData.y == y)]
+                if len(subTable) == 0:
+                    raise Exception('No label for: ' + clip)
+                elif len(subTable) > 1:
+                    raise Exception('Multiple labels for: ' + clip)
+                else:
+                    label = subTable.values[0]
+
+                if randint(0,4) == 4: # Test data
+                    print(label + '/' + clip.replace('.mp4',''), file = g)
+                else: # Train data
+                    print(label + '/' + clip.replace('.mp4',''), file = f)
+                            
+                outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
+                shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                os.makedirs(outDirectory) 
+                #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+
+                frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
+                try:
+                    if self.nFrames != len(frames):
+                        raise Exception('Different number of frames than expected in: ' + clip)
+                except AttributeError:
+                    self.nFrames = len(frames)
+
+                for i, frame in enumerate(frames):
+                    img = io.imread(frame)
+                    means[i] = img.mean(axis = (0,1))
+                    stds[i] = img.std(axis = (0,1))
+
+                with open(outDirectory + 'n_frames', 'w') as h:
+                    print(str(self.nFrames, file = h))
+
+        print(means.mean(axis = 0))
+        print(stds.mean(axis = 0))
+
+    def _print(self, outtext, log = True):
+        if log:
+            with open(self.localOutputDirectory, 'a') as f:
+                print(outtext + '...' + str(getpass.getuser()) + ', ' + str(datetime.datetime.now()) + ', ' + socket.gethostname(), file = f)
+        print(outtext, file = sys.stderr)
+    
+

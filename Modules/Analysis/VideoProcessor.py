@@ -298,7 +298,7 @@ class VideoProcessor:
         np.save(self.localClusterDirectory + self.labeledCoordsFile, self.labeledCoords)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-    def createClusterSummary(self, Nclips = 200):
+    def createClusterSummary(self, depthObj, Nclips = 200):
         #self.loadVideo()
         self.loadHMM()
         self.loadClusters()
@@ -336,7 +336,8 @@ class VideoProcessor:
         
         # Identify rows for manual labeling
         self._identifyManualClusters(Nclips)
-        
+        self._addHeightChange(depthObj)
+
     def _identifyManualClusters(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
     
         self.loadClusterSummary()
@@ -378,6 +379,16 @@ class VideoProcessor:
                 smallClips += 1
 
         
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
+    def _addHeightChange(self, depthObj):
+        self.loadClusterSummary()
+        self.clusterData['DepthChange'] = np.nan
+        for row in self.clusterData.itertuples():
+            LID, timeStamp, xDepth, yDepth  = row.LID, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
+            currentDepth = depthObj._returnHeightChange(depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
+            self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
@@ -652,12 +663,13 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
-    def _fixData(self, cloudMLDirectory):
+    def _fixData(self, depthObject, cloudMLDirectory):
 
         converter = {'r':'d', 'f':'t', 'o':'', 'm':'m', 'c':'', 'b':'', 'p':''}
         print('Fixing projectID: ' + self.projectID + ', Video: ' + self.baseName, file = sys.stderr)
+        self._addHeightChange(depthObject)
         # This command fixes some issues with the MC6_5 cluster summary files. Zack already annotated ~2000 clips so we did not want to rerun
-        if self.projectID == 'MC6_5':
+        """if self.projectID == 'MC6_5':
             self.loadClusterSummary()
 
             # Fix -depth and timestamp
@@ -697,4 +709,4 @@ class VideoProcessor:
         #if self.projectID == 'MC16_2':
         #    self._identifyManualClusters(Nclips = 350)
         #    self.createClusterClips(manualOnly = True)
-
+        """

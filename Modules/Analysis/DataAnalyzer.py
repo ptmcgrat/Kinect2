@@ -80,6 +80,7 @@ class DataAnalyzer:
     def processVideos(self, index, rewriteClusters, rewriteSummaries):
 
         self._loadRegistration()
+        self.depthObj.loadSmoothedArray()
 
         # Create Video objects (low overhead even if video is not processed)
         vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
@@ -88,21 +89,20 @@ class DataAnalyzer:
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createHMM()
-                vo.createClusterSummary(Nclips = int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObject, Nclips = int(2000/len(vos)))
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
                 print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusters()
-                vo.createClusterSummary(Nclips = int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObject, Nclips = int(2000/len(vos)))
                 vo.createClusterClips()
                 vo.cleanup()
 
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterSummary(Nclips = int(2000/len(vos)))
-                print(int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObject, Nclips = int(2000/len(vos)))
                 vo.createClusterClips()
                 vo.cleanup()
 
@@ -117,7 +117,7 @@ class DataAnalyzer:
         # Create Video objects (low overhead even if video is not processed)
         vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
         for vo in vos:
-            vo._fixData(mlDirectory)
+            vo._fixData(self.depthObj, mlDirectory)
 
     def labelVideos(self, index, mainDT, cloudMLDirectory):
         self._loadRegistration()

@@ -1,4 +1,4 @@
-import argparse, os, socket
+import argparse, os, socket, sys
 from subprocess import call
 
 class ProjectData:
@@ -35,7 +35,7 @@ class ProjectData:
                             self.mLearningData.append(projectID)
                     except KeyError:
                         raise KeyError(machLearningID + ' not a column in Excel data file')
-        if machLearningID is None:
+        if machLearningID is None and projects is not None:
             for projectID in projects:
                 if projectID not in excelProjects:
                         print('Cant find projectID: ' + projectID)
@@ -110,6 +110,8 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         inputData = ProjectData(args.InputFile, None, args.ModelName)
     
     if args.command == 'DepthAnalysis':
+        print('Will analyze the following projects:', file = sys.stderr)
+        print(','.join(inputData.projects), file = sys.stderr)
         # Depth Analysis requires user input. First get user input for all projects then allow depth analysis to run in the background
         for projectID in inputData.projects:
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:

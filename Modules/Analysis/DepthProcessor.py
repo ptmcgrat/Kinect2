@@ -185,6 +185,7 @@ class DepthProcessor:
             self.createTray() # Trayfile doesn't exist, need to create it
 
     def loadSmoothedArray(self):
+        self.loadTray()
         try:
             self.smoothDepthData
             return
@@ -530,7 +531,7 @@ class DepthProcessor:
         if type(t0) != datetime.datetime or type(t1) != datetime.datetime:
             raise Exception('Timepoints to must be datetime.datetime objects')
         if t0 > t1:
-            raise Exception('Second timepoint must be greater than first timepoint')
+            print('Warning: Second timepoint ' + str(t1) + ' is earlier than first timepoint ' + str(t0), file = sys.stderr)
 
     def _print(self, outtext):
         print(str(getpass.getuser()) + ' analyzed at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
