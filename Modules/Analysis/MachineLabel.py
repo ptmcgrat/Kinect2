@@ -194,11 +194,11 @@ class MachineLabelCreator:
                     raise Exception('Multiple labels for: ' + clip)
                 else:
                     label = subTable.values[0]
-
+                    print(label)
                 if randint(0,4) == 4: # Test data
-                    print(label + '/' + clip.replace('.mp4',''), file = g)
+                    print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
                 else: # Train data
-                    print(label + '/' + clip.replace('.mp4',''), file = f)
+                    print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
                             
                 outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                 shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
