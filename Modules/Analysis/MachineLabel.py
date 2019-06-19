@@ -59,7 +59,7 @@ class MachineLabelCreator:
         # Store relevant directories for cloud and local data   
         self.cloudMasterDirectory = cloudMasterDirectory + '/' if cloudMasterDirectory[-1] != '/' else cloudMasterDirectory # Master directory
         self.cloudOutputDirectory = self.cloudMasterDirectory + '/' + modelID + '/' # Where data will be stored once model is trained
-        self.cloudClipsDirectory = self.cloudClipsDirectory + 'Clips/' # Where manually labeled clips are stored
+        self.cloudClipsDirectory = self.cloudOutputDirectory + 'Clips/' # Where manually labeled clips are stored
 
         self.localMasterDirectory = localMasterDirectory + '/' if localMasterDirectory[-1] != '/' else localMasterDirectory
         self.localOutputDirectory = self.localMasterDirectory + '/' + modelID + '/' # Where all model data will be stored
