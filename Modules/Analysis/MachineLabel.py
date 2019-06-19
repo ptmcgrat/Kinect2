@@ -99,7 +99,7 @@ class MachineLabelCreator:
 
         # Run cichlids_json script to create json info for all clips
         command = []
-        command += ['python', self.machineLearningDirectory + 'utils/cichlids_json.py']
+        command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
         command += [self.localOutputDirectory]
         command += [self.classIndFile]
         print(command)
@@ -123,7 +123,7 @@ class MachineLabelCreator:
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
             command = []
-            command += ['python',self.machineLearningDirectory + 'main.py']
+            command += ['python',self.resnetDirectory + 'main.py']
             command += ['--root_path', self.localMasterDirectory]
             command += ['--video_path', 'jpgs']
             command += ['--annotation_path', 'cichlids.json']
@@ -219,6 +219,7 @@ class MachineLabelCreator:
                     img = io.imread(outDirectory + frame)
                     means[i] = img.mean(axis = (0,1))
                     stds[i] = img.std(axis = (0,1))
+                    print(means[i])
 
                 with open(outDirectory + 'n_frames', 'w') as h:
                     print(str(self.nFrames), file = h)
