@@ -222,7 +222,7 @@ class MachineLabelCreator:
                 with open(outDirectory + 'n_frames', 'w') as h:
                     print(str(self.nFrames), file = h)
 
-        self._print('ModelCreation: Means: ' + ','.join(means.mean(axis=0)) + ',,Stds: ' + ','.join(stds.mean(axis=0)))
+        self._print('ModelCreation: Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
 
     def _print(self, outtext, log = True):
         if log:
