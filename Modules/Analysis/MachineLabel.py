@@ -2,6 +2,7 @@ import os, subprocess, sys, shutil, socket, getpass, datetime
 import pandas as pd
 import numpy as np
 from random import randint
+from skimage import io
 
 
 class MachineLabelAnalyzer:
@@ -194,7 +195,6 @@ class MachineLabelCreator:
                     raise Exception('Multiple labels for: ' + clip)
                 else:
                     label = subTable.values[0]
-                    print(label)
                 if randint(0,4) == 4: # Test data
                     print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
                 else: # Train data
