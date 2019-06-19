@@ -188,7 +188,7 @@ class MachineLabelCreator:
         with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g:
             for i,clip in enumerate(clips):
                 if i%100 == 0:
-                    self._print('Processed ' + str(j) + ' videos', log = False)
+                    self._print('Processed ' + str(i) + ' videos', log = False)
                 LID,N,t,x,y = [int(x) for x in clip.split('.')[0].split('/')[-1].split('_')[0:5]]
                 subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
                 if len(subTable) == 0:
