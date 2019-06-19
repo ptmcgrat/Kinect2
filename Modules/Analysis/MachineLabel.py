@@ -186,7 +186,7 @@ class MachineLabelCreator:
 
         with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
             for clip in clips:
-                LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('_')[0:5]]
+                LID,N,t,x,y = [int(x) for x in clip.split('.')[0].split('/')[-1].split('_')[0:5]]
                 subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.x == x) & (self.labeledData.y == y)]
                 if len(subTable) == 0:
                     raise Exception('No label for: ' + clip)
