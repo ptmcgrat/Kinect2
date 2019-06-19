@@ -153,7 +153,7 @@ class MachineLabelCreator:
                     epoch = line.split()[0]
                     accuracy = float(line.split('tensor(')[-1].split(',')[0])
 
-    def _countClasses(self):
+    def _identifyClasses(self):
         classes = set()
         with open(self.classIndFile) as f:
             for line in f:
