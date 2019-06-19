@@ -219,7 +219,7 @@ class MachineLabelCreator:
                     stds[i] = img.std(axis = (0,1))
 
                 with open(outDirectory + 'n_frames', 'w') as h:
-                    print(str(self.nFrames, file = h))
+                    print(str(self.nFrames), file = h)
 
         print(means.mean(axis = 0))
         print(stds.mean(axis = 0))
