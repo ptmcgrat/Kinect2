@@ -162,10 +162,10 @@ class MachineLabelCreator:
         return classes, len(classes)
 
     def _loadClusterFile(self):
-        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localModelDirectory], stderr = self.fnull)
-        dt = pd.read_csv(self.localModelDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
+        dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
         dt = dt[self.dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
-        dt.to_csv(self.localModelDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
+        dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
         return dt, len(dt)
 
     def _convertClips(self):
