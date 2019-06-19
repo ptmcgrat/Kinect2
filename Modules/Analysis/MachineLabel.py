@@ -181,9 +181,8 @@ class MachineLabelCreator:
 
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
-        means = np.array(shape = (len(clips),3))
-        stds = np.array(shape = (len(clips),3))
-
+        means = np.zeros(shape = (len(clips),3))
+        stds = np.zeros(shape = (len(clips),3))
 
         with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g:
             for clip in clips:
