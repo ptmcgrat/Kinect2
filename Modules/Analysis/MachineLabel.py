@@ -226,7 +226,7 @@ class MachineLabelCreator:
 
     def _print(self, outtext, log = True):
         if log:
-            with open(self.localOutputDirectory, 'a') as f:
+            with open(self.localOutputDirectory + self.modelID + '_CreationLog.txt', 'a') as f:
                 print(outtext + '...' + str(getpass.getuser()) + ', ' + str(datetime.datetime.now()) + ', ' + socket.gethostname(), file = f)
         print(outtext, file = sys.stderr)
     
