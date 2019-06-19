@@ -1,5 +1,6 @@
 import os, subprocess, sys, shutil, socket, getpass, datetime
 import pandas as pd
+import numpy as np
 from random import randint
 
 
@@ -90,7 +91,7 @@ class MachineLabelCreator:
         # Download clips
         for projectID in self.projects:
             self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
+            #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
 
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
         self._convertClips()
