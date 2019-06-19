@@ -56,7 +56,7 @@ trackerParser = subparsers.add_parser('CollectData', help='This command runs on 
 depthParser = subparsers.add_parser('DepthAnalysis', help='This command runs depth analysis for a project')
 depthParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 depthParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to analyze.')
-depthParser.add_argument('-i', '--InitialPrep', action = 'store_true', help = 'Use this flag if you only want to identify trays and register RGB with depth data')
+depthParser.add_argument('-i', '--InitialPrep', action = 'store_true', help = 'Use this flag if you only want to identify trays')
 depthParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you need to rerun everything from the start (Otherwise only analysis files are recreated')
 
 videoParser = subparsers.add_parser('VideoAnalysis', help='This command runs video analysis for a project: HMM->IdentifyClusters->SummarizeClusters->CreateVideoClips. Default is to use existing data except for the final step of creating clips.')
