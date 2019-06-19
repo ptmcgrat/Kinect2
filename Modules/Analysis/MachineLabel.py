@@ -62,7 +62,7 @@ class MachineLabelCreator:
         self.cloudClipsDirectory = self.cloudMasterDirectory + 'Clips/' # Where manually labeled clips are stored
 
         self.localMasterDirectory = localMasterDirectory + '/' if localMasterDirectory[-1] != '/' else localMasterDirectory
-        self.localOutputDirectory = self.localMasterDirectory + '/' + modelID + '/' # Where all model data will be stored
+        self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
         self.localClipsDirectory = self.localOutputDirectory + 'Clips/' # Where mp4 clips and created jpg images will be stored
 
         # Create directories if necessary
@@ -90,7 +90,7 @@ class MachineLabelCreator:
         # Download clips
         for projectID in self.projects:
             self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory], stderr = self.fnull)
+            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
 
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
         self._convertClips()
