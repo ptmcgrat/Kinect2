@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from random import randint
 from skimage import io
+from collections import defaultdict
 
 
 class MachineLabelAnalyzer:
@@ -173,57 +174,72 @@ class MachineLabelCreator:
 
     def _convertClips(self):
 
-        clips = []
+        clips = defaultdict(list)
+        
         for projectID in self.projects:
             for videoID in os.listdir(self.localClipsDirectory + projectID):
-                clips.extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
-        
-        if len(clips) != self.numLabeledClusters:
-            raise Exception('The number of clips, ' + str(len(clips)) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
+                clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
+
+        if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
+            raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
-        means = np.zeros(shape = (len(clips),3))
-        stds = np.zeros(shape = (len(clips),3))
-
         with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g:
-            for i,clip in enumerate(clips):
-                if i%100 == 0:
-                    self._print('Processed ' + str(i) + ' videos', log = False)
-                LID,N,t,x,y = [int(x) for x in clip.split('.')[0].split('/')[-1].split('_')[0:5]]
-                subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
-                if len(subTable) == 0:
-                    raise Exception('No label for: ' + clip)
-                elif len(subTable) > 1:
-                    raise Exception('Multiple labels for: ' + clip)
-                else:
-                    label = subTable.values[0]
-                if randint(0,4) == 4: # Test data
-                    print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
-                else: # Train data
-                    print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
+            for projectID in clips:
+                outDirectories = []
+                means = np.zeros(shape = (len(clips[projectID]),3))
+                stds = np.zeros(shape = (len(clips[projectID]),3))
+                for i,clip in enumerate(clips[projectID]):
+                    if i%100 == 0:
+                        self._print('Processed ' + str(i) + ' videos from ' + projectID, log = False)
+                    LID,N,t,x,y = [int(x) for x in clip.split('.')[0].split('/')[-1].split('_')[0:5]]
+                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
+                    if len(subTable) == 0:
+                        raise Exception('No label for: ' + clip)
+                    elif len(subTable) > 1:
+                        raise Exception('Multiple labels for: ' + clip)
+                    else:
+                        label = subTable.values[0]
+                    if randint(0,4) == 4: # Test data
+                        print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
+                    else: # Train data
+                        print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
                             
-                outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
-                shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                os.makedirs(outDirectory) 
-                #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
+                    outDirectories.append(outDirectory)
+                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    os.makedirs(outDirectory) 
+                    #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
-                frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
-                try:
-                    if self.nFrames != len(frames):
-                        raise Exception('Different number of frames than expected in: ' + clip)
-                except AttributeError:
-                    self.nFrames = len(frames)
+                    frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
+                    try:
+                        if self.nFrames != len(frames):
+                            raise Exception('Different number of frames than expected in: ' + clip)
+                    except AttributeError:
+                        self.nFrames = len(frames)
 
-                img = io.imread(outDirectory + frames[0])
-                means[i] = img.mean(axis = (0,1))
-                stds[i] = img.std(axis = (0,1))
+                    img = io.imread(outDirectory + frames[0])
+                    means[i] = img.mean(axis = (0,1))
+                    stds[i] = img.std(axis = (0,1))
 
-                with open(outDirectory + 'n_frames', 'w') as h:
-                    print(str(self.nFrames), file = h)
-
-        self._print('ModelCreation: Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
+                    with open(outDirectory + 'n_frames', 'w') as h:
+                        print(str(self.nFrames), file = h)
+                # Normalize imgages using mean and std
+                self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
+                mean = means.mean(axis=0)
+                std = stds.mean(axis=0)
+                for i,outDirectory in enumerate(outDirectories):
+                    if i%100 == 0:
+                        self._print('Normalized ' + str(i) + ' videos from ' + projectID, log = False)
+                    frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
+                    for frame in frames:
+                        img = io.imread(outDirectory + frames[0])
+                        norm = (img - m)/(s/30) + 125
+                        norm[norm < 0] = 0
+                        norm[norm > 255] = 255
+                        io.imwrite(outDirectory + frames[0], norm)
 
     def _print(self, outtext, log = True):
         if log:

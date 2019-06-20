@@ -16,13 +16,19 @@ def get_mean(norm_value=255, dataset='activitynet'):
             76.5387720376522 / norm_value,  92.73 / norm_value,
             23.425955869324458 / norm_value
         ]
+    
+    elif dataset == 'patrick':
+        return [
+            125 / norm_value,  125 / norm_value,
+            125 / norm_value
+        ]
 
 def get_std(norm_value=255, dataset='activitynet'):
     # Kinetics (10 videos for each class)
     assert dataset in ['activitynet', 'kinetics', 'cichlids']
-    if dataset == 'cichlids':
+    if dataset == 'patrick':
         return [
-            27.57 / norm_value, 27.85 / norm_value, 21.28 / norm_value
+            30 / norm_value, 30 / norm_value, 30 / norm_value
         ]
     
     #return [
