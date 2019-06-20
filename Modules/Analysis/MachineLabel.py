@@ -110,8 +110,8 @@ class MachineLabelCreator:
         self.resultDirectories = []
 
         processes = []
-        for i in range(1):
-            weightDecay = 10**(-1*(23-i))
+        for i in range(8):
+            weightDecay = 10**(-1*(24-3*i))
             print(weightDecay)
 
             resultsDirectory = str(weightDecay) + '/'
@@ -119,7 +119,7 @@ class MachineLabelCreator:
             shutil.rmtree(self.localMasterDirectory + resultsDirectory) if os.path.exists(self.localMasterDirectory + resultsDirectory) else None
             os.makedirs(self.localMasterDirectory + resultsDirectory) if not os.path.exists(self.localMasterDirectory + resultsDirectory) else None
             trainEnv = os.environ.copy()
-            #trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
             command = []
