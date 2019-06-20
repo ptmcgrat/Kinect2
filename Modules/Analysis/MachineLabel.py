@@ -116,15 +116,15 @@ class MachineLabelCreator:
 
             resultsDirectory = str(weightDecay) + '/'
             self.resultDirectories.append(resultsDirectory)
-            shutil.rmtree(self.localMasterDirectory + resultsDirectory) if os.path.exists(self.localMasterDirectory + resultsDirectory) else None
-            os.makedirs(self.localMasterDirectory + resultsDirectory) if not os.path.exists(self.localMasterDirectory + resultsDirectory) else None
+            shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+            os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
             trainEnv = os.environ.copy()
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
             command = []
             command += ['python',self.resnetDirectory + 'main.py']
-            command += ['--root_path', self.localMasterDirectory]
+            command += ['--root_path', self.localOutputDirectory]
             command += ['--video_path', 'jpgs']
             command += ['--annotation_path', 'cichlids.json']
             command += ['--result_path', resultsDirectory]
