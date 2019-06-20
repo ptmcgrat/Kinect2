@@ -142,7 +142,7 @@ class MachineLabelCreator:
             command += ['--weight_decay' , str(weightDecay)]
             command += ['--n_val_samples', '1']
             print(command)
-            processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localMasterDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localMasterDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
         for process in processes:
             process.communicate()
