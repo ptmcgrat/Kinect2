@@ -125,7 +125,7 @@ class MachineLabelCreator:
             command = []
             command += ['python',self.resnetDirectory + 'main.py']
             command += ['--root_path', self.localOutputDirectory]
-            command += ['--video_path', 'jpgs']
+            command += ['--video_path', 'Clips']
             command += ['--annotation_path', 'cichlids.json']
             command += ['--result_path', resultsDirectory]
             command += ['--model', 'resnet'] 
