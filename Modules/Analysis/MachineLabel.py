@@ -112,8 +112,8 @@ class MachineLabelCreator:
         self.resultDirectories = []
 
         processes = []
-        for i in range(8):
-            weightDecay = 10**(-1*(24-3*i))
+        for i in range(4):
+            weightDecay = 10**(-1*(22-6*i))
             print(weightDecay)
 
             resultsDirectory = str(weightDecay) + '/'
