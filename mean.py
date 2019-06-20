@@ -16,8 +16,6 @@ def get_mean(norm_value=255, dataset='activitynet'):
             76.5387720376522 / norm_value,  92.73 / norm_value,
             23.425955869324458 / norm_value
         ]
-    Means: 7,92.72825193798462,,,Stds: 27.574904632126117,27.850116405228853,21.284397206143048
-
 
 def get_std(norm_value=255):
     # Kinetics (10 videos for each class)
