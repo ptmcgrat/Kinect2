@@ -1,5 +1,5 @@
 def get_mean(norm_value=255, dataset='activitynet'):
-    assert dataset in ['activitynet', 'kinetics']
+    assert dataset in ['activitynet', 'kinetics', 'cichlids']
 
     if dataset == 'activitynet':
         return [
@@ -19,8 +19,8 @@ def get_mean(norm_value=255, dataset='activitynet'):
         ]
 
 
-def get_std(norm_value=255):
-    assert dataset in ['activitynet', 'kinetics']
+def get_std(norm_value=255, dataset ='activitynet'):
+    assert dataset in ['activitynet', 'kinetics', 'cichlids']
 
     # Kinetics (10 videos for each class)
     if dataset == 'cichlids':
