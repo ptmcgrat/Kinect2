@@ -1,5 +1,5 @@
 def get_mean(norm_value=255, dataset='activitynet'):
-    assert dataset in ['activitynet', 'kinetics', 'cichlids']
+    assert dataset in ['activitynet', 'kinetics']
 
     if dataset == 'activitynet':
         return [
@@ -12,26 +12,19 @@ def get_mean(norm_value=255, dataset='activitynet'):
             96.29023126 / norm_value
         ]
     elif dataset == 'cichlids':
+        # Kinetics (10 videos for each class)
         return [
-            76.5387720376522 / norm_value,  92.73 / norm_value,
-            23.425955869324458 / norm_value
-        ]
-    
-    elif dataset == 'patrick':
-        return [
-            125 / norm_value,  125 / norm_value,
+            125 / norm_value, 125 / norm_value,
             125 / norm_value
         ]
 
-def get_std(norm_value=255, dataset='activitynet'):
+
+def get_std(norm_value=255):
+    assert dataset in ['activitynet', 'kinetics']
+
     # Kinetics (10 videos for each class)
-    assert dataset in ['activitynet', 'kinetics', 'cichlids']
-    if dataset == 'patrick':
+    if dataset == 'cichlids':
         return [
-            30 / norm_value, 30 / norm_value, 30 / norm_value
+            30 / norm_value, 30 / norm_value,
+            30 / norm_value
         ]
-    
-    #return [
-    #    38.7568578 / norm_value, 37.88248729 / norm_value,
-    #    40.02898126 / norm_value
-    #]
