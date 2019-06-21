@@ -93,7 +93,7 @@ class MachineLabelCreator:
         # Download clips
         for projectID in self.projects:
             self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
+            #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
 
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
         self._convertClips()
@@ -227,8 +227,12 @@ class MachineLabelCreator:
                 for i,clip in enumerate(clips[projectID]):
                     if i%100 == 0:
                         self._print('Processed ' + str(i) + ' videos from ' + projectID, log = False)
-                    LID,N,t,x,y = [int(x) for x in clip.split('.')[0].split('/')[-1].split('_')[0:5]]
-                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.N == N) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
+                    try:
+                        LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                    except IndexError: #MC6_5
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+
+                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
                     if len(subTable) == 0:
                         raise Exception('No label for: ' + clip)
                     elif len(subTable) > 1:
@@ -270,7 +274,7 @@ class MachineLabelCreator:
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     for frame in frames:
                         img = io.imread(outDirectory + frames[0])
-                        norm = (img - m)/(s/30) + 125
+                        norm = (img - mean)/(std/30) + 125
                         norm[norm < 0] = 0
                         norm[norm > 255] = 255
                         io.imwrite(outDirectory + frames[0], norm)
