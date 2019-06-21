@@ -277,7 +277,7 @@ class MachineLabelCreator:
                         norm = (img - mean)/(std/30) + 125
                         norm[norm < 0] = 0
                         norm[norm > 255] = 255
-                        io.imwrite(outDirectory + frames[0], norm)
+                        io.imsave(outDirectory + frames[0], norm)
 
     def _print(self, outtext, log = True):
         if log:
