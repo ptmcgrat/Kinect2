@@ -146,7 +146,7 @@ class MachineLabelCreator:
             print(command)
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
-     for i in range(4,8):
+        for i in range(4,8):
             weightDecay = 10**(-1*(22-6*(i-4)))
             print(weightDecay)
 
