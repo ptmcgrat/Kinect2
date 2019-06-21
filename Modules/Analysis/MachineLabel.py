@@ -93,7 +93,7 @@ class MachineLabelCreator:
         # Download clips
         for projectID in self.projects:
             self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
+            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
 
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
         self._convertClips()
@@ -116,7 +116,7 @@ class MachineLabelCreator:
             weightDecay = 10**(-1*(22-6*i))
             print(weightDecay)
 
-            resultsDirectory = str(weightDecay) + '/'
+            resultsDirectory = 'resnet_'+ str(weightDecay) + '/'
             self.resultDirectories.append(resultsDirectory)
             shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
             os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
@@ -146,6 +146,40 @@ class MachineLabelCreator:
             print(command)
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
+     for i in range(4,8):
+            weightDecay = 10**(-1*(22-6*(i-4)))
+            print(weightDecay)
+
+            resultsDirectory = 'wideresnet_'+str(weightDecay) + '/'
+            self.resultDirectories.append(resultsDirectory)
+            shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+            os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
+            print(trainEnv['CUDA_VISIBLE_DEVICES'])
+
+            command = []
+            command += ['python',self.resnetDirectory + 'main.py']
+            command += ['--root_path', self.localOutputDirectory]
+            command += ['--video_path', 'Clips']
+            command += ['--annotation_path', 'cichlids.json']
+            command += ['--result_path', resultsDirectory]
+            command += ['--model', 'wideresnet'] 
+            command += ['--model_depth', '50'] 
+            command += ['--n_classes', str(self.numClasses)] 
+            command += ['--batch_size', '6']
+            command += ['--n_threads', '5']
+            command += ['--checkpoint', '5']
+            command += ['--dataset', 'cichlids']
+            command += ['--sample_duration', '120']
+            command += ['--mean_dataset', 'cichlids']
+            command += ['--train_crop' ,'random']
+            command += ['--n_epochs' ,'100'] 
+            command += ['--weight_decay' , str(weightDecay)]
+            command += ['--n_val_samples', '1']
+            print(command)
+            processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
         for process in processes:
             process.communicate()
 
