@@ -55,7 +55,7 @@ class VideoProcessor:
         self.cloudClusterDirectory = self.cloudVideoDirectory + 'ClusterData/'
 
         self.localCountDirectory = self.localVideoDirectory + 'Counts/'
-        self.cloudClusterDirectory = self.cloudVideoDirectory + 'CountsData/'
+        self.cloudCountDirectory = self.cloudVideoDirectory + 'CountsData/'
 
         self.tempDirectory = self.localVideoDirectory + 'Temp/'
 
