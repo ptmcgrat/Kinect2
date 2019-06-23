@@ -1,10 +1,11 @@
-import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket, random
+import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket, random,pdb
 from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pandas as pd
 from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
 from Modules.Analysis.MachineLabel import MachineLabelAnalyzer as MLA
+from collections import defaultdict
 
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import radius_neighbors_graph
@@ -52,6 +53,9 @@ class VideoProcessor:
         
         self.localClusterDirectory = self.localVideoDirectory + 'ClusterData/'
         self.cloudClusterDirectory = self.cloudVideoDirectory + 'ClusterData/'
+
+        self.localCountDirectory = self.localVideoDirectory + 'Counts/'
+        self.cloudClusterDirectory = self.cloudVideoDirectory + 'CountsData/'
 
         self.tempDirectory = self.localVideoDirectory + 'Temp/'
 
@@ -572,9 +576,71 @@ class VideoProcessor:
     def cleanup(self):
         shutil.rmtree(self.localVideoDirectory)
         if os.path.exists(self.localMasterDirectory + self.videofile):
+            pass
             os.remove(self.localMasterDirectory + self.videofile)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
+         
+    def countFish(self, rewrite, cloudCountDirectory, nFrames = 500):
+        print(cloudCountDirectory)
+        self.loadVideo()
+        categories = list(range(0,10))
+        frames = set()
+        counts = defaultdict(int)
+        for i in range(nFrames):
+            frame = random.randint(0,self.frames-1)
+            if frame in frames:
+                continue
+            frames.add(frame)
+            #pic = self._retFrame(frame, noBackground = False)
+            pic, num = self._retFrame(frame, noBackground = True)
+            if counts[0] ==200 and counts[1] == 200 and num < 20000:
+                continue
+            pic2 = self._retFrame(frame, noBackground = False)
+            cv2.imshow("How many fish are in frame " + str(frame) + "? Pixels = " + str(num) + ". 'q': quit",cv2.resize(pic,(0,0),fx=4, fy=4))
+            info = cv2.waitKey(25)
+            while info not in [ord(str(x)) for x in categories]:
+                info = cv2.waitKey(25)
             
+            for j in range(1,10):
+                cv2.destroyAllWindows()
+                cv2.waitKey(1)
+            count = chr(info)
+            if counts[count] == 200:
+                continue
+            print(chr(info))
+            outDirectory = self.localCountDirectory + str(chr(info)) + '/'
+            os.makedirs(outDirectory) if not os.path.exists(outDirectory) else None
+            cv2.imwrite(outDirectory + 'Frame'+ str(frame) + '_' + str(num) + '.jpg', pic2)
+            if info == ord('q'):
+                break
+
+
+    def _retFrame(self, frameNum, noBackground = True, cutoff = 10):
+        try:
+            self.cap
+        except AttributeError:
+            self.loadVideo()
+            self.cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+
+        if noBackground:
+            self.loadHMM()
+
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frameNum)
+        ret, frame = self.cap.read()
+        if not ret:
+            raise Exception('Cant read frame number: ' + str(frameNum))
+
+        if noBackground:
+            frame = 0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
+            HMMChanges = self.obj.ret_image(frameNum)
+            diff = frame - HMMChanges
+            diff[(diff>cutoff) | (diff < -1*cutoff)] = 125
+            diff[diff!=125] = 0
+            #pdb.set_trace()
+            return np.concatenate((frame.astype("uint8"),diff.astype("uint8")), axis = 1), np.count_nonzero(diff)
+        else:
+            return frame
+
     def _readBlock(self, block):
         min_t = block*self.blocksize
         max_t = min((block+1)*self.blocksize, int(self.frames/self.frame_rate))
@@ -667,19 +733,28 @@ class VideoProcessor:
 
         converter = {'r':'d', 'f':'t', 'o':'', 'm':'m', 'c':'', 'b':'', 'p':''}
         print('Fixing projectID: ' + self.projectID + ', Video: ' + self.baseName, file = sys.stderr)
-        self._addHeightChange(depthObject)
+        #self._addHeightChange(depthObject)
         # This command fixes some issues with the MC6_5 cluster summary files. Zack already annotated ~2000 clips so we did not want to rerun
-        """if self.projectID == 'MC6_5':
+        if self.projectID == 'MC6_5':
             self.loadClusterSummary()
 
             # Fix -depth and timestamp
-            self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.X + self.transM[0][1]*row.Y + self.transM[0][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
-            self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
-            self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
+            #self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.X + self.transM[0][1]*row.Y + self.transM[0][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
+            #self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.X + self.transM[1][1]*row.Y + self.transM[1][2])/(self.transM[2][0]*row.X + self.transM[2][1]*row.Y + self.transM[2][2]), axis=1)
+            #self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
 
             # Add info on Zack annotation
             for row in self.clusterData.itertuples():
-                LID, manualLabel, mLabeler = row.LID, row.ManualLabel, row.MLabeler
+                LID, N, t, x, y, manualAnnotation = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
+                # Change name of file:
+                oldclip = str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4'
+                newclip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+                subprocess.call(['rclone','moveto', self.cloudAllClipsDirectory + oldclip, self.cloudAllClipsDirectory + newclip])
+                if manualAnnotation == 'Yes':   
+                    subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + newclip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+                break
+        """
+                #LID, manualLabel, mLabeler = row.LID, row.ManualLabel, row.MLabeler
                 if mLabeler == 'Zack' or (manualLabel is not np.nan and manualLabel in 'abcdefghijklmnopqrstuvwxyz'):
                     self.clusterData.loc[self.clusterData.LID == LID,'ManualAnnotation'] = 'Yes'
 

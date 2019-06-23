@@ -132,6 +132,19 @@ class DataAnalyzer:
         for vo in vos:
             vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory)
 
+    def countFish(self, index, cloudCountDirectory):
+        self._loadRegistration()
+        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        if index is None:
+            vos = self.videoObjs
+        else:
+            vos = [self.videoObjs[x-1] for x in index]
+            
+        for vo in vos:
+            vo.countFish(self.rewriteFlag, cloudCountDirectory)
+            break
+
+
     def predictLabels(self, index, modelLocation):
         self._loadRegistration()
 
