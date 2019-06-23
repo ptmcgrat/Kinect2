@@ -746,7 +746,9 @@ class VideoProcessor:
 
             # Add info on Zack annotation
             for row in self.clusterData.itertuples():
-                LID, N, t, x, y, manualAnnotation = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
+                LID, N, t, x, y, manualAnnotation, clipCreated = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ClipCreated
+                if clipCreated == 'No':
+                    continue
                 # Change name of file:
                 oldclip = str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4'
                 newclip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
@@ -754,7 +756,7 @@ class VideoProcessor:
                 subprocess.call(['rclone','moveto', self.cloudAllClipsDirectory + oldclip, self.cloudAllClipsDirectory + newclip])
                 if manualAnnotation == 'Yes':   
                     subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + newclip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-                break
+                    break
         """
                 #LID, manualLabel, mLabeler = row.LID, row.ManualLabel, row.MLabeler
                 if mLabeler == 'Zack' or (manualLabel is not np.nan and manualLabel in 'abcdefghijklmnopqrstuvwxyz'):
