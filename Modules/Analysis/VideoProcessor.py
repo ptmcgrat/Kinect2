@@ -750,6 +750,7 @@ class VideoProcessor:
                 # Change name of file:
                 oldclip = str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4'
                 newclip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+                print(['rclone','moveto', self.cloudAllClipsDirectory + oldclip, self.cloudAllClipsDirectory + newclip])
                 subprocess.call(['rclone','moveto', self.cloudAllClipsDirectory + oldclip, self.cloudAllClipsDirectory + newclip])
                 if manualAnnotation == 'Yes':   
                     subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + newclip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
