@@ -749,6 +749,7 @@ class VideoProcessor:
                 LID, N, t, x, y, manualAnnotation, clipCreated = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ClipCreated
                 if clipCreated == 'No':
                     continue
+                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
                 # Change name of file:
                 oldclip = str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y) + '.mp4'
                 newclip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
@@ -756,7 +757,10 @@ class VideoProcessor:
                 subprocess.call(['rclone','moveto', self.cloudAllClipsDirectory + oldclip, self.cloudAllClipsDirectory + newclip])
                 if manualAnnotation == 'Yes':   
                     subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + newclip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-                    break
+                    
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
         """
                 #LID, manualLabel, mLabeler = row.LID, row.ManualLabel, row.MLabeler
                 if mLabeler == 'Zack' or (manualLabel is not np.nan and manualLabel in 'abcdefghijklmnopqrstuvwxyz'):
