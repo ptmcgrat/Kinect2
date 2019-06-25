@@ -46,6 +46,7 @@ rcloneRemote = 'cichlidVideo' #The name of the rclone remote that has access to 
 cloudMasterDirectory = 'McGrath/Apps/CichlidPiData/' # The master directory on the cloud account that stores video and depth data
 localMasterDirectory = os.getenv('HOME') + '/Temp/CichlidAnalyzer/' #
 machineLearningDirectory = '__MachineLearning/'
+countingDirectory = '__Counting/'
 manualLabelFile = 'ManualLabeledClusters.csv' # The name of the file that contains info on all manually annotated data
 
 parser = argparse.ArgumentParser()
@@ -68,6 +69,11 @@ videoParser.add_argument('-s', '--RewriteClusterSummaries', action = 'store_true
 videoParser.add_argument('-f', '--FixIssues', action = 'store_true', help = 'Use this flag if you want to fix issues with the MC6_5 and MC16_2 cluster files')
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
+MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
+MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
+MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
+
+MlabelParser = subparsers.add_parser('CountFish', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
@@ -97,7 +103,7 @@ elif args.command == 'CollectData':
     while True:
         tracker = CichlidTracker(rcloneRemote + ':' + cloudMasterDirectory)
 
-elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'PredictLabels', 'CreateModel']:
+elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', 'CountFish', 'PredictLabels', 'CreateModel']:
 
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
@@ -140,6 +146,13 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
                 da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
                 da_obj.cleanup()
+
+    elif args.command == 'CountFish':
+        print(inputData.manPredData)
+        for projectID, videos in inputData.manPredData.items():
+            with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
+                da_obj.countFish(videos, rcloneRemote + ':' + cloudMasterDirectory + countingDirectory)
+                #da_obj.cleanup()
                 
     elif args.command == 'PredictLabels':
         if socket.gethostname() != 'biocomputesrg':
