@@ -138,7 +138,7 @@ class MachineLabelCreator:
             command += ['--n_threads', '5']
             command += ['--checkpoint', '5']
             command += ['--dataset', 'cichlids']
-            command += ['--sample_duration', (str(i+1)*30)]
+            command += ['--sample_duration', str((i+1)*30)]
             command += ['--mean_dataset', 'cichlids']
             command += ['--train_crop' ,'center']
             command += ['--sample_size', str((i+1)*50)]
