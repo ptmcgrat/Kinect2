@@ -225,7 +225,7 @@ class MachineLabelCreator:
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
         with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.txt', 'w') as h:
-            print('Location','Dataset','Label','meanID', file = h)
+            print('Location,Dataset,Label,meanID', file = h)
             for projectID in clips:
                 outDirectories = []
                 means = np.zeros(shape = (len(clips[projectID]),3))
@@ -270,8 +270,8 @@ class MachineLabelCreator:
                     means[i] = img.mean(axis = (0,1))
                     stds[i] = img.std(axis = (0,1))
 
-                    with open(outDirectory + 'n_frames', 'w') as h:
-                        print(str(self.nFrames), file = h)
+                    with open(outDirectory + 'n_frames', 'w') as i:
+                        print(str(self.nFrames), file = i)
                 # Normalize imgages using mean and std
                 self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
                 mean = means.mean(axis=0)
