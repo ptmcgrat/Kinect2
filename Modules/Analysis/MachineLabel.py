@@ -143,7 +143,7 @@ class MachineLabelCreator:
             command += ['--train_crop' ,'center']
             command += ['--sample_size', str((i+1)*50)]
             command += ['--n_epochs' ,'100'] 
-            command += ['--weight_decay' , 1e-23]
+            command += ['--weight_decay' , str(1e-23)]
             command += ['--n_val_samples', '1']
             command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
             command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
