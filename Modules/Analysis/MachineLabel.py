@@ -247,10 +247,10 @@ class MachineLabelCreator:
                         label = subTable.values[0]
                     if randint(0,4) == 4: # Test data
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
-                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clips.split('/')[0] + ':' + clips.split('/'[1]), file = h)
+                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/'[1]), file = h)
                     else: # Train data
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
-                        print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clips.split('/')[0] + ':' + clips.split('/'[1]), file = h)
+                        print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/'[1]), file = h)
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
