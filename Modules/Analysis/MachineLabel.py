@@ -144,6 +144,8 @@ class MachineLabelCreator:
             command += ['--n_epochs' ,'100'] 
             command += ['--weight_decay' , str(weightDecay)]
             command += ['--n_val_samples', '1']
+            command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
+            command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
             print(command)
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
@@ -219,14 +221,17 @@ class MachineLabelCreator:
                 subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
-        print(means)
+        with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
+            print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
+            for meanID,data in means.items():
+                print(meanID + ',' + ','.join([str(x) for x in data]), file = f)
 
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
             raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
-        with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.txt', 'w') as h:
+        with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.csv', 'w') as h:
             print('Location,Dataset,Label,meanID', file = h)
             for projectID in clips:
                 outDirectories = []
