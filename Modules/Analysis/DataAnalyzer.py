@@ -103,7 +103,7 @@ class DataAnalyzer:
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusterSummary(self.depthObj, Nclips = int(2000/len(vos)))
-                vo.createClusterClips()
+                #vo.createClusterClips()
                 vo.cleanup()
 
             else:

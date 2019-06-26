@@ -117,7 +117,7 @@ class MachineLabelCreator:
             weightDecay = 10**(-1*(22-6*i))
             print(weightDecay)
 
-            resultsDirectory = 'resnet_'+ str(weightDecay) + '/'
+            resultsDirectory = 'resnet_'+ str(i) + '/'
             self.resultDirectories.append(resultsDirectory)
             shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
             os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
@@ -134,15 +134,16 @@ class MachineLabelCreator:
             command += ['--model', 'resnet'] 
             command += ['--model_depth', '18'] 
             command += ['--n_classes', str(self.numClasses)] 
-            command += ['--batch_size', '6']
+            command += ['--batch_size', '12']
             command += ['--n_threads', '5']
             command += ['--checkpoint', '5']
             command += ['--dataset', 'cichlids']
-            command += ['--sample_duration', '120']
+            command += ['--sample_duration', (str(i+1)*30)]
             command += ['--mean_dataset', 'cichlids']
-            command += ['--train_crop' ,'random']
+            command += ['--train_crop' ,'center']
+            command += ['--sample_size', str((i+1)*50)]
             command += ['--n_epochs' ,'100'] 
-            command += ['--weight_decay' , str(weightDecay)]
+            command += ['--weight_decay' , 1e-23]
             command += ['--n_val_samples', '1']
             command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
             command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
@@ -174,9 +175,10 @@ class MachineLabelCreator:
             command += ['--n_threads', '5']
             command += ['--checkpoint', '5']
             command += ['--dataset', 'cichlids']
-            command += ['--sample_duration', '120']
+            command += ['--sample_duration', '60']
             command += ['--mean_dataset', 'cichlids']
-            command += ['--train_crop' ,'random']
+            command += ['--train_crop' ,'center']
+            command += ['--sample_size', str(100)]
             command += ['--n_epochs' ,'100'] 
             command += ['--weight_decay' , str(weightDecay)]
             command += ['--n_val_samples', '1']
