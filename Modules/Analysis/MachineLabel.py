@@ -215,7 +215,8 @@ class MachineLabelCreator:
         for projectID in self.projects:
             for videoID in os.listdir(self.localClipsDirectory + projectID):
                 clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
-                subprocess.call(['rclone', 'copy', self.cloudMasterDirectory.replace('VideoAnalysis/','') + 'Means.npy', self.localOutputDirectory], stderr = self.fnull)
+                print(['rclone', 'copy', self.cloudMasterDirectory.replace('VideoAnalysis/','') + 'Means.npy', self.localOutputDirectory])
+                subprocess.call(['rclone', 'copy', self.cloudMasterDirectory.replace('VideoAnalysis/','') + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
