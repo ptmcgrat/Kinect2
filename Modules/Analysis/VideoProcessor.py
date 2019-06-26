@@ -342,7 +342,7 @@ class VideoProcessor:
         # Identify rows for manual labeling
         self._identifyManualClusters(Nclips)
         self._addHeightChange(depthObj)
-        self._createMean()
+        #self._createMean()
 
     def _identifyManualClusters(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
     
@@ -351,12 +351,11 @@ class VideoProcessor:
             clipsCreated = self.clusterData.groupby('ManualAnnotation').count()['LID']['Yes']
         except KeyError:
             clipsCreated = 0
-        print(clipsCreated)
 
         # Identify rows for manual labeling
         smallClips = 0
 
-        print('Identifying clusters for manual annotation', file = sys.stderr)
+        print('Identifying ' + str(Nclips) + ' clusters for manual annotation. ' + str(clipsCreated) + ' clips already identified', file = sys.stderr)
 
         for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples():
             if clipsCreated > Nclips:
@@ -372,7 +371,7 @@ class VideoProcessor:
                 continue
             try:
                 manualLabel = row.ManualLabel
-                if manualLabel is not np.nan and manualLabel != '':
+                if manualLabel == manualLabel and manualLabel != '':
                     continue
             except AttributeError:
                 continue

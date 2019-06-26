@@ -154,7 +154,7 @@ class MachineLabelCreator:
             weightDecay = 10**(-1*(22-6*(i-4)))
             print(weightDecay)
 
-            resultsDirectory = 'wideresnet_'+str(weightDecay) + '/'
+            resultsDirectory = 'resnet_'+str(i) + '/'
             self.resultDirectories.append(resultsDirectory)
             shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
             os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
