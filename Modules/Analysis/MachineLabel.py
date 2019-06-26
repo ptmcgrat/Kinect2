@@ -182,6 +182,8 @@ class MachineLabelCreator:
             command += ['--n_epochs' ,'100'] 
             command += ['--weight_decay' , str(weightDecay)]
             command += ['--n_val_samples', '1']
+            command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
+            command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
             print(command)
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
