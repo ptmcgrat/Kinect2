@@ -224,7 +224,7 @@ class MachineLabelCreator:
         with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
             for meanID,data in means.items():
-                print(meanID + ',' + ','.join([str(x) for x in data]), file = f)
+                print(meanID + ',' + ','.join([str(x) for x in data[0] + data[1]]), file = f)
 
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
             raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
