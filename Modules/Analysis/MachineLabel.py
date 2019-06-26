@@ -210,17 +210,21 @@ class MachineLabelCreator:
     def _convertClips(self):
 
         clips = defaultdict(list)
-        
+        means = {}
+
         for projectID in self.projects:
             for videoID in os.listdir(self.localClipsDirectory + projectID):
                 clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
+                subprocess.call(['rclone', 'copy', self.cloudMasterDirectory.replace('VideoAnalysis/','') + 'Means.npy', self.localOutputDirectory], stderr = self.fnull)
+                means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
             raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
-        with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g:
+        with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.txt', 'w') as h:
+            print('Location','Dataset','Label','meanID', file = h)
             for projectID in clips:
                 outDirectories = []
                 means = np.zeros(shape = (len(clips[projectID]),3))
@@ -242,8 +246,10 @@ class MachineLabelCreator:
                         label = subTable.values[0]
                     if randint(0,4) == 4: # Test data
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
+                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clips.split('/')[0] + ':' + clips.split('/'[1]), file = h)
                     else: # Train data
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
+                        print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clips.split('/')[0] + ':' + clips.split('/'[1]), file = h)
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
@@ -280,6 +286,7 @@ class MachineLabelCreator:
                         norm[norm > 255] = 255
                         io.imsave(outDirectory + frames[0], norm.astype('uint8'))
                 """
+            print(means)
     def _print(self, outtext, log = True):
         if log:
             with open(self.localOutputDirectory + self.modelID + '_CreationLog.txt', 'a') as f:
