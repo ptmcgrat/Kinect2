@@ -134,7 +134,7 @@ class MachineLabelCreator:
             command += ['--model', 'resnet'] 
             command += ['--model_depth', '18'] 
             command += ['--n_classes', str(self.numClasses)] 
-            command += ['--batch_size', '12']
+            command += ['--batch_size', '6']
             command += ['--n_threads', '5']
             command += ['--checkpoint', '5']
             command += ['--dataset', 'cichlids']
