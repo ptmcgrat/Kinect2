@@ -72,7 +72,7 @@ class MachineLabelCreator:
         os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
 
         # Directory containg python3 scripts for creating 3D Resnet 
-        self.resnetDirectory = os.getenv("HOME") + '/3D-Resnets/'
+        self.resnetDirectory = os.getenv("HOME") + '/3D-resnets/'
 
         # Store file names
         self.labeledClusterFile = 'ManualLabeledClusters.csv' # This file that contains the manual label information for each clip
