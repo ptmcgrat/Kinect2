@@ -220,7 +220,7 @@ class MachineLabelCreator:
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         print(means)
-        
+
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
             raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
@@ -256,10 +256,10 @@ class MachineLabelCreator:
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
-                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    #os.makedirs(outDirectory) 
-                    #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    os.makedirs(outDirectory) 
+                    print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
@@ -289,7 +289,6 @@ class MachineLabelCreator:
                         norm[norm > 255] = 255
                         io.imsave(outDirectory + frames[0], norm.astype('uint8'))
                 """
-            print(means)
     def _print(self, outtext, log = True):
         if log:
             with open(self.localOutputDirectory + self.modelID + '_CreationLog.txt', 'a') as f:
