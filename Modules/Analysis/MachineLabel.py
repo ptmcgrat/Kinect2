@@ -109,12 +109,7 @@ class MachineLabelCreator:
     def runTraining(self):
         #self.classes, self.numClasses = self._identifyClasses()
 # Run cichlids_json script to create json info for all clips
-        command = []
-        command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
-        command += [self.localOutputDirectory]
-        command += [self.classIndFile]
-        print(command)
-        subprocess.call(command)
+       
         self.resultDirectories = []
 
         processes = []
@@ -252,10 +247,10 @@ class MachineLabelCreator:
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
-                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    os.makedirs(outDirectory) 
+                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    #os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
@@ -274,7 +269,7 @@ class MachineLabelCreator:
                 self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
                 mean = means.mean(axis=0)
                 std = stds.mean(axis=0)
-                for i,outDirectory in enumerate(outDirectories):
+                """for i,outDirectory in enumerate(outDirectories):
                     if i%100 == 0:
                         self._print('Normalized ' + str(i) + ' videos from ' + projectID, log = False)
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
@@ -284,7 +279,7 @@ class MachineLabelCreator:
                         norm[norm < 0] = 0
                         norm[norm > 255] = 255
                         io.imsave(outDirectory + frames[0], norm.astype('uint8'))
-
+                """
     def _print(self, outtext, log = True):
         if log:
             with open(self.localOutputDirectory + self.modelID + '_CreationLog.txt', 'a') as f:
