@@ -72,7 +72,7 @@ class MachineLabelCreator:
         os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
 
         # Directory containg python3 scripts for creating 3D Resnet 
-        self.resnetDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
+        self.resnetDirectory = os.getenv("HOME") + '/3D-Resnets/'
 
         # Store file names
         self.labeledClusterFile = 'ManualLabeledClusters.csv' # This file that contains the manual label information for each clip
@@ -108,7 +108,13 @@ class MachineLabelCreator:
 
     def runTraining(self):
         #self.classes, self.numClasses = self._identifyClasses()
-
+# Run cichlids_json script to create json info for all clips
+        command = []
+        command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
+        command += [self.localOutputDirectory]
+        command += [self.classIndFile]
+        print(command)
+        subprocess.call(command)
         self.resultDirectories = []
 
         processes = []
