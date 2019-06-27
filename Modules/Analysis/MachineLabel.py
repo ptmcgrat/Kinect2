@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from random import randint
 from skimage import io
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 
 class MachineLabelAnalyzer:
@@ -113,9 +113,31 @@ class MachineLabelCreator:
         self.resultDirectories = []
 
         processes = []
+
+        command = OrderedDict()
+        command['python'] = self.resnetDirectory + 'main.py'
+        command['--root_path'] = self.localOutputDirectory
+        command['--video_path'] = 'Clips'
+        command['--annotation_path'] = 'cichlids.json'
+        command['--result_path'] = resultsDirectory
+        command['--model'] = 'resnet'
+        command['--model_depth'] = '18'
+        command['--n_classes'] = str(self.numClasses)
+        command['--batch_size'] = '6'
+        command['--n_threads'] = '5'
+        command['--checkpoint'] = '5'
+        command['--dataset'] = 'cichlids'
+        command['--sample_duration'] = 120
+        command['--mean_dataset'] = 'cichlids'
+        command['--train_crop'] = 'center'
+        command['--sample_size'] = 400
+        command['--n_epochs'] = '100'
+        command['--weight_decay'] = str(1e-23)
+        command['--n_val_samples'] = '1'
+        command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
+        command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
+
         for i in range(4):
-            weightDecay = 10**(-1*(22-6*i))
-            print(weightDecay)
 
             resultsDirectory = 'resnet_'+ str(i) + '/'
             self.resultDirectories.append(resultsDirectory)
@@ -125,34 +147,14 @@ class MachineLabelCreator:
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
-            command = []
-            command += ['python',self.resnetDirectory + 'main.py']
-            command += ['--root_path', self.localOutputDirectory]
-            command += ['--video_path', 'Clips']
-            command += ['--annotation_path', 'cichlids.json']
-            command += ['--result_path', resultsDirectory]
-            command += ['--model', 'resnet'] 
-            command += ['--model_depth', '18'] 
-            command += ['--n_classes', str(self.numClasses)] 
-            command += ['--batch_size', '6']
-            command += ['--n_threads', '5']
-            command += ['--checkpoint', '5']
-            command += ['--dataset', 'cichlids']
-            command += ['--sample_duration', str((i+1)*30)]
-            command += ['--mean_dataset', 'cichlids']
-            command += ['--train_crop' ,'center']
-            command += ['--sample_size', str((i+1)*50)]
-            command += ['--n_epochs' ,'100'] 
-            command += ['--weight_decay' , str(1e-23)]
-            command += ['--n_val_samples', '1']
-            command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
-            command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
-            print(command)
-            processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            command['--sample_size'] = 100*(i+1)
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            print(outCommand)
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
         for i in range(4,8):
-            weightDecay = 10**(-1*(22-6*(i-4)))
-            print(weightDecay)
 
             resultsDirectory = 'resnet_'+str(i) + '/'
             self.resultDirectories.append(resultsDirectory)
@@ -162,29 +164,8 @@ class MachineLabelCreator:
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
-            command = []
-            command += ['python',self.resnetDirectory + 'main.py']
-            command += ['--root_path', self.localOutputDirectory]
-            command += ['--video_path', 'Clips']
-            command += ['--annotation_path', 'cichlids.json']
-            command += ['--result_path', resultsDirectory]
-            command += ['--model', 'resnet'] 
-            command += ['--model_depth', '34'] 
-            command += ['--n_classes', str(self.numClasses)] 
-            command += ['--batch_size', '6']
-            command += ['--n_threads', '5']
-            command += ['--checkpoint', '5']
-            command += ['--dataset', 'cichlids']
-            command += ['--sample_duration', '60']
-            command += ['--mean_dataset', 'cichlids']
-            command += ['--train_crop' ,'center']
-            command += ['--sample_size', str(100)]
-            command += ['--n_epochs' ,'100'] 
-            command += ['--weight_decay' , str(weightDecay)]
-            command += ['--n_val_samples', '1']
-            command += ['--mean_file', self.localOutputDirectory + 'Means.csv']
-            command += ['--annotation_file', self.localOutputDirectory + 'AnnotationFile.csv']
-            print(command)
+            command['--sample_size'] = 200
+            command['--sample_duration'] = (i-3)*30
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         for process in processes:
