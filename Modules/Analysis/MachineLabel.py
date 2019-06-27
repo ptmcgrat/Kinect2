@@ -119,7 +119,6 @@ class MachineLabelCreator:
         command['--root_path'] = self.localOutputDirectory
         command['--video_path'] = 'Clips'
         command['--annotation_path'] = 'cichlids.json'
-        command['--result_path'] = resultsDirectory
         command['--model'] = 'resnet'
         command['--model_depth'] = '18'
         command['--n_classes'] = str(self.numClasses)
@@ -148,6 +147,7 @@ class MachineLabelCreator:
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
             command['--sample_size'] = 100*(i+1)
+            command['--result_path'] = resultsDirectory
 
             outCommand = []
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -166,6 +166,8 @@ class MachineLabelCreator:
 
             command['--sample_size'] = 200
             command['--sample_duration'] = (i-3)*30
+            command['--result_path'] = resultsDirectory
+
             processes.append(subprocess.Popen(command, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         for process in processes:
