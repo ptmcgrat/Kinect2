@@ -515,7 +515,7 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
-
+        self._print(str(len(clips)) + ' clips have been produced for this video', log=False)
         categories = ['c','f','p','t','b','m','s','x','o','d','q']
 
         print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
@@ -525,9 +525,13 @@ class VideoProcessor:
             clusterID = int(f.split('_')[0])
 
             # If already labeled and rewrite = False, then skip
-            if not rewrite and self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'] != np.na and self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel'] not in 'cfptbmsxod':
-                print('Skipping ' + f + ': Label=' + str(self.clusterData.loc[self.clusterData.LID == clusterID,'ManualLabel']), file = sys.stderr)
-                continue
+            if not rewrite:
+                label = self.clusterData.loc[self.clusterData.LID == clusterID].ManualLabel.values[0]
+                if label == label:
+                    # is not np.nan
+                    if label in ''.join(categories):
+                        print('Skipping ' + f + ': Label=' + label, file = sys.stderr)
+                        continue
             
             cap = cv2.VideoCapture(self.localManualLabelClipsDirectory + f)
             
@@ -755,12 +759,13 @@ class VideoProcessor:
     def _row_fn(self, row):
         return self.tempDirectory + str(row) + '.npy'
 
-    def _print(self, outtext):
-        print(str(getpass.getuser()) + ' analyzed ' + self.baseName + ' at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
+    def _print(self, outtext, log = True):
+        if log:
+            print(str(getpass.getuser()) + ' analyzed ' + self.baseName + ' at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
+            self.anLF.close() # Close and reopen file to flush it
+            subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
+            self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
         print(outtext, file = sys.stderr)
-        self.anLF.close() # Close and reopen file to flush it
-        subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
-        self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
 
     def _fixData(self, depthObject, cloudMLDirectory):
         #self._createMean()
