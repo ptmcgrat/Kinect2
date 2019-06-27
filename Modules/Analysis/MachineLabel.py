@@ -203,7 +203,7 @@ class MachineLabelCreator:
             for videoID in os.listdir(self.localClipsDirectory + projectID):
                 clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
                 print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
+                #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
@@ -220,8 +220,6 @@ class MachineLabelCreator:
             print('Location,Dataset,Label,meanID', file = h)
             for projectID in clips:
                 outDirectories = []
-                means = np.zeros(shape = (len(clips[projectID]),3))
-                stds = np.zeros(shape = (len(clips[projectID]),3))
                 for i,clip in enumerate(clips[projectID]):
                     if i%100 == 0:
                         self._print('Processed ' + str(i) + ' videos from ' + projectID, log = False)
@@ -249,7 +247,7 @@ class MachineLabelCreator:
                     shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
                     os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
@@ -258,16 +256,10 @@ class MachineLabelCreator:
                     except AttributeError:
                         self.nFrames = len(frames)
 
-                    img = io.imread(outDirectory + frames[0])
-                    means[i] = img.mean(axis = (0,1))
-                    stds[i] = img.std(axis = (0,1))
-
                     with open(outDirectory + 'n_frames', 'w') as i:
                         print(str(self.nFrames), file = i)
                 # Normalize imgages using mean and std
-                self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
-                mean = means.mean(axis=0)
-                std = stds.mean(axis=0)
+                #self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
                 """for i,outDirectory in enumerate(outDirectories):
                     if i%100 == 0:
                         self._print('Normalized ' + str(i) + ' videos from ' + projectID, log = False)
