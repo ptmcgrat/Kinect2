@@ -139,6 +139,7 @@ class VideoProcessor:
         cap.close()
 
     def loadHMM(self):
+        print('Loading HMM', file = sys.stderr)
         try:
             self.obj
         except AttributeError:
@@ -153,6 +154,7 @@ class VideoProcessor:
                 self.obj = HMMdata(filename = self.localVideoDirectory + self.hmmFile)
 
     def loadClusters(self):
+        print('Loading Clusters', file = sys.stderr)
         try:
             self.labeledCoords
         except AttributeError:
@@ -166,6 +168,7 @@ class VideoProcessor:
                 self.labeledCoords = np.load(self.localClusterDirectory + self.labeledCoordsFile)
           
     def loadClusterSummary(self):
+        print('Loading ClusterSummary', file = sys.stderr)
         try:
             self.clusterData
         except AttributeError:
@@ -408,9 +411,10 @@ class VideoProcessor:
         self.loadHMM()
         self.loadClusters()
         self.loadClusterSummary()
-        self._createMean()
+        #self._createMean()
         self._print('Creating manual label clip videos, and clip videos for all clusters')
-        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+        #cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+        cap = pims.Video(self.localMasterDirectory + self.videofile)
         count = 0
         for row in self.clusterData.itertuples():
             #if count ==30:
@@ -448,20 +452,22 @@ class VideoProcessor:
 
             if ml == 'Yes':
                 outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
-
-                cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
+                frame_idx = int(self.frame_rate*(t) - delta_t)
+                #cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
                 HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
                 clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
 
                 for i in range(delta_t*2):
-
-                    ret, frame = cap.read()
+                    try:
+                        frame = cap[int(frame_idx + i)]
+                    except IndexError:
+                        print(int(frame_idx + i))
+                    #ret, frame = cap.read()
                     frame2 = frame.copy()
                     frame[HMMChanges != 0] = [300,125,125]
                     for coord in clusteredPoints: # This can probably be improved to speed up clip generation (get rid of the python loop)
                         frame[coord[0], coord[1]] = [125,125,300]
-                    if ret:
-                        outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
+                    outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
                 outAllHMM.release()
 

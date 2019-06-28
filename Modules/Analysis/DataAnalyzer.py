@@ -108,7 +108,7 @@ class DataAnalyzer:
 
             else:
                 print('Rewriting cluster clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterClips()
+                vo.createClusterClips(manualOnly = True)
                 vo.cleanup()
 
     def fixIssues(self, index, mlDirectory):
