@@ -228,7 +228,7 @@ class MachineLabelCreator:
         print(outCommand)
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-        command['--batch_size'] = '3'
+        command['--batch_size'] = '6'
         command['--sample_size'] = 120
         command['--model_depth'] = '34'
         command['--sample_duration'] = 90
@@ -241,8 +241,8 @@ class MachineLabelCreator:
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(6)
         command['--result_path'] = resultsDirectory
 
-        command['--batch_size'] = '2'
-        command['--sample_size'] = 150
+        command['--batch_size'] = '12'
+        command['--sample_size'] = 60
         command['--sample_duration'] = 90
         
         outCommand = []
