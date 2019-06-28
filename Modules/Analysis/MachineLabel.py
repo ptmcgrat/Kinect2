@@ -165,6 +165,8 @@ class MachineLabelCreator:
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         command['--batch_size'] = '6'
+        command['--sample_size'] = 120
+
         command['--train_crop'] = 'center'
         resultsDirectory = 'resnet_'+ str(2) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
@@ -191,27 +193,75 @@ class MachineLabelCreator:
         print(outCommand)
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
+        command['--batch_size'] = '3'
+        command['--sample_size'] = 80
+        command['--model_depth'] = '50'
+        command['--sample_duration'] = 90
+        command['--train_crop'] = 'center'
+        
+        resultsDirectory = 'resnet_'+ str(4) + '/'
+        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(4)
+        command['--result_path'] = resultsDirectory
 
-        for i in range(4,8):
-            command['--model_depth'] = '50'
-            resultsDirectory = 'resnet_'+str(i) + '/'
-            self.resultDirectories.append(resultsDirectory)
-            shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-            os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-            trainEnv = os.environ.copy()
-            trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
-            print(trainEnv['CUDA_VISIBLE_DEVICES'])
+        outCommand = []
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        print(outCommand)
+        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-            command['--batch_size'] = '3'
-            command['--sample_size'] = 100
-            command['--sample_duration'] = (i-3)*30
-            command['--result_path'] = resultsDirectory
 
-            outCommand = []
-            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-            print(outCommand)
-            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-      
+        command['--batch_size'] = '2'
+        command['--sample_size'] = 120
+        command['--sample_duration'] = 90
+        
+        resultsDirectory = 'resnet_'+ str(5) + '/'
+        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(5)
+        command['--result_path'] = resultsDirectory
+
+        outCommand = []
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        print(outCommand)
+        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+        command['--batch_size'] = '3'
+        command['--sample_size'] = 80
+        command['--model_depth'] = '34'
+        command['--sample_duration'] = 90
+        command['--train_crop'] = 'center'
+        
+        resultsDirectory = 'resnet_'+ str(6) + '/'
+        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(6)
+        command['--result_path'] = resultsDirectory
+
+        command['--batch_size'] = '2'
+        command['--sample_size'] = 120
+        command['--sample_duration'] = 90
+        
+        outCommand = []
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        print(outCommand)
+        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+
+        resultsDirectory = 'resnet_'+ str(7) + '/'
+        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(7)
+        command['--result_path'] = resultsDirectory
+
+        outCommand = []
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        print(outCommand)
+        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))   
 
         for process in processes:
             process.communicate()
