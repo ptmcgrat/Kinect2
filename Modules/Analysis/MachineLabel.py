@@ -143,6 +143,8 @@ class MachineLabelCreator:
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(0)
+        command['--result_path'] = resultsDirectory
+
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -155,6 +157,7 @@ class MachineLabelCreator:
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(1)
+        command['--result_path'] = resultsDirectory
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -168,6 +171,7 @@ class MachineLabelCreator:
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(2)
+        command['--result_path'] = resultsDirectory
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -180,6 +184,7 @@ class MachineLabelCreator:
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(3)
+        command['--result_path'] = resultsDirectory
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -197,6 +202,7 @@ class MachineLabelCreator:
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(i)
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
+            command['--batch_size'] = '3'
             command['--sample_size'] = 200
             command['--sample_duration'] = (i-3)*30
             command['--result_path'] = resultsDirectory
