@@ -203,7 +203,7 @@ class MachineLabelCreator:
             print(trainEnv['CUDA_VISIBLE_DEVICES'])
 
             command['--batch_size'] = '3'
-            command['--sample_size'] = 200
+            command['--sample_size'] = 100
             command['--sample_duration'] = (i-3)*30
             command['--result_path'] = resultsDirectory
 
