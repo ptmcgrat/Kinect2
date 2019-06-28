@@ -165,7 +165,7 @@ class MachineLabelCreator:
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         command['--batch_size'] = '6'
-        command['--sample_size'] = 120
+        command['--sample_size'] = 150
 
         command['--train_crop'] = 'center'
         resultsDirectory = 'resnet_'+ str(2) + '/'
@@ -194,7 +194,7 @@ class MachineLabelCreator:
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         command['--batch_size'] = '3'
-        command['--sample_size'] = 80
+        command['--sample_size'] = 120
         command['--model_depth'] = '50'
         command['--sample_duration'] = 90
         command['--train_crop'] = 'center'
@@ -213,7 +213,7 @@ class MachineLabelCreator:
 
 
         command['--batch_size'] = '2'
-        command['--sample_size'] = 120
+        command['--sample_size'] = 150
         command['--sample_duration'] = 90
         
         resultsDirectory = 'resnet_'+ str(5) + '/'
@@ -229,7 +229,7 @@ class MachineLabelCreator:
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         command['--batch_size'] = '3'
-        command['--sample_size'] = 80
+        command['--sample_size'] = 120
         command['--model_depth'] = '34'
         command['--sample_duration'] = 90
         command['--train_crop'] = 'center'
@@ -242,7 +242,7 @@ class MachineLabelCreator:
         command['--result_path'] = resultsDirectory
 
         command['--batch_size'] = '2'
-        command['--sample_size'] = 120
+        command['--sample_size'] = 150
         command['--sample_duration'] = 90
         
         outCommand = []
