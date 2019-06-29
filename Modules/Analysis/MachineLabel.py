@@ -48,7 +48,8 @@ class MachineLabelAnalyzer:
         print('Making predictions')
         print(' '.join(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train']))
         call(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train'])
-        
+
+
 class MachineLabelCreator:
     def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, labeledClusterFile, classIndFile):
 
@@ -108,7 +109,7 @@ class MachineLabelCreator:
 
     def runTraining(self):
         #self.classes, self.numClasses = self._identifyClasses()
-# Run cichlids_json script to create json info for all clips
+        # Run cichlids_json script to create json info for all clips
        
         self.resultDirectories = []
 
@@ -287,6 +288,7 @@ class MachineLabelCreator:
         dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
         dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
         dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
+        print(dt.groupby(['ManualLabel']).count()['ManualLabel'])
         return dt, len(dt)
 
     def _convertClips(self):
@@ -298,7 +300,7 @@ class MachineLabelCreator:
             for videoID in os.listdir(self.localClipsDirectory + projectID):
                 clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
                 print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                #subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
+                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
@@ -339,10 +341,10 @@ class MachineLabelCreator:
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
-                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    #os.makedirs(outDirectory) 
-                    #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    os.makedirs(outDirectory) 
+                    print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:

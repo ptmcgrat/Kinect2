@@ -331,7 +331,7 @@ class VideoProcessor:
             'Y_span': int(x['Y'].max() - x['Y'].min()),
             'ManualAnnotation': 'No',
             'ManualLabel': '',
-            'ClipCreated': '',
+            'ClipCreated': 'No',
         })
         )
         print('Calculating new coordinates', file = sys.stderr)
