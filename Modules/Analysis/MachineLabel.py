@@ -288,6 +288,7 @@ class MachineLabelCreator:
         dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
         dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
         dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
+        pdb.set_trace()
         print(dt.groupby(['ManualLabel']).count()['ManualLabel'])
         return dt, len(dt)
 
