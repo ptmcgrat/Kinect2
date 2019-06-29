@@ -309,7 +309,7 @@ class MachineLabelCreator:
                 print(meanID + ',' + ','.join([str(x) for x in data[0] + data[1]]), file = f)
 
         if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
-            raise Exception('The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
+            self._print('Warning: The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
         self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
 
