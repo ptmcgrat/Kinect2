@@ -9,7 +9,7 @@ class ProjectData:
             dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
         else:
             converters = {'ClusterAnalysis':str,'ManualPrediction':str}
-            for key in machLearningIDs.keys():
+            for key in machLearningIDs:
                 converters[key] = str
             dt = pd.read_excel(excelFile, header = 1, converters=converters)
         self.projects = {}
