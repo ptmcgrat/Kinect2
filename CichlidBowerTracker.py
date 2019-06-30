@@ -1,17 +1,21 @@
 import argparse, os, socket, sys
 from subprocess import call
+from collections import defaultdict
 
 class ProjectData:
-    def __init__(self, excelFile, projects, machLearningID = None):
+    def __init__(self, excelFile, projects, machLearningIDs = None):
         excelProjects = set()
-        if machLearningID is None:
+        if machLearningIDs is None:
             dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
         else:
-            dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str, machLearningID:str})
+            converters = {'ClusterAnalysis':str,'ManualPrediction':str}
+            for key in machLearningIDs.keys():
+                converters[key] = str
+            dt = pd.read_excel(excelFile, header = 1, converters=converters)
         self.projects = {}
         self.clusterData = {}
         self.manPredData = {}
-        self.mLearningData = []
+        self.mLearningData = defaultdict(list)
         for row in dt.iterrows():
             if row[1].Include == True:
 
@@ -29,13 +33,14 @@ class ProjectData:
                     self.manPredData[projectID] = [int(x) for x in str(row[1].ManualPrediction).split(',')]
                 except ValueError:
                     pass
-                if machLearningID is not None:
+                if machLearningIDs is not None:
                     try:
-                        if str(row[1][machLearningID]).lower() == 'true':
-                            self.mLearningData.append(projectID)
+                        for mlID in machLearningIDs:
+                            if str(row[1][mlID]).lower() == 'true':
+                                self.mLearningData[mlID].append(projectID)
                     except KeyError:
                         raise KeyError(machLearningID + ' not a column in Excel data file')
-        if machLearningID is None and projects is not None:
+        if machLearningIDs is None and projects is not None:
             for projectID in projects:
                 if projectID not in excelProjects:
                         print('Cant find projectID: ' + projectID)
@@ -90,7 +95,7 @@ summarizeParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help
 
 trainParser = subparsers.add_parser('CreateModel', help='This command trains the 3DCNN model on a GPU machine')
 trainParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project. This file must include a column with the ModelName with all of the videos that should be included in the model.')
-trainParser.add_argument('ModelName', type = str, help = 'Name of model that will be trained')
+trainParser.add_argument('ModelNames', nargs = '+', type = str, help = 'Name of model that will be trained')
 trainParser.add_argument('classIndFile', type = str, help = 'Name of class file that contains info on labels')
 
 args = parser.parse_args()
@@ -113,7 +118,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     if args.command != 'CreateModel':
         inputData = ProjectData(args.InputFile, args.ProjectIDs)
     else:
-        inputData = ProjectData(args.InputFile, None, args.ModelName)
+        inputData = ProjectData(args.InputFile, None, args.ModelNames)
     
     if args.command == 'DepthAnalysis':
         print('Will analyze the following projects:', file = sys.stderr)
@@ -169,9 +174,12 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         #    raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
         #print(os.environ['CONDA_DEFAULT_ENV'])
         print(inputData.mLearningData)
-        ml_obj = MLC(args.ModelName, inputData.mLearningData, localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
-        ml_obj.prepareData()
-        ml_obj.runTraining()
+        count = 0
+        for mlID in inputData.mLearningData:
+            ml_obj = MLC(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
+            ml_obj.prepareData()
+            ml_obj.runTraining(GPU = count)
+            count += 2
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
         #        da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
