@@ -107,7 +107,7 @@ class MachineLabelCreator:
         print(command)
         subprocess.call(command)
 
-    def runTraining(self):
+    def runTraining(self, GPU = 0):
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
        
@@ -127,53 +127,22 @@ class MachineLabelCreator:
         command['--n_threads'] = '5'
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
-        command['--sample_duration'] = 90
+        command['--sample_duration'] = 120
         command['--mean_dataset'] = 'cichlids'
         command['--train_crop'] = 'center'
         command['--sample_size'] = 200
-        command['--n_epochs'] = '100'
+        command['--n_epochs'] = '200'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
         command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
         command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
         command['--temporal_crop'] = 'center'
 
-        command['--train_crop'] = 'center'
-        resultsDirectory = 'resnet_'+ str(0) + '/'
+        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(0)
-        command['--result_path'] = resultsDirectory
-
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-      
-        command['--train_crop'] = 'corner'
-        resultsDirectory = 'resnet_'+ str(1) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(1)
-        command['--result_path'] = resultsDirectory
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-
-        command['--batch_size'] = '6'
-        command['--sample_size'] = 150
-
-        command['--train_crop'] = 'center'
-        resultsDirectory = 'resnet_'+ str(2) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(2)
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
         outCommand = []
@@ -181,12 +150,15 @@ class MachineLabelCreator:
         print(outCommand)
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
       
-        command['--train_crop'] = 'corner'
-        resultsDirectory = 'resnet_'+ str(3) + '/'
+        GPU += 1
+        command['--sample_duration'] = 90
+        command['--sample_size'] = 250
+
+        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(3)
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
         outCommand = []
@@ -194,78 +166,8 @@ class MachineLabelCreator:
         print(outCommand)
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-        command['--batch_size'] = '3'
-        command['--sample_size'] = 120
-        command['--model_depth'] = '50'
-        command['--sample_duration'] = 90
-        command['--train_crop'] = 'center'
-        
-        resultsDirectory = 'resnet_'+ str(4) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(4)
-        command['--result_path'] = resultsDirectory
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-
-
-        command['--batch_size'] = '2'
-        command['--sample_size'] = 150
-        command['--sample_duration'] = 90
-        
-        resultsDirectory = 'resnet_'+ str(5) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(5)
-        command['--result_path'] = resultsDirectory
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-
-        command['--batch_size'] = '6'
-        command['--sample_size'] = 150
-        command['--model_depth'] = '34'
-        command['--sample_duration'] = 90
-        command['--train_crop'] = 'center'
-        
-        resultsDirectory = 'resnet_'+ str(6) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(6)
-        command['--result_path'] = resultsDirectory
-
-        command['--batch_size'] = '12'
-        command['--sample_size'] = 100
-        command['--sample_duration'] = 90
-        
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-
-
-        resultsDirectory = 'resnet_'+ str(7) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(7)
-        command['--result_path'] = resultsDirectory
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))   
-
-        for process in processes:
-            process.communicate()
+        #for process in processes:
+        #    process.communicate()
 
     def summarizeResults(self):
 
@@ -288,7 +190,8 @@ class MachineLabelCreator:
         dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
         dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
         dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
-        self._print('ClassDistribution:' + ','.join([str(x) for x in dt.groupby(['ManualLabel']).count()['LID']]))
+        self._print('ClassDistribution:')
+        self._print(dt.groupby(['ManualLabel']).count()['LID'])
         return dt, len(dt)
 
     def _convertClips(self):
