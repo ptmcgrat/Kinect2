@@ -95,8 +95,8 @@ summarizeParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help
 
 trainParser = subparsers.add_parser('CreateModel', help='This command trains the 3DCNN model on a GPU machine')
 trainParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project. This file must include a column with the ModelName with all of the videos that should be included in the model.')
-trainParser.add_argument('ModelNames', nargs = '+', type = str, help = 'Name of model that will be trained')
 trainParser.add_argument('classIndFile', type = str, help = 'Name of class file that contains info on labels')
+trainParser.add_argument('ModelNames', nargs = '+', type = str, help = 'Name of model that will be trained')
 
 args = parser.parse_args()
 
