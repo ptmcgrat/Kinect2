@@ -39,7 +39,7 @@ class ProjectData:
                             if str(row[1][mlID]).lower() == 'true':
                                 self.mLearningData[mlID].append(projectID)
                     except KeyError:
-                        raise KeyError(machLearningID + ' not a column in Excel data file')
+                        raise KeyError(mlID + ' not a column in Excel data file')
         if machLearningIDs is None and projects is not None:
             for projectID in projects:
                 if projectID not in excelProjects:

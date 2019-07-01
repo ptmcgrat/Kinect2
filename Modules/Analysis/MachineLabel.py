@@ -1,4 +1,4 @@
-import os, subprocess, sys, shutil, socket, getpass, datetime, pdb
+import os, subprocess, sys, shutil, socket, getpass, datetime, pdb, pickle
 import pandas as pd
 import numpy as np
 from random import randint
@@ -50,8 +50,8 @@ class MachineLabelAnalyzer:
         call(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train'])
 
 
-class MachineLabelCreator:
-    def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, labeledClusterFile, classIndFile):
+class MachineLearningMaker:
+    def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
 
         if modelID[0:5].lower() != 'model':
             raise Exception('modelID must start with "model", user named modelID=' + modelID)
@@ -61,9 +61,8 @@ class MachineLabelCreator:
         self.projects = projects # Projects that will be included in this data
 
         # Store relevant directories for cloud and local data   
-        self.cloudMasterDirectory = cloudMasterDirectory + '/' if cloudMasterDirectory[-1] != '/' else cloudMasterDirectory # Master directory
-        self.cloudOutputDirectory = self.cloudMasterDirectory + '/' + modelID + '/' # Where data will be stored once model is trained
-        self.cloudClipsDirectory = self.cloudMasterDirectory + 'Clips/' # Where manually labeled clips are stored
+        self.cloudModelDirectory = cloudModelDirectory + '/' if cloudModelDirectory[-1] != '/' else cloudModelDirectory # Master directory
+        self.cloudClipsDirectory = cloudClipsDirectory + '/' if cloudClipsDirectory[-1] != '/' else cloudClipsDirectory # Where manually labeled clips are stored
 
         self.localMasterDirectory = localMasterDirectory + '/' if localMasterDirectory[-1] != '/' else localMasterDirectory
         self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
@@ -76,20 +75,28 @@ class MachineLabelCreator:
         self.resnetDirectory = os.getenv("HOME") + '/3D-resnets/'
 
         # Store file names
-        self.labeledClusterFile = 'ManualLabeledClusters.csv' # This file that contains the manual label information for each clip
-        self.classIndFile = classIndFile # This file lists the allowed label classes
+        self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
+        
+        if classIndFile is None: # Try to download it from model directory
+            subprocess.call['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localModelDirectory]
+            assert os.path.exists(self.localModelDirectory + 'classInd.txt')
+            self.classIndFile = self.localModelDirectory + 'classInd.txt'
+
+        else:
+            self.classIndFile = classIndFile # This file lists the allowed label classes
 
         self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
 
-        self._print('ModelCreation: modelID: ' + modelID + ',,projectsUsed:' + ','.join(projects))
+        self._print('ModelInitialization: modelID: ' + modelID + ',,projectsUsed:' + ','.join(projects))
 
     def prepareData(self):
 
-        # Determine how many label classes are possible
+        # Determine how many label classes are possible from classIndFile
         self.classes, self.numClasses = self._identifyClasses()
 
-        # Download and open manual label file
-        self.labeledData, self.numLabeledClusters = self._loadClusterFile()
+        # Download and open manual label file if necessary
+        if self.labeledClusterFile is not None:
+            self.labeledData, self.numLabeledClusters = self._loadClusterFile()
  
         # Download clips
         for projectID in self.projects:
@@ -111,7 +118,7 @@ class MachineLabelCreator:
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
        
-        self.resultDirectories = []
+        self._print('modelCreation: GPU:' + str(GPU))
 
         processes = []
 
@@ -123,11 +130,11 @@ class MachineLabelCreator:
         command['--model'] = 'resnet'
         command['--model_depth'] = '18'
         command['--n_classes'] = str(self.numClasses)
-        command['--batch_size'] = '3'
+        command['--batch_size'] = '4'
         command['--n_threads'] = '5'
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
-        command['--sample_duration'] = 120
+        command['--sample_duration'] = 90
         command['--mean_dataset'] = 'cichlids'
         command['--train_crop'] = 'center'
         command['--sample_size'] = 200
@@ -140,16 +147,24 @@ class MachineLabelCreator:
 
         resultsDirectory = 'resnetF_'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory)
         trainEnv = os.environ.copy()
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
+        pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
+
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
         print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-      
+        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+        subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'save_200.pth', self.localOutputDirectory + model.pth)
+        subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'commands.pkl', self.localOutputDirectory)
+
+        #self._summarizeModel()
+
+        
         GPU += 1
         command['--sample_duration'] = 90
         command['--sample_size'] = 250
@@ -167,7 +182,35 @@ class MachineLabelCreator:
         processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
         #for process in processes:
-        #    process.communicate()
+        #    process.communicate()"""
+
+    def predictLabels(self, GPU = 0):
+
+        self._print('modelPrediction: GPU:' + str(GPU))
+
+        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'model.pth', self.localOutputDirectory])
+        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'commands.pkl', self.localOutputDirectory])
+
+        command = pkl.load(self.localOutputDirectory + 'commands.pkl') 
+        command['--root_path'] = self.localOutputDirectory
+        command['--n_epochs'] = '1'
+        command['--notrain'] = ''
+        command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
+
+        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
+        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
+        trainEnv = os.environ.copy()
+        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+        command['--result_path'] = resultsDirectory
+
+        pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
+
+        outCommand = []
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        print(outCommand)
+        subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
 
     def summarizeResults(self):
 
@@ -178,11 +221,12 @@ class MachineLabelCreator:
                     accuracy = float(line.split('tensor(')[-1].split(',')[0])
 
     def _identifyClasses(self):
-        classes = set()
+        classes = []
         with open(self.classIndFile) as f:
             for line in f:
-                classes.add(line.rstrip().split()[-1])
-        self._print('ModelCreation: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(list(classes))))
+                tokens = line.rstrip().split()
+                classes.append(tokens[1])
+        self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(classes))
         return classes, len(classes)
 
     def _loadClusterFile(self):
@@ -211,10 +255,10 @@ class MachineLabelCreator:
             for meanID,data in means.items():
                 print(meanID + ',' + ','.join([str(x) for x in data[0] + data[1]]), file = f)
 
-        if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
+        if sum.numLabeledClusters is not None and sum(len(x) for x in clips.values()) != self.numLabeledClusters:
             self._print('Warning: The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
 
-        self._print('ModelCreation: labeledClusters: ' + str(self.numLabeledClusters))
+        self._print('ModelInitialization: # of clips: ' + str(sum(len(x) for x in clips.values())))
 
         with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.csv', 'w') as h:
             print('Location,Dataset,Label,meanID', file = h)
@@ -228,19 +272,25 @@ class MachineLabelCreator:
                     except IndexError: #MC6_5
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
-                    if len(subTable) == 0:
-                        raise Exception('No label for: ' + clip)
-                    elif len(subTable) > 1:
-                        raise Exception('Multiple labels for: ' + clip)
-                    else:
-                        label = subTable.values[0]
-                    if randint(0,4) == 4: # Test data
+                    try:
+                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
+                        if len(subTable) == 0:
+                            raise Exception('No label for: ' + clip)
+                        elif len(subTable) > 1:
+                            raise Exception('Multiple labels for: ' + clip)
+                        else:
+                            label = subTable.values[0]
+                        if randint(0,4) == 4: # Test data
+                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
+                            print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
+                        else: # Train data
+                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
+                            print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
+                     
+                    except AttributeError: # we will be predicting labels, not creating a model
+                        label = 'z'
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
                         print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
-                    else: # Train data
-                        print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
-                        print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
@@ -271,9 +321,24 @@ class MachineLabelCreator:
                         norm[norm > 255] = 255
                         io.imsave(outDirectory + frames[0], norm.astype('uint8'))
                 """
+    
+    def _summarizeModel(self):
+        with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w' as g:
+            headers = ['']
+            line = next(f)
+            for token in line.rstrip().split(',')[1:]:
+                headers.append(self.classes[int(token)])
+            print(','.join(headers), file = g)
+            for line in f:
+                print(self.classes[int(line.split(',')[0])] + ','.join(line.rstrip().split(',')[1:]), file = g)
+
+        subprocess.call(['cp', self.classIndFile, self.localOutputDirectory])
+
+        subprocess.call(['rclone', 'copy', self.localOutputDirectory, self.cloudModelDirectory])
+
     def _print(self, outtext, log = True):
         if log:
-            with open(self.localOutputDirectory + self.modelID + '_CreationLog.txt', 'a') as f:
+            with open(self.localOutputDirectory + self.modelID + '_MachineLearningLog.txt', 'a') as f:
                 print(str(outtext) + '...' + str(getpass.getuser()) + ', ' + str(datetime.datetime.now()) + ', ' + socket.gethostname(), file = f)
         print(outtext, file = sys.stderr)
     
