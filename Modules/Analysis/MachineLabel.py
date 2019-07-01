@@ -226,7 +226,7 @@ class MachineLearningMaker:
             for line in f:
                 tokens = line.rstrip().split()
                 classes.append(tokens[1])
-        self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(classes))
+        self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(classes))
         return classes, len(classes)
 
     def _loadClusterFile(self):
@@ -255,8 +255,11 @@ class MachineLearningMaker:
             for meanID,data in means.items():
                 print(meanID + ',' + ','.join([str(x) for x in data[0] + data[1]]), file = f)
 
-        if sum.numLabeledClusters is not None and sum(len(x) for x in clips.values()) != self.numLabeledClusters:
-            self._print('Warning: The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
+        try:
+            if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
+                self._print('Warning: The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
+        except AttributeError: # no manual label cluster file
+            pass
 
         self._print('ModelInitialization: # of clips: ' + str(sum(len(x) for x in clips.values())))
 
