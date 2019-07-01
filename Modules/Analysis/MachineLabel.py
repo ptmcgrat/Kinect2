@@ -159,8 +159,8 @@ class MachineLearningMaker:
         print(outCommand)
         subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
-        subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'save_200.pth', self.localOutputDirectory + model.pth)
-        subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'commands.pkl', self.localOutputDirectory)
+        #subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'save_200.pth', self.localOutputDirectory + model.pth)])
+        #subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'commands.pkl', self.localOutputDirectory)])
 
         #self._summarizeModel()
 
