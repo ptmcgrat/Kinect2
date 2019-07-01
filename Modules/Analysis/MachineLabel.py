@@ -323,7 +323,7 @@ class MachineLearningMaker:
                 """
     
     def _summarizeModel(self):
-        with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w' as g:
+        with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w') as g:
             headers = ['']
             line = next(f)
             for token in line.rstrip().split(',')[1:]:
