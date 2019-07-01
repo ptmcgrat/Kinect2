@@ -350,6 +350,8 @@ class VideoProcessor:
     def _identifyManualClusters(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
     
         self.loadClusterSummary()
+
+
         try:
             clipsCreated = self.clusterData.groupby('ManualAnnotation').count()['LID']['Yes']
         except KeyError:
@@ -411,7 +413,7 @@ class VideoProcessor:
         self.loadHMM()
         self.loadClusters()
         self.loadClusterSummary()
-        #self._createMean()
+        self._createMean()
         self._print('Creating manual label clip videos, and clip videos for all clusters')
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
@@ -581,7 +583,7 @@ class VideoProcessor:
 
         tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
     def predictLabels(self, modelLocation):
         print('Loading Cluster file')
@@ -774,13 +776,24 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, depthObject, cloudMLDirectory):
-        #self._createMean()
         self.loadClusterSummary()
-        self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
-        self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        self._addHeightChange(depthObject)
+        for row in self.clusterData.itertuples():
+            LID, N, t, x, y, manualAnnotation, manualLabel = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ManualLabel
+            if manualAnnotation == 'No':
+                continue
+            elif manualLabel != manualLabel:
+                continue
+            else:
+                clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+                subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+
+        #self._createMean()
+        #self.loadClusterSummary()
+        #self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+        #self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+        #self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        #subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+        #self._addHeightChange(depthObject)
         """
 
         converter = {'r':'d', 'f':'t', 'o':'', 'm':'m', 'c':'', 'b':'', 'p':''}
