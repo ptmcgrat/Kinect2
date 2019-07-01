@@ -113,7 +113,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
     import pandas as pd
     from Modules.Analysis.DataAnalyzer import DataAnalyzer as DA
     from Modules.Analysis.LabelAnalyzer import LabelAnalyzer as LA
-    from Modules.Analysis.MachineLabel import MachineLabelCreator as MLC
+    from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
 
     if args.command != 'CreateModel':
         inputData = ProjectData(args.InputFile, args.ProjectIDs)
@@ -176,7 +176,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(inputData.mLearningData)
         count = 0
         for mlID in inputData.mLearningData:
-            ml_obj = MLC(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
+            ml_obj = MLM(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, manualLabelFile, args.classIndFile)
             ml_obj.prepareData()
             ml_obj.runTraining(GPU = count)
             count += 2
