@@ -226,7 +226,7 @@ class MachineLearningMaker:
             for line in f:
                 tokens = line.rstrip().split()
                 classes.append(tokens[1])
-        self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(classes))
+        self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(classes)))
         return classes, len(classes)
 
     def _loadClusterFile(self):
