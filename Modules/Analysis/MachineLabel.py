@@ -51,7 +51,7 @@ class MachineLabelAnalyzer:
 
 
 class MachineLearningMaker:
-    def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
+    def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
 
         if modelID[0:5].lower() != 'model':
             raise Exception('modelID must start with "model", user named modelID=' + modelID)
@@ -78,7 +78,7 @@ class MachineLearningMaker:
         self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
         
         if classIndFile is None: # Try to download it from model directory
-            subprocess.call['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localOutputDirectory]
+            subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localOutputDirectory])
             assert os.path.exists(self.localModelDirectory + 'classInd.txt')
             self.classIndFile = self.localModelDirectory + 'classInd.txt'
 
