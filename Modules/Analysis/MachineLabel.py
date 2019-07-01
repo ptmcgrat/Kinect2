@@ -78,7 +78,7 @@ class MachineLearningMaker:
         self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
         
         if classIndFile is None: # Try to download it from model directory
-            subprocess.call['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localModelDirectory]
+            subprocess.call['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localOutputDirectory]
             assert os.path.exists(self.localModelDirectory + 'classInd.txt')
             self.classIndFile = self.localModelDirectory + 'classInd.txt'
 
