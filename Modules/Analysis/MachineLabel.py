@@ -168,6 +168,7 @@ class MachineLearningMaker:
         GPU += 1
         command['--sample_duration'] = 90
         command['--sample_size'] = 250
+        command['--batch_size'] = '3'
 
         resultsDirectory = 'resnetF_'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
