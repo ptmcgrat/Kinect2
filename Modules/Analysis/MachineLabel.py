@@ -135,15 +135,12 @@ class MachineLearningMaker:
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
-        command['--mean_dataset'] = 'cichlids'
-        command['--train_crop'] = 'center'
         command['--sample_size'] = 200
         command['--n_epochs'] = '200'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
         command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
         command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
-        command['--temporal_crop'] = 'center'
 
         resultsDirectory = 'resnetF_'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
