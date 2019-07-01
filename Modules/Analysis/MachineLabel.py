@@ -157,7 +157,7 @@ class MachineLearningMaker:
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
         print(outCommand)
-        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
         subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'save_200.pth', self.localOutputDirectory + model.pth)
         subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'commands.pkl', self.localOutputDirectory)
@@ -179,7 +179,7 @@ class MachineLearningMaker:
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
         print(outCommand)
-        processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
         #for process in processes:
         #    process.communicate()"""
