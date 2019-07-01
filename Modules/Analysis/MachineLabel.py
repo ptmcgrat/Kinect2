@@ -51,7 +51,7 @@ class MachineLabelAnalyzer:
 
 
 class MachineLearningMaker:
-    def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
+    def __init__(self, modelID, projects, localMasterDirectory, cloudMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
 
         if modelID[0:5].lower() != 'model':
             raise Exception('modelID must start with "model", user named modelID=' + modelID)
@@ -230,7 +230,7 @@ class MachineLearningMaker:
         return classes, len(classes)
 
     def _loadClusterFile(self):
-        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
         dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
         dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
         dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
