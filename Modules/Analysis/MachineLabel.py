@@ -251,7 +251,7 @@ class MachineLearningMaker:
         with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
             for meanID,data in means.items():
-                print(meanID + ',' + ','.join([str(x) for x in data[0] + data[1]]), file = f)
+                print(meanID + ',' + ','.join([str(x) for x in list(data[0]) + list(data[1])]), file = f)
 
         try:
             if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
