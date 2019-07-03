@@ -167,7 +167,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/', args.ModelName)
+                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/' + args.ModelName + '/', args.ModelName)
                 
     elif args.command == 'CreateModel':
         if socket.gethostname() != 'biocomputesrg':
