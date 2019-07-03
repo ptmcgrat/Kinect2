@@ -601,7 +601,7 @@ class VideoProcessor:
         
         MLobj = MLM(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
         MLobj.prepareData()
-        MLobj.makePredictions()
+        MLobj.predictLabels()
 
     def summarizeData(self):
         self.loadClusters()
