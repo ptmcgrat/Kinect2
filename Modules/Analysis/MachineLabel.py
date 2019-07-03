@@ -136,14 +136,14 @@ class MachineLearningMaker:
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
-        command['--sample_size'] = 200
+        command['--sample_size'] = 280
         command['--n_epochs'] = '100'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
         command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
         command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
 
-        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
+        resultsDirectory = 'resnet18/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         os.makedirs(self.localOutputDirectory + resultsDirectory)
         trainEnv = os.environ.copy()
@@ -154,36 +154,10 @@ class MachineLearningMaker:
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
-
-        #subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'save_200.pth', self.localOutputDirectory + model.pth)])
-        #subprocess.call(['cp', self.localOutputDirectory + resultsDirectory + 'commands.pkl', self.localOutputDirectory)])
-
-        #self._summarizeModel()
-
-        
-        GPU += 1
-        command['--sample_duration'] = 90
-        command['--sample_size'] = 280
-        command['--batch_size'] = '3'
-
-        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
-        command['--result_path'] = resultsDirectory
-
-        pickle.dump(command, open(resultsDirectory + 'commands.pkl', 'wb'))
-
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        print(outCommand)
-        subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
-
-        #for process in processes:
-        #    process.communicate()"""
+        self._print('\t'.join(outCommand))
+        process = subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
+       
+        return process
 
     def predictLabels(self, GPU = 7):
 
@@ -213,6 +187,7 @@ class MachineLearningMaker:
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
         print(outCommand)
         subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
+
 
 
     def summarizeResults(self):

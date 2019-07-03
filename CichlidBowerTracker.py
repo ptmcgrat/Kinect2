@@ -176,12 +176,21 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         #    raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
         #print(os.environ['CONDA_DEFAULT_ENV'])
         print(inputData.mLearningData)
+        processes = []
+        confusionMatrices = []
         count = 0
         for mlID in inputData.mLearningData:
             ml_obj = MLM(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Clips/', manualLabelFile, args.classIndFile)
             ml_obj.prepareData()
-            ml_obj.runTraining(GPU = count)
-            count += 2
+            process, confusionMatrix = ml_obj.runTraining(GPU = count)
+            count += 1
+
+        for process in processes:
+            process.communicate()
+
+        for mlID in inputData.mLearningData:
+            subprocess.Popen(['rclone', 'copy', localMasterDirectory + machineLearningDirectory + mlID, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + mlID])
+
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
         #        da_obj.predictLabels(videos[projectID], rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + '/Models/' + args.ModelName + '/')
