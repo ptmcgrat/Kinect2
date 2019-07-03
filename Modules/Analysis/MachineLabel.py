@@ -196,7 +196,6 @@ class MachineLearningMaker:
             command = pickle.load(pickle_file) 
         command['--root_path'] = self.localOutputDirectory
         command['--n_epochs'] = '1'
-        command['--no_train'] = ''
         command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
 
         resultsDirectory = 'prediction'+ str(GPU) + '/'
@@ -206,10 +205,10 @@ class MachineLearningMaker:
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
-        pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
+        #pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
 
         outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
         print(outCommand)
         subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
