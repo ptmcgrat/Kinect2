@@ -1,4 +1,4 @@
-import argparse, os, socket, sys
+import argparse, os, socket, sys, subprocess
 from subprocess import call
 from collections import defaultdict
 
@@ -182,7 +182,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         for mlID in inputData.mLearningData:
             ml_obj = MLM(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Clips/', manualLabelFile, args.classIndFile)
             ml_obj.prepareData()
-            process = ml_obj.runTraining(GPU = count)
+            processes.append(ml_obj.runTraining(GPU = count))
             count += 1
 
         for process in processes:
