@@ -192,7 +192,8 @@ class MachineLearningMaker:
         subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'model.pth', self.localOutputDirectory])
         subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'commands.pkl', self.localOutputDirectory])
 
-        command = pickle.load(self.localOutputDirectory + 'commands.pkl') 
+        with open(self.localOutputDirectory + 'commands.pkl', 'rb') as pickle_file:
+            command = pickle.load(pickle_file) 
         command['--root_path'] = self.localOutputDirectory
         command['--n_epochs'] = '1'
         command['--notrain'] = ''
