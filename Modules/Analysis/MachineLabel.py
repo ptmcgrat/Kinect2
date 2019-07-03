@@ -248,8 +248,8 @@ class MachineLearningMaker:
             if projectID == '':
                 videoID = ''
                 clips[projectID].extend([x for x in os.listdir(self.localClipsDirectory) if '.mp4' in x])
-                print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + 'Means.npy', self.localOutputDirectory])
+                print(['rclone', 'copy', self.cloudClipsDirectory.replace('ClusterData/AllClips/','') + 'Means.npy', self.localOutputDirectory])
+                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory.replace('ClusterData/AllClips/','') + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
             else:
