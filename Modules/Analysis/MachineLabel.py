@@ -196,7 +196,7 @@ class MachineLearningMaker:
             command = pickle.load(pickle_file) 
         command['--root_path'] = self.localOutputDirectory
         command['--n_epochs'] = '1'
-        command['--notrain'] = ''
+        command['--no_train'] = ''
         command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
 
         resultsDirectory = 'prediction'+ str(GPU) + '/'
