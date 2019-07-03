@@ -6,7 +6,7 @@ class ProjectData:
     def __init__(self, excelFile, projects, machLearningIDs = None):
         excelProjects = set()
         if machLearningIDs is None:
-            dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str})
+            dt = pd.read_excel(excelFile, header = 1, converters={'ClusterAnalysis':str,'ManualPrediction':str, 'Nvideos': int})
         else:
             converters = {'ClusterAnalysis':str,'ManualPrediction':str}
             for key in machLearningIDs:
@@ -16,10 +16,12 @@ class ProjectData:
         self.clusterData = {}
         self.manPredData = {}
         self.mLearningData = defaultdict(list)
+        self.nVideos = {}
         for row in dt.iterrows():
             if row[1].Include == True:
 
                 projectID = row[1].ProjectID
+                self.nVideos[projectID] = row.Nvideos
                 excelProjects.add(projectID)
                 if projects is not None and projectID not in projects:
                     continue
@@ -142,7 +144,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 if args.FixIssues:
                     da_obj.fixIssues(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
                 else:
-                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries)
+                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries, Nvideos = inputData.Nvideos[projectID])
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':

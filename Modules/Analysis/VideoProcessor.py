@@ -524,9 +524,9 @@ class VideoProcessor:
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
         self._print(str(len(clips)) + ' clips have been produced for this video', log=False)
-        categories = ['c','f','p','t','b','m','s','x','o','d','q']
+        categories = ['c','f','p','t','b','m','s','x','o','d','q', 'k']
 
-        print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit")
+        print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit; 'k': skip")
         
         newClips = []
         for f in clips:
@@ -561,6 +561,9 @@ class VideoProcessor:
             if info == ord('q'):
                 break
             
+            if info == ord('k'):
+                continue #skip
+
             self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
             self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
             self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())

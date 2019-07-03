@@ -77,7 +77,7 @@ class DataAnalyzer:
 
         self.depthObj.createDataSummary()
         
-    def processVideos(self, index, rewriteClusters, rewriteSummaries):
+    def processVideos(self, index, rewriteClusters, rewriteSummaries, Nvideos):
 
         self._loadRegistration()
         self.depthObj.loadSmoothedArray()
@@ -89,20 +89,20 @@ class DataAnalyzer:
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createHMM()
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
                 print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusters()
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
                 vo.createClusterClips()
                 vo.cleanup()
 
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/len(vos)))
+                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
                 vo.createClusterClips()
                 vo.cleanup()
 
