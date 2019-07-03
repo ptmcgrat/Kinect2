@@ -132,12 +132,12 @@ class MachineLearningMaker:
         command['--model'] = 'resnet'
         command['--model_depth'] = '18'
         command['--n_classes'] = str(self.numClasses)
-        command['--batch_size'] = '4'
+        command['--batch_size'] = '3'
         command['--n_threads'] = '5'
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
-        command['--sample_size'] = 250
+        command['--sample_size'] = 280
         command['--n_epochs'] = '100'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
