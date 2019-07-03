@@ -589,12 +589,11 @@ class VideoProcessor:
 
     def predictLabels(self, modelLocation, modelID):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
-        print('Loading Cluster file')
         self.loadClusterSummary()
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
-        MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation + modelID + '/', self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
+        MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
         
         MLobj.prepareData()
         MLobj.predictLabels()
