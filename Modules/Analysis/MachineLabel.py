@@ -150,7 +150,7 @@ class MachineLearningMaker:
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
-        pickle.dump(command, open(resultsDirectory + 'commands.pkl', 'wb'))
+        pickle.dump(command, open(self.localOutputDirectory + resultsDirectory + 'commands.pkl', 'wb'))
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -188,6 +188,9 @@ class MachineLearningMaker:
         print(outCommand)
         subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
+        dt = pd.read_csv(self.localOutputDirectory + resultsDirectory + 'ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0])
+        dt['LID'] = dt.apply(lambda row: int(row.Filename.split('/')[-1].split('_')[0]), axis = 1)
+        dt['N'] = dt.apply(lambda row: int(row.Filename.split('/')[-1].split('_')[1]), axis = 1)
 
 
     def summarizeResults(self):
