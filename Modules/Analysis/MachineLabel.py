@@ -137,7 +137,7 @@ class MachineLearningMaker:
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
-        command['--sample_size'] = 280
+        command['--sample_size'] = 260
         command['--n_epochs'] = '100'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
@@ -155,7 +155,7 @@ class MachineLearningMaker:
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        self._print('\t'.join(outCommand))
+        self._print(' '.join(outCommand))
         process = subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
        
         return process
