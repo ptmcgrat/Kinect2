@@ -146,14 +146,14 @@ class DataAnalyzer:
             break
 
 
-    def predictLabels(self, index, modelLocation):
+    def predictLabels(self, index, modelLocation, modelID):
         self._loadRegistration()
 
         print(modelLocation)
         vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
             
         for vo in vos:
-            vo.predictLabels(modelLocation)
+            vo.predictLabels(modelLocation, modelID)
          
 
     def summarizeData(self):
