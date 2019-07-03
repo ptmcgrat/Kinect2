@@ -197,6 +197,8 @@ class MachineLearningMaker:
         command['--root_path'] = self.localOutputDirectory
         command['--n_epochs'] = '1'
         command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
+        command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
+        command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
 
         resultsDirectory = 'prediction'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
