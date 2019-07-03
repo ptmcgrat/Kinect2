@@ -594,10 +594,8 @@ class VideoProcessor:
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
-        MLobj = MLM(modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None)
         MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation + modelID + '/', self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
         
-        MLobj = MLM(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
         MLobj.prepareData()
         MLobj.predictLabels()
 
