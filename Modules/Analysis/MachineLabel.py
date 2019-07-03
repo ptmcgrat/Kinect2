@@ -300,7 +300,7 @@ class MachineLearningMaker:
                             print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
                      
                     except AttributeError: # we will be predicting labels, not creating a model
-                        label = 'z'
+                        label = 'b'
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
                         print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + ':', file = h)
                             
