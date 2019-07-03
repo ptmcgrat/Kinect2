@@ -164,7 +164,7 @@ class MachineLearningMaker:
         
         GPU += 1
         command['--sample_duration'] = 90
-        command['--sample_size'] = 250
+        command['--sample_size'] = 280
         command['--batch_size'] = '3'
 
         resultsDirectory = 'resnetF_'+ str(GPU) + '/'
@@ -184,7 +184,7 @@ class MachineLearningMaker:
         #for process in processes:
         #    process.communicate()"""
 
-    def predictLabels(self, GPU = 0):
+    def predictLabels(self, GPU = 7):
 
         self._print('modelPrediction: GPU:' + str(GPU))
 
