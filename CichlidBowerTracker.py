@@ -21,7 +21,7 @@ class ProjectData:
             if row[1].Include == True:
 
                 projectID = row[1].ProjectID
-                self.nVideos[projectID] = row.Nvideos
+                self.nVideos[projectID] = row[1].Nvideos
                 excelProjects.add(projectID)
                 if projects is not None and projectID not in projects:
                     continue
@@ -144,7 +144,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 if args.FixIssues:
                     da_obj.fixIssues(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
                 else:
-                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries, Nvideos = inputData.Nvideos[projectID])
+                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries, Nvideos = inputData.nVideos[projectID])
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':
