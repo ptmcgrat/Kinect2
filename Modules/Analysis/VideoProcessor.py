@@ -596,7 +596,11 @@ class VideoProcessor:
         MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
         
         MLobj.prepareData()
-        MLobj.predictLabels()
+        labels = MLobj.predictLabels()
+
+        self.clusterData = pd.merge(self.clusterdata, labels, on = ['LID', 'N'], how = 'right')
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def summarizeData(self):
         self.loadClusters()

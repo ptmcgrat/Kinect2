@@ -1,6 +1,7 @@
 import os, subprocess, sys, shutil, socket, getpass, datetime, pdb, pickle
 import pandas as pd
 import numpy as np
+import scipy.special
 from random import randint
 from skimage import io
 from collections import defaultdict, OrderedDict
@@ -188,10 +189,14 @@ class MachineLearningMaker:
         print(outCommand)
         subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
 
-        dt = pd.read_csv(self.localOutputDirectory + resultsDirectory + 'ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0])
-        dt['LID'] = dt.apply(lambda row: int(row.Filename.split('/')[-1].split('_')[0]), axis = 1)
-        dt['N'] = dt.apply(lambda row: int(row.Filename.split('/')[-1].split('_')[1]), axis = 1)
+        dt = pd.read_csv(self.localOutputDirectory + resultsDirectory + 'ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0], index_col = 0)
+        softmax = dt.apply(scipy.special.softmax, axis = 1)
+        predictions = pd.concat([softmax.idxmax(axis=1).rename(self.modelID + '_pred'), softmax.max(axis=1).rename(self.modelID + '_conf')], axis=1)
 
+        predictions['LID'] = predictions.apply(lambda row: int(row.name.split('/')[-1].split('_')[0]), axis = 1)
+        predictions['N'] = predictions.apply(lambda row: int(row.name.split('/')[-1].split('_')[1]), axis = 1)
+
+        return predictions
 
     def summarizeResults(self):
 
