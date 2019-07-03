@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
-from Modules.Analysis.MachineLabel import MachineLabelAnalyzer as MLA
 from collections import defaultdict
 
 from sklearn.cluster import DBSCAN
@@ -588,15 +587,19 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
-    def predictLabels(self, modelLocation):
+    def predictLabels(self, modelLocation, modelID):
+        from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         print('Loading Cluster file')
-        self.loadClusters()
+        self.loadClusterSummary()
         print('Loading Cluster files')
         self.loadClusterClips()
         print('Copying model data')
-        subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localAllClipsDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localAllClipsDirectory], stderr = self.fnull)
-        MLobj = MLA(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
+        subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
+        MLobj = MLM(modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None)
+        MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation + modelID + '/', self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
+        
+        MLobj = MLM(self.projectID, self.baseName, self.localAllClipsDirectory, self.clusterFile)
         MLobj.prepareData()
         MLobj.makePredictions()
 

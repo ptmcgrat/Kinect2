@@ -136,7 +136,7 @@ class MachineLearningMaker:
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
         command['--sample_size'] = 200
-        command['--n_epochs'] = '200'
+        command['--n_epochs'] = '100'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
         command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
@@ -149,7 +149,7 @@ class MachineLearningMaker:
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
-        pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
+        pickle.dump(command, open(resultsDirectory + 'commands.pkl', 'wb'))
 
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
@@ -174,6 +174,8 @@ class MachineLearningMaker:
         trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
         command['--result_path'] = resultsDirectory
 
+        pickle.dump(command, open(resultsDirectory + 'commands.pkl', 'wb'))
+
         outCommand = []
         [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
         print(outCommand)
@@ -195,7 +197,7 @@ class MachineLearningMaker:
         command['--notrain'] = ''
         command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
 
-        resultsDirectory = 'resnetF_'+ str(GPU) + '/'
+        resultsDirectory = 'prediction'+ str(GPU) + '/'
         shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
         trainEnv = os.environ.copy()
@@ -242,11 +244,19 @@ class MachineLearningMaker:
         means = {}
 
         for projectID in self.projects:
-            for videoID in os.listdir(self.localClipsDirectory + projectID):
-                clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
+            if projectID == '':
+                videoID = ''
+                clips[projectID].extend([x for x in os.listdir(self.localClipsDirectory + 'ClusterData/Clips/') if '.mp4' in x])
                 print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
+                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + 'Means.npy', self.localOutputDirectory])
                 means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
+
+            else:
+                for videoID in os.listdir(self.localClipsDirectory + projectID):
+                    clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
+                    print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
+                    subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
+                    means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
 
         with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
