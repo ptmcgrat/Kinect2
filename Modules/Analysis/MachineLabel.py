@@ -302,7 +302,7 @@ class MachineLearningMaker:
                     except AttributeError: # we will be predicting labels, not creating a model
                         label = 'z'
                         print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
-                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
+                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + ':', file = h)
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
