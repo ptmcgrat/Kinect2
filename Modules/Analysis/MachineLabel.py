@@ -137,7 +137,7 @@ class MachineLearningMaker:
         command['--checkpoint'] = '5'
         command['--dataset'] = 'cichlids'
         command['--sample_duration'] = 90
-        command['--sample_size'] = 260
+        command['--sample_size'] = 250
         command['--n_epochs'] = '100'
         command['--weight_decay'] = str(1e-23)
         command['--n_val_samples'] = '1'
