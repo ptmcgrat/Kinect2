@@ -160,7 +160,7 @@ class MachineLearningMaker:
        
         return process
 
-    def predictLabels(self, GPU = 7):
+    def predictLabels(self, GPU = 5):
 
         self._print('modelPrediction: GPU:' + str(GPU))
 

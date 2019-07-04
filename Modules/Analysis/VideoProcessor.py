@@ -40,6 +40,7 @@ class VideoProcessor:
         self.height = videoObj.height
         self.width = videoObj.width
         self.frame_rate = videoObj.framerate
+        print(self.frame_rate)
         self.startTime = videoObj.time
 
         self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
@@ -111,7 +112,7 @@ class VideoProcessor:
                     raise Exception
 
                 # Convert it to mpeg
-                subprocess.call(['ffmpeg', '-i', self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', self.localMasterDirectory + self.videofile])
+                subprocess.call(['ffmpeg', '-r', str(self.frame_rate), '-i', self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', '-r', str(self.frame_rate), self.localMasterDirectory + self.videofile])
                 
                 if os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')).st_size:
                     try:
@@ -128,13 +129,17 @@ class VideoProcessor:
 
         #Grab info on video
         cap = pims.Video(self.localMasterDirectory + self.videofile)
-        self.height = int(cap.frame_shape[0])
-        self.width = int(cap.frame_shape[1])
-        self.frame_rate = int(cap.frame_rate)
+        if int(cap.frame_shape[0]) != self.height:
+            print('Height Different')
+        if int(cap.frame_shape[1]) != self.width:
+            print('Width Different')
+        if np.abs(int(cap.frame_rate) - self.frame_rate) > 0.01:
+            print('Warning, FrameRate different: ' + str(cap.frame_rate) + ' vs. ' + str(self.frame_rate))
         try:
             self.frames = min(int(cap.get_metadata()['duration']*cap.frame_rate), 12*60*60*self.frame_rate)
         except AttributeError:
             self.frames = min(int(cap.duration*cap.frame_rate), 12*60*60*self.frame_rate)
+        print(self.frames)
         cap.close()
 
     def loadHMM(self):
