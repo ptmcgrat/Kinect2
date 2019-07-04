@@ -291,10 +291,10 @@ class MachineLearningMaker:
                             
                     outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
                     outDirectories.append(outDirectory)
-                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    #os.makedirs(outDirectory) 
+                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    #subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
