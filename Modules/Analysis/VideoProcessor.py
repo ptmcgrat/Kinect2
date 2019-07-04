@@ -603,7 +603,7 @@ class VideoProcessor:
         MLobj.prepareData()
         labels = MLobj.predictLabels()
 
-        self.clusterData = pd.merge(self.clusterdata, labels, on = ['LID', 'N'], how = 'right')
+        self.clusterData = pd.merge(self.clusterData, labels, on = ['LID', 'N'], how = 'left')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
