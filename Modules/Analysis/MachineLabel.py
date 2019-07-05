@@ -11,7 +11,7 @@ from collections import defaultdict, OrderedDict
 class MachineLearningMaker:
     def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
 
-        if modelID[0:5].lower() != 'model':
+        if modelID != '' and modelID[0:5].lower() != 'model':
             raise Exception('modelID must start with "model", user named modelID=' + modelID)
         # Include code to check if model exists already
 
