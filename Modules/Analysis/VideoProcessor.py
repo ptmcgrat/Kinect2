@@ -239,7 +239,7 @@ class VideoProcessor:
             else:
                 self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0, index_col = 0)
                                   
-    def createHMM(self, blocksize = 5*60):
+    def createHMM(self, blocksize = 5*60, window = 120):
         """
         This functon decompresses video into smaller chunks of data formated in the numpy array format.
         Each numpy array contains one row of data for the entire video.
@@ -253,11 +253,11 @@ class VideoProcessor:
         os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
         
         self.blocksize = blocksize # Number of seconds that are analyzed at a time
-        
+        self.window = window # Size of rolling average for mean
+
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
 
         self.HMMframes = min(self.frames, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
-        #self.window = window
         #self.hmm_time = hmm_time
         
         total_blocks = math.ceil(self.HMMframes/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
