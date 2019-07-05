@@ -90,7 +90,7 @@ class LogParser:
 
                     self.movies.append(MovieObj(*t_list))
 
-                if info_type == 'PiCameraStarted':
+                if info_type == 'PiCameraStopped':
                     t_list = self._ret_data(line, ['Time', 'File'])
                     [x for x in self.movies if x.h264_file == t_list[1]][0].end_time = t_list[0]
 
