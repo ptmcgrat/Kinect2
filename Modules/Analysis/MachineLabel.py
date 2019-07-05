@@ -144,7 +144,7 @@ class MachineLearningMaker:
             command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
 
             resultsDirectory = 'prediction/'
-            selfhutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
+            shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
             os.makedirs(localModelDir + resultsDirectory) 
             trainEnv = os.environ.copy()
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
@@ -155,7 +155,7 @@ class MachineLearningMaker:
             outCommand = []
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
             print(outCommand)
-            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDir + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDir + resultsDirectory + 'RunningLogError.txt', 'w')))
             GPU += 1
 
         for process in processes:
