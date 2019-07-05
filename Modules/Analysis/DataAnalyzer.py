@@ -158,10 +158,8 @@ class DataAnalyzer:
 
         fullClusterData = pd.concat(clusterData, ignore_index=True)
 
-         'VideoAnalysis/'
-
-        fullClusterData.to_csv(self.localMasterDirectory + 'AllClusterData.csv', sep = ',')
-        subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'AllClusterData.csv', self.cloudMasterDirectory])
+        fullClusterData.to_csv(self.localMasterDirectory + 'VideoAnalysis/AllClusterData.csv', sep = ',')
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'VideoAnalysis/AllClusterData.csv', self.cloudMasterDirectory + 'VideoAnalysis/'])
 
 
     def summarizeData(self):
