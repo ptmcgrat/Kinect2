@@ -132,8 +132,11 @@ class LogParser:
                 try:
                     t_data = line.split(d + ':')[1].split(',,')[0]
                 except IndexError:
-                    out_data.append('Error')
-                    continue
+                    try:
+                        t_data = line.split(d + '=')[1].split(',,')[0]
+                    except IndexError:
+                        out_data.append('Error')
+                        continue
             # Is it a date?
             try:
                 out_data.append(dt.strptime(t_data, '%Y-%m-%d %H:%M:%S.%f'))
