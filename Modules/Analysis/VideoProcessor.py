@@ -609,6 +609,8 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
+        return self.clusterData
+
     def summarizeData(self):
         self.loadClusters()
         pass

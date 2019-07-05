@@ -146,15 +146,23 @@ class DataAnalyzer:
             break
 
 
-    def predictLabels(self, index, modelLocation, modelID):
+    def predictLabels(self, index, modelLocation, modelIDs):
         self._loadRegistration()
 
         print(modelLocation)
         vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
             
+        clusterData = []
         for vo in vos:
-            vo.predictLabels(modelLocation, modelID)
-         
+            clusterData.append(vo.predictLabels(modelLocation, modelIDs))
+
+        fullClusterData = pd.concat(clusterData, ignore_index=True)
+
+         'VideoAnalysis/'
+
+        fullClusterData.to_csv(self.localMasterDirectory + 'AllClusterData.csv', sep = ',')
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'AllClusterData.csv', self.cloudMasterDirectory])
+
 
     def summarizeData(self):
         pass
