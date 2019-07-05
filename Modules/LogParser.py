@@ -94,10 +94,6 @@ class LogParser:
                     t_list = self._ret_data(line, ['Time', 'File'])
                     [x for x in self.movies if x.h264_file == t_list[1]][0].end_time = t_list[0]
 
-
-PiCameraStopped: Time: 2018-08-21 19:01:17.001236,, File: Videos/0001_vid.h264
-
-
         self.frames.sort(key = lambda x: x.time)
 
         # Process frames into days
