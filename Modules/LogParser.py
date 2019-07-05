@@ -1,4 +1,4 @@
-import os, sys, io
+import os, sys, io, pdb
 import numpy as np
 from datetime import datetime as dt
 
@@ -92,7 +92,10 @@ class LogParser:
 
                 if info_type == 'PiCameraStopped':
                     t_list = self._ret_data(line, ['Time', 'File'])
-                    [x for x in self.movies if x.h264_file == t_list[1]][0].end_time = t_list[0]
+                    try:
+                        [x for x in self.movies if x.h264_file == t_list[1]][0].end_time = t_list[0]
+                    except IndexError:
+                        pdb.set_trace()
 
         self.frames.sort(key = lambda x: x.time)
 
