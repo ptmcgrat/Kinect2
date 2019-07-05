@@ -127,6 +127,9 @@ class MachineLearningMaker:
             print(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
             subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
             assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
+            self.classIndFile = self.localOutputDirectory + 'classInd.txt'
+            self.classes, self.numClasses = self._identifyClasses()
+            
             command = []
             command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
             command += [self.localOutputDirectory]
