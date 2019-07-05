@@ -162,8 +162,9 @@ class VideoProcessor:
         fig.savefig(self.localMasterDirectory + 'Brightness.pdf', dpi=300)
 
         self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
-        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'Brightness.pdf', self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+
         self._print('Done', log = False)
 
     def _validateVideo(self, tol = 0.001, log = False):
