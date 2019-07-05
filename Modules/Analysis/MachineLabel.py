@@ -60,6 +60,9 @@ class MachineLearningMaker:
         self._convertClips()
 
         # Run cichlids_json script to create json info for all clips
+        if self.classIndFile is not None:
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
+        assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
         command = []
         command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
         command += [self.localOutputDirectory]
@@ -123,8 +126,14 @@ class MachineLearningMaker:
             assert os.path.exists(localModelDir + 'model.pth')
             subprocess.call(['rclone', 'copy', cloudModelDir + 'commands.pkl', localModelDir])
             assert os.path.exists(localModelDir + 'commands.pkl')
-            #subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
-            #assert os.path.exists(localModelDir + 'classInd.txt')
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
+            assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
+            command = []
+            command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
+            command += [self.localOutputDirectory]
+            command += [self.localOutputDirectory + 'classInd.txt']
+            print(command)
+            subprocess.call(command)
 
             with open(localModelDir + 'commands.pkl', 'rb') as pickle_file:
                 command = pickle.load(pickle_file) 
@@ -148,6 +157,7 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
             print(outCommand)
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            GPU += 1
 
         for process in processes:
             process.communicate()
