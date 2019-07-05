@@ -112,12 +112,13 @@ class MachineLearningMaker:
        
         return process
 
-    def predictLabels(self, modelIDs, GPU = 0):
+    def predictLabels(self, modelIDs, GPU = 4):
 
-        self._print('modelPrediction: GPU:' + str(GPU))
 
         processes = []
         for modelID in modelIDs:
+            self._print('modelPrediction: GPU:' + str(GPU) + ',,modelID:' + modelID)
+
             cloudModelDir = self.cloudModelDirectory + modelID + '/'
             localModelDir = self.localOutputDirectory + modelID + '/'
             subprocess.call(['rclone', 'copy', cloudModelDir + 'model.pth', localModelDir])
@@ -129,7 +130,7 @@ class MachineLearningMaker:
             assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
             self.classIndFile = self.localOutputDirectory + 'classInd.txt'
             self.classes, self.numClasses = self._identifyClasses()
-            
+
             command = []
             command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
             command += [self.localOutputDirectory]
