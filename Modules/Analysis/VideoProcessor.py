@@ -265,7 +265,7 @@ class VideoProcessor:
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize) + )
+        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize))
         print('TotalBlocks: ' + str(total_blocks), file = sys.stderr)
         print('TotalThreads: ' + str(self.cores), file = sys.stderr)
         print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
