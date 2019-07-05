@@ -592,18 +592,20 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
-    def predictLabels(self, modelLocation, modelID):
+    def predictLabels(self, modelLocation, modelIDs):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
-        MLobj = MLM(modelID, [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
         
+        MLobj = MLM('', [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
         MLobj.prepareData()
-        labels = MLobj.predictLabels()
+        labels = MLobj.predictLabels(modelIDs)
 
-        self.clusterData = pd.merge(self.clusterData, labels, on = ['LID', 'N'], how = 'left')
+        for label in labels:
+            self.clusterData = pd.merge(self.clusterData, label, on = ['LID', 'N'], how = 'left')
+        
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 

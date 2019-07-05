@@ -7,49 +7,6 @@ from skimage import io
 from collections import defaultdict, OrderedDict
 
 
-class MachineLabelAnalyzer:
-    def __init__(self, projectID, videoID, dataDirectory, labelFile):
-        self.dataDirectory = dataDirectory
-        self.projectID = projectID
-        self.videoID = videoID
-        self.labelFile = labelFile
-
-        self.tempMasterDirectory = os.getenv("HOME") + '/Temp/MachinePrediction/' + projectID + '/' + videoID + '/'
-        self.tempDataDirectory = self.tempMasterDirectory + 'jpgs/'
-        os.makedirs(self.tempDataDirectory) if not os.path.exists(self.tempDataDirectory) else None
-
-        self.machineLearningDirectory = os.getenv("HOME") + '/3D-ResNets-PyTorch/'
-
-        #os.environ['CUDA_VISIBLE_DEVICES'] = '6'
-        call(['cp', dataDirectory + 'model.pth', self.tempMasterDirectory])
-
-        self.fnull = open(os.devnull, 'w')
-
-    def prepareData(self):
-        print('Preparing data')
-        with open(self.tempMasterDirectory + 'cichlids_test_list.txt', 'w') as f:
-            for mp4File in os.listdir(self.dataDirectory):
-                if '.mp4' not in mp4File:
-                    continue
-                print('m/' + mp4File.replace('.mp4',''), file = f)
-                jpegDirectory = self.tempDataDirectory + 'm/' + mp4File.replace('.mp4','') + '/'
-                os.makedirs(jpegDirectory) if not os.path.exists(jpegDirectory) else None
-                subprocess.call(['ffmpeg', '-i', self.dataDirectory + mp4File, jpegDirectory + 'image_%05d.jpg'], stderr = self.fnull)
-
-                # Add n_frames info
-                with open(jpegDirectory + 'n_frames', 'w') as g:
-                    print('120', file = g)
-                    
-        f = open(self.tempMasterDirectory + 'cichlids_train_list.txt', 'w')
-        f.close()
-        
-        call(['python',self.machineLearningDirectory + 'utils/cichlids_json.py', self.tempMasterDirectory, self.dataDirectory + 'classInd.txt'])       
-        
-    def makePredictions(self):
-        print('Making predictions')
-        print(' '.join(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train']))
-        call(['python',self.machineLearningDirectory + 'main.py', '--root_path', self.tempMasterDirectory, '--video_path', 'jpgs', '--annotation_path', 'cichlids.json', '--result_path', 'result', '--model', 'resnet', '--model_depth', '18', '--n_classes', '7', '--batch_size', '12', '--n_threads', '5', '--dataset', 'cichlids', '--sample_duration', '120', '--mean_dataset', 'cichlids' ,'--train_crop' ,'random' ,'--n_epochs' ,'1' ,'--pretrain_path', 'model.pth' ,'--weight_decay' ,'1e-12' ,'--n_val_samples', '1' ,'--n_finetune_classes', '7', '--no_train'])
-
 
 class MachineLearningMaker:
     def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
@@ -78,14 +35,7 @@ class MachineLearningMaker:
         # Store file names
         self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
         
-        if classIndFile is None: # Try to download it from model directory
-            print(['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localOutputDirectory])
-            subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'classInd.txt', self.localOutputDirectory])
-            assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
-            self.classIndFile = self.localOutputDirectory + 'classInd.txt'
-
-        else:
-            self.classIndFile = classIndFile # This file lists the allowed label classes
+        self.classIndFile = classIndFile # This file lists the allowed label classes
 
         self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
 
@@ -160,41 +110,58 @@ class MachineLearningMaker:
        
         return process
 
-    def predictLabels(self, GPU = 5):
+    def predictLabels(self, modelIDs, GPU = 0):
 
         self._print('modelPrediction: GPU:' + str(GPU))
 
-        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'model.pth', self.localOutputDirectory])
-        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + 'commands.pkl', self.localOutputDirectory])
+        processes = []
+        for modelID in modelIDs:
+            cloudModelDir = self.cloudModelDirectory + modelID + '/'
+            localModelDir = self.localOutputDirectory + modelID + '/'
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'model.pth', localModelDir])
+            assert os.path.exists(localModelDir + 'model.pth')
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'commands.pkl', localModelDir])
+            assert os.path.exists(localModelDir + 'commands.pkl')
+            #subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
+            #assert os.path.exists(localModelDir + 'classInd.txt')
 
-        with open(self.localOutputDirectory + 'commands.pkl', 'rb') as pickle_file:
-            command = pickle.load(pickle_file) 
-        command['--root_path'] = self.localOutputDirectory
-        command['--n_epochs'] = '1'
-        command['--pretrain_path'] = self.localOutputDirectory + 'model.pth'
-        command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
-        command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
+            with open(localModelDir + 'commands.pkl', 'rb') as pickle_file:
+                command = pickle.load(pickle_file) 
+        
+            command['--root_path'] = self.localOutputDirectory
+            command['--n_epochs'] = '1'
+            command['--pretrain_path'] = localModelDir + 'model.pth'
+            command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
+            command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
 
-        resultsDirectory = 'prediction'+ str(GPU) + '/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory) if not os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
-        command['--result_path'] = resultsDirectory
+            resultsDirectory = 'prediction/'
+            selfhutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
+            os.makedirs(localModelDir + resultsDirectory) 
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+            command['--result_path'] = modelID + '/' + resultsDirectory
 
         #pickle.dump(command, open(self.localOutputDirectory + 'commands.pkl', 'wb'))
 
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
-        print(outCommand)
-        subprocess.call(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
+            print(outCommand)
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-        dt = pd.read_csv(self.localOutputDirectory + resultsDirectory + 'ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0], index_col = 0)
-        softmax = dt.apply(scipy.special.softmax, axis = 1)
-        predictions = pd.concat([softmax.idxmax(axis=1).rename(self.modelID + '_pred'), softmax.max(axis=1).rename(self.modelID + '_conf')], axis=1)
+        for process in processes:
+            process.communicate()
 
-        predictions['LID'] = predictions.apply(lambda row: int(row.name.split('/')[-1].split('_')[0]), axis = 1)
-        predictions['N'] = predictions.apply(lambda row: int(row.name.split('/')[-1].split('_')[1]), axis = 1)
+        predictions = []
+        for modelID in modelIDs:
+            localOutDir = self.localOutputDirectory + modelID + '/prediction/' + 
+            dt = pd.read_csv(self.localOutputDirectory + modelID + '/prediction/ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0], index_col = 0)
+            softmax = dt.apply(scipy.special.softmax, axis = 1)
+            prediction = pd.concat([softmax.idxmax(axis=1).rename(modelID + '_pred'), softmax.max(axis=1).rename(modelID + '_conf')], axis=1)
+
+            prediction['LID'] = prediction.apply(lambda row: int(row.name.split('/')[-1].split('_')[0]), axis = 1)
+            prediction['N'] = prediction.apply(lambda row: int(row.name.split('/')[-1].split('_')[1]), axis = 1)
+
+            predictions.append(prediction)
 
         return predictions
 
