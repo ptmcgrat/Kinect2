@@ -146,7 +146,7 @@ class VideoProcessor:
             total_minutes += 1
             current_t += datetime.timedelta(minutes = 1)
 
-        pdb.set_trace()
+        cap.release()
 
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
@@ -180,12 +180,12 @@ class VideoProcessor:
 
         assert new_height == self.height
         assert new_width == self.width
-        assert abs(new_framerate - self.framerate) < tol*self.frame_rate
+        assert abs(new_framerate - self.frame_rate) < tol*self.frame_rate
         assert abs(predicted_frames - new_frames) < tol*predicted_frames
 
         self.frames = new_frames
 
-        cap.close()
+        cap.release()
 
     def loadHMM(self):
         print('Loading HMM', file = sys.stderr)
