@@ -61,14 +61,12 @@ class MachineLearningMaker:
 
         # Run cichlids_json script to create json info for all clips
         if self.classIndFile is not None:
-            subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
-        assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
-        command = []
-        command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
-        command += [self.localOutputDirectory]
-        command += [self.classIndFile]
-        print(command)
-        subprocess.call(command)
+            command = []
+            command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
+            command += [self.localOutputDirectory]
+            command += [self.classIndFile]
+            print(command)
+            subprocess.call(command)
 
     def runTraining(self, GPU = 0):
         #self.classes, self.numClasses = self._identifyClasses()
