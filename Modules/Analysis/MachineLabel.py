@@ -126,6 +126,7 @@ class MachineLearningMaker:
             assert os.path.exists(localModelDir + 'model.pth')
             subprocess.call(['rclone', 'copy', cloudModelDir + 'commands.pkl', localModelDir])
             assert os.path.exists(localModelDir + 'commands.pkl')
+            print(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
             subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
             assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
             command = []
