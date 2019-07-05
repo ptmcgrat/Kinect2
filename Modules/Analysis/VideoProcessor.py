@@ -98,7 +98,7 @@ class VideoProcessor:
         return False        
     
     def loadVideo(self, tol = 0.001):
-        if os.path.isfile(self.localMasterDirectory + self.videofile):
+        """if os.path.isfile(self.localMasterDirectory + self.videofile):
             self._validateVideo()
             return
             #print(self.videofile + ' present in local path.', file = sys.stderr)
@@ -123,7 +123,7 @@ class VideoProcessor:
         command = ['ffmpeg', '-r', str(self.frame_rate), '-i', self.localMasterDirectory + self.h264_file, '-c:v', 'copy', '-r', str(self.frame_rate), self.localMasterDirectory + self.videofile]
         self._print('VideoConversion: ' + ' '.join(command))
         subprocess.call(command, stderr = self.fnull)
-            
+        """
         # Ensure the conversion went ok.     
         assert os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.h264_file).st_size
 
@@ -170,18 +170,19 @@ class VideoProcessor:
         assert os.path.isfile(self.localMasterDirectory + self.videofile)
         
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
-        new_height = int(cap.get(cv2.CV_CAP_PROP_FRAME_HEIGHT))
-        new_width = int(cap.get(cv2.CV_CAP_PROP_FRAME_WIDTH))
+        new_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        new_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         new_framerate = cap.get(cv2.CAP_PROP_FPS)
         new_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         predicted_frames = int((self.endTime - self.startTime).total_seconds()*self.frame_rate)
+
+        self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
 
         assert new_height == self.height
         assert new_width == self.width
         assert abs(new_framerate - self.framerate) < tol*self.frame_rate
         assert abs(predicted_frames - new_frames) < tol*predicted_frames
 
-        self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
         self.frames = new_frames
 
         cap.close()
