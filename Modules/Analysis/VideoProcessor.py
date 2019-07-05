@@ -1,4 +1,4 @@
-import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket, random,pdb
+import os, sys, psutil, subprocess, pims, datetime, shutil, cv2, math, getpass, socket, random, pdb
 from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import pandas as pd
@@ -37,11 +37,13 @@ class VideoProcessor:
         # Store arguments
         self.projectID = projectID
         self.videofile = videoObj.mp4_file
+        self.h264_file = videoObj.h264_file
+        self.movieDir = videoObj.movieDir
         self.height = videoObj.height
         self.width = videoObj.width
         self.frame_rate = videoObj.framerate
-        print(self.frame_rate)
         self.startTime = videoObj.time
+        self.endTime = videoObj.end_time
 
         self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
         self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
@@ -95,51 +97,93 @@ class VideoProcessor:
     def __exit__(self, exc_type, exc_value, traceback):
         return False        
     
-    def loadVideo(self):
+    def loadVideo(self, tol = 0.001):
         if os.path.isfile(self.localMasterDirectory + self.videofile):
-            print(self.videofile + ' present in local path.', file = sys.stderr)
-        else:
-            print(self.videofile + ' not present in local path. Trying to find it remotely', file = sys.stderr)
-            # Try to download it from the cloud
-            subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videofile, self.localMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)                
-            if not os.path.isfile(self.localMasterDirectory + self.videofile):
-                print(self.videofile + ' not present in remote path. Trying to find h264 file and convert it to mp4', file = sys.stderr)
-                if not os.path.isfile(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')):
-                    subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videofile.replace('.mp4', '.h264'), self.localMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)                
+            self._validateVideo()
+            return
+            #print(self.videofile + ' present in local path.', file = sys.stderr)
+        
+        # Try to download it from the cloud
+        self._print(self.videofile + ' not present in local path. Trying to find it remotely...', log = False)
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videofile, self.localMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)
+        if os.path.isfile(self.localMasterDirectory + self.videofile):
+            self._validateVideo()
+            self._print('Done', log = False)
+            return
 
-                if not os.path.isfile(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')):
-                    print('Unable to find ' + self.videofile.replace('.mp4', '.h264'), file = sys.stderr)
-                    raise Exception
+        # Try to find h264 file and convert it to mp4
+        self._print('VideoConversion: ' + self.videofile + ' not present in cloud. Converting it from h264 file')
+        self._print('Downloading h264 file from cloud...', log = False)
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.h264_file, self.localMasterDirectory + self.movieDir], stderr = self.fnull)                
+        self._print('Done', log = False)
 
-                # Convert it to mpeg
-                subprocess.call(['ffmpeg', '-r', str(self.frame_rate), '-i', self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'), '-c:v', 'copy', '-r', str(self.frame_rate), self.localMasterDirectory + self.videofile])
-                
-                if os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264')).st_size:
-                    try:
-                        vid = pims.Video(self.localMasterDirectory + self.videofile)
-                        vid.close()
-                        os.remove(self.localMasterDirectory + self.videofile.replace('.mp4', '.h264'))
-                    except Exception as e:
-                        self._print(e)
-                        self._print('Unable to convert ' + self.videofile)
-                        raise Exception
-                    print('Uploading ' + self.videofile + ' to cloud', file = sys.stderr)
-                    subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.videofile.split(self.videofile.split('/')[-1])[0]], stderr = self.fnull)
-                self._print(self.videofile + ' converted and uploaded to cloud')
+        assert os.path.isfile(self.localMasterDirectory + self.h264_file)
 
-        #Grab info on video
-        cap = pims.Video(self.localMasterDirectory + self.videofile)
-        if int(cap.frame_shape[0]) != self.height:
-            print('Height Different')
-        if int(cap.frame_shape[1]) != self.width:
-            print('Width Different')
-        if np.abs(int(cap.frame_rate) - self.frame_rate) > 0.01:
-            print('Warning, FrameRate different: ' + str(cap.frame_rate) + ' vs. ' + str(self.frame_rate))
-        try:
-            self.frames = min(int(cap.get_metadata()['duration']*cap.frame_rate), 12*60*60*self.frame_rate)
-        except AttributeError:
-            self.frames = min(int(cap.duration*cap.frame_rate), 12*60*60*self.frame_rate)
-        print(self.frames)
+        # Convert it using ffmpeg
+        command = ['ffmpeg', '-r', str(self.frame_rate), '-i', self.localMasterDirectory + self.h264_file, '-c:v', 'copy', '-r', str(self.frame_rate), self.localMasterDirectory + self.videofile]
+        self._print('VideoConversion: ' + ' '.join(command))
+        subprocess.call(command, stderr = self.fnull)
+            
+        # Ensure the conversion went ok.     
+        assert os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.h264_file).st_size
+
+        self._validateVideo(log = True)
+        
+        # Make pdf showing brighness over time
+        current_t = self.startTime
+        total_minutes = 0
+        times = []
+        brightness = []
+        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+
+        while current_t < self.endTime:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(total_minutes*60)))
+            ret, frame = cap.read()
+
+            times.append(current_t)
+            brightness.append(frame.mean(axis = (0,1)))
+
+            total_minutes += 1
+            current_t += datetime.timedelta(minutes = 1)
+
+        pdb.set_trace()
+
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+
+        fig, ax = plt.subplots()
+        ax.plot(times, [x[0] for x in brightness], color = 'b')
+        ax.plot(times, [x[1] for x in brightness], color = 'g')
+        ax.plot(times, [x[2] for x in brightness], color = 'r')
+
+        ax.xaxis.set_major_locator(mdates.HourLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+
+        fig.savefig(self.localMasterDirectory + 'Brightness.pdf', dpi=300)
+
+        self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'Brightness.pdf', self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        self._print('Done', log = False)
+
+    def _validateVideo(self, tol = 0.001, log = False):
+        assert os.path.isfile(self.localMasterDirectory + self.videofile)
+        
+        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+        new_height = int(cap.get(cv2.CV_CAP_PROP_FRAME_HEIGHT))
+        new_width = int(cap.get(cv2.CV_CAP_PROP_FRAME_WIDTH))
+        new_framerate = cap.get(cv2.CAP_PROP_FPS)
+        new_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        predicted_frames = int((self.endTime - self.startTime).total_seconds()*self.frame_rate)
+
+        assert new_height == self.height
+        assert new_width == self.width
+        assert abs(new_framerate - self.framerate) < tol*self.frame_rate
+        assert abs(predicted_frames - new_frames) < tol*predicted_frames
+
+        self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
+        self.frames = new_frames
+
         cap.close()
 
     def loadHMM(self):
@@ -277,7 +321,7 @@ class VideoProcessor:
     def createClusters(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
         #self.loadVideo()
         self.loadHMM()
-        self._print('Created ' + self.labeledCoordsFile)
+        self._print('Creating ' + self.labeledCoordsFile)
         coords = self.obj.retDBScanMatrix(minMagnitude)
         np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
         #subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
@@ -315,11 +359,11 @@ class VideoProcessor:
         #self.loadVideo()
         self.loadHMM()
         self.loadClusters()
-        self._print('Created ' + self.clusterFile)
+        self._print('Creating ' + self.clusterFile)
 
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
-        print(self.projectID + '\t' + self.baseName + ': ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters', file = sys.stderr)
+        self._print(self.projectID + '\t' + self.baseName + ': ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters')
         print('Grouping data', file = sys.stderr)
 
         df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])

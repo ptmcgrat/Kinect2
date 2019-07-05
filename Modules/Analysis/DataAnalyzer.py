@@ -88,6 +88,7 @@ class DataAnalyzer:
         for vo in vos:
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
+                vo.loadVideo()
                 vo.createHMM()
                 vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
                 vo.createClusterClips()

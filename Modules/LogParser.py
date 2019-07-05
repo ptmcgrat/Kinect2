@@ -90,6 +90,14 @@ class LogParser:
 
                     self.movies.append(MovieObj(*t_list))
 
+                if info_type == 'PiCameraStarted':
+                    t_list = self._ret_data(line, ['Time', 'File'])
+                    [x for x in self.movies if x.h264_file == t_list[1]][0].end_time = t_list[0]
+
+
+PiCameraStopped: Time: 2018-08-21 19:01:17.001236,, File: Videos/0001_vid.h264
+
+
         self.frames.sort(key = lambda x: x.time)
 
         # Process frames into days
@@ -133,6 +141,12 @@ class LogParser:
                 continue
             except ValueError:
                 pass
+            try:
+                out_data.append(dt.strptime(t_data, '%Y-%m-%d %H:%M:%S'))
+                continue
+            except ValueError:
+                pass
+
             try:
                 out_data.append(dt.strptime(t_data, '%a %b %d %H:%M:%S %Y'))
                 continue
@@ -183,6 +197,7 @@ class FrameObj:
 class MovieObj:
     def __init__(self, time, movie_file, pic_file, framerate, resolution):
         self.time = time
+        self.end_time = ''
         if '.mp4' in movie_file:
             self.mp4_file = movie_file
             self.h264_file =  movie_file.replace('.mp4', '') + '.h264'
