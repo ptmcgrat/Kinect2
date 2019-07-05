@@ -44,7 +44,8 @@ class MachineLearningMaker:
     def prepareData(self):
 
         # Determine how many label classes are possible from classIndFile
-        self.classes, self.numClasses = self._identifyClasses()
+        if self.classIndFile is not None:
+            self.classes, self.numClasses = self._identifyClasses()
 
         # Download and open manual label file if necessary
         if self.labeledClusterFile is not None:
