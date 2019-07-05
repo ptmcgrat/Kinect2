@@ -156,13 +156,18 @@ class VideoProcessor:
         ax.plot(times, [x[1] for x in brightness], color = 'g')
         ax.plot(times, [x[2] for x in brightness], color = 'r')
 
-        ax.xaxis.set_major_locator(mdates.HourLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+        ax.set_title(self.baseName + ' brightness over time')
 
-        fig.savefig(self.localMasterDirectory + 'Brightness.pdf', dpi=300)
+        ax.xaxis.set_major_locator(mdates.HourLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+
+        ax.set_xlabel('Time (hours)')
+        ax.set_ylabel('Brightness')
+
+        fig.savefig(self.localVideoDirectory + 'Brightness.pdf', dpi=300)
 
         self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
-        subprocess.call(['rclone', 'copy', self.localMasterDirectory + 'Brightness.pdf', self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'Brightness.pdf', self.cloudVideoDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
 
         self._print('Done', log = False)
