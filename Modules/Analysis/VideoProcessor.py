@@ -85,6 +85,8 @@ class VideoProcessor:
         self.fnull = open(os.devnull, 'w')
 
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
+        print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,VideoID: ' + self.baseName + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
+        self.anLF.close()
 
     def __del__(self):
         pass
@@ -98,7 +100,7 @@ class VideoProcessor:
         return False        
     
     def loadVideo(self, tol = 0.001):
-        """if os.path.isfile(self.localMasterDirectory + self.videofile):
+        if os.path.isfile(self.localMasterDirectory + self.videofile):
             self._validateVideo()
             return
             #print(self.videofile + ' present in local path.', file = sys.stderr)
@@ -112,7 +114,7 @@ class VideoProcessor:
             return
 
         # Try to find h264 file and convert it to mp4
-        self._print('VideoConversion: ' + self.videofile + ' not present in cloud. Converting it from h264 file')
+        self._print('VideoConversion: ' + self.videofile + ' will be created from h264 file')
         self._print('Downloading h264 file from cloud...', log = False)
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.h264_file, self.localMasterDirectory + self.movieDir], stderr = self.fnull)                
         self._print('Done', log = False)
@@ -123,7 +125,7 @@ class VideoProcessor:
         command = ['ffmpeg', '-r', str(self.frame_rate), '-i', self.localMasterDirectory + self.h264_file, '-c:v', 'copy', '-r', str(self.frame_rate), self.localMasterDirectory + self.videofile]
         self._print('VideoConversion: ' + ' '.join(command))
         subprocess.call(command, stderr = self.fnull)
-        """
+        
         # Ensure the conversion went ok.     
         assert os.stat(self.localMasterDirectory + self.videofile).st_size >= os.stat(self.localMasterDirectory + self.h264_file).st_size
 
@@ -237,7 +239,7 @@ class VideoProcessor:
             else:
                 self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0, index_col = 0)
                                   
-    def createHMM(self, blocksize = 5*60, window = 120, hmm_time = 60*60):
+    def createHMM(self, blocksize = 5*60):
         """
         This functon decompresses video into smaller chunks of data formated in the numpy array format.
         Each numpy array contains one row of data for the entire video.
@@ -250,16 +252,20 @@ class VideoProcessor:
 
         os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
         
-        self.blocksize = blocksize
-        self.window = window
-        self.hmm_time = hmm_time
+        self.blocksize = blocksize # Number of seconds that are analyzed at a time
         
-        total_blocks = math.ceil(self.frames/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
+        maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
+
+        self.HMMframes = min(self.frames, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
+        #self.window = window
+        #self.hmm_time = hmm_time
+        
+        total_blocks = math.ceil(self.HMMframes/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
 
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        self._print('Created ' + self.hmmFile)
+        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize) + )
         print('TotalBlocks: ' + str(total_blocks), file = sys.stderr)
         print('TotalThreads: ' + str(self.cores), file = sys.stderr)
         print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
@@ -314,7 +320,7 @@ class VideoProcessor:
 
         print('StartTime: ' + str(start), file = sys.stderr)
         
-        self.obj = HMMdata(self.width, self.height, self.frames, self.frame_rate)
+        self.obj = HMMdata(self.width, self.height, self.HMMframes, self.frame_rate)
         self.obj.add_data(self.tempDirectory, self.localVideoDirectory + self.hmmFile)
         # Copy example data to directory containing videofile
         subprocess.call(['cp', self._row_fn(int(self.height/2)), self._row_fn(int(self.height/2)).replace('.npy', '.smoothed.npy'), self._row_fn(int(self.height/2)).replace('.npy', '.hmm.npy'), self.localVideoDirectory])
@@ -753,7 +759,7 @@ class VideoProcessor:
 
     def _readBlock(self, block):
         min_t = block*self.blocksize
-        max_t = min((block+1)*self.blocksize, int(self.frames/self.frame_rate))
+        max_t = min((block+1)*self.blocksize, int(self.HMMframes/self.frame_rate))
         ad = np.empty(shape = (self.height, self.width, max_t - min_t), dtype = 'uint8')
         cap = pims.Video(self.localMasterDirectory + self.videofile)
         counter = 0
@@ -834,10 +840,11 @@ class VideoProcessor:
 
     def _print(self, outtext, log = True):
         if log:
-            print(str(getpass.getuser()) + ' analyzed ' + self.baseName + ' at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
-            self.anLF.close() # Close and reopen file to flush it
-            subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
             self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
+            print('  ' + outtext + ',,Time: ' + str(datetime.datetime.now()), file = self.anLF)
+            self.anLF.close()
+            subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
+
         print(outtext, file = sys.stderr)
 
     def _fixData(self, depthObject, cloudMLDirectory):
