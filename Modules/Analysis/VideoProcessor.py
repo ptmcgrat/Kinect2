@@ -547,7 +547,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         if not manualOnly:
-            subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory, stderr = self.fnull)
+            subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
 
     def _createMean(self, numFrames = 5000):
