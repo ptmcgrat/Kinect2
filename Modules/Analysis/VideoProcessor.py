@@ -656,10 +656,8 @@ class VideoProcessor:
 
     def predictLabels(self, modelLocation, modelIDs):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
-        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0, index_col = 0)
-        return self.clusterData
-        
         self.loadClusterSummary()
+        return self.clusterData
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
