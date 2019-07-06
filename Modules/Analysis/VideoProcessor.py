@@ -186,7 +186,8 @@ class VideoProcessor:
         new_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         predicted_frames = int((self.endTime - self.startTime).total_seconds()*self.frame_rate)
 
-        self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
+        if log:
+            self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
 
         assert new_height == self.height
         assert new_width == self.width
@@ -252,7 +253,8 @@ class VideoProcessor:
         #Download video
         self.loadVideo()
 
-        os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
+        shutil.rmtree(self.tempDirectory) if os.path.exists(self.tempDirectory) else None
+        os.makedirs(self.tempDirectory)
         
         self.blocksize = blocksize # Number of seconds that are decompressed at a time by a single thread
         self.window = window # Size of rolling average for mean for smoothing analysis
@@ -545,7 +547,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         if not manualOnly:
-            subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
+            subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory, stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
 
     def _createMean(self, numFrames = 5000):

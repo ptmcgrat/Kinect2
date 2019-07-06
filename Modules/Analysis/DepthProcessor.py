@@ -300,9 +300,9 @@ class DepthProcessor:
             current_ax2[i].set_yticklabels([])
             current_ax3[i].set_yticklabels([])
 
-            current_ax[i].set_adjustable('box-forced')
-            current_ax2[i].set_adjustable('box-forced')
-            current_ax3[i].set_adjustable('box-forced')
+            current_ax[i].set_adjustable('box')
+            current_ax2[i].set_adjustable('box')
+            current_ax3[i].set_adjustable('box')
 
         figDaily.tight_layout()
         hourlyChangeData = []
@@ -324,7 +324,7 @@ class DepthProcessor:
                 current_ax = figHourly.add_subplot(gridHourly[i, j])
 
                 current_ax.imshow(self._returnHeightChange(start, stop, cropped = True), vmin = -1, vmax = 1)
-                current_ax.set_adjustable('box-forced')
+                current_ax.set_adjustable('box')
                 current_ax.set_xticklabels([])
                 current_ax.set_yticklabels([])
                 if i == 0:
@@ -332,7 +332,7 @@ class DepthProcessor:
 
             current_ax = figHourly.add_subplot(gridHourly[i, int(24/hourlyDelta)])
             current_ax.imshow(self._returnBowerLocations(stop - datetime.timedelta(hours = 24), stop, cropped = True), vmin = -1, vmax = 1)
-            current_ax.set_adjustable('box-forced')
+            current_ax.set_adjustable('box')
             current_ax.set_xticklabels([])
             current_ax.set_yticklabels([])
             if i==0:
@@ -341,7 +341,7 @@ class DepthProcessor:
 
             current_ax = figHourly.add_subplot(gridHourly[i, int(24/hourlyDelta)+1])
             current_ax.imshow(self._returnHeightChange(stop - datetime.timedelta(hours = 24), stop, cropped = True), vmin = -1, vmax = 1)
-            current_ax.set_adjustable('box-forced')
+            current_ax.set_adjustable('box')
             current_ax.set_xticklabels([])
             current_ax.set_yticklabels([])
             if i==0:
