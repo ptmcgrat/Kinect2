@@ -376,13 +376,12 @@ class VideoProcessor:
 
     def createClusterSummary(self, depthObj, Nclips = 200):
         #self.loadVideo()
-        self.loadHMM()
+        #self.loadHMM()
         self.loadClusters()
-        self._print('Creating ' + self.clusterFile)
-
+        self._print('ClusterSummaryCreation: File: ' + self.clusterFile + ',,Nclips: ' + str(Nclips))
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
-        self._print(self.projectID + '\t' + self.baseName + ': ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ' HMM transitions assigned to ' + str(len(uniqueLabels)) + ' clusters')
+        self._print('ClusterSummaryCreation: TotalHMMTransitions: ' + str(self.labeledCoords.shape[0]) + ',,AssignedHMMTransitions: ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ',,NumClusters: ' + str(len(uniqueLabels)))
         print('Grouping data', file = sys.stderr)
 
         df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])
@@ -401,7 +400,7 @@ class VideoProcessor:
             'ClipCreated': 'No',
         })
         )
-        print('Calculating new coordinates', file = sys.stderr)
+        self._print('Calculating X and Y positions with respect to Kinect coordinate system', log = False)
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
@@ -657,6 +656,9 @@ class VideoProcessor:
 
     def predictLabels(self, modelLocation, modelIDs):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
+        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0, index_col = 0)
+        return self.clusterData
+        
         self.loadClusterSummary()
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
@@ -770,7 +772,7 @@ class VideoProcessor:
         cap = pims.Video(self.localMasterDirectory + self.videofile)
         counter = 0
         for i in range(min_t, max_t):
-            current_frame = i*self.frame_rate
+            current_frame = int(i*self.frame_rate)
             frame = cap[current_frame]
             ad[:,:,counter] =  0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
             counter += 1

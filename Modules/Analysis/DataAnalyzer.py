@@ -1,4 +1,4 @@
-import subprocess, os, sys, datetime, shutil
+import subprocess, os, sys, datetime, shutil, pdb
 import numpy as np
 import pandas as pd
 
@@ -157,6 +157,7 @@ class DataAnalyzer:
         for vo in vos:
             clusterData.append(vo.predictLabels(modelLocation, modelIDs))
 
+        pdb.set_trace()
         fullClusterData = pd.concat(clusterData, ignore_index=True)
 
         fullClusterData.to_csv(self.localMasterDirectory + 'VideoAnalysis/AllClusterData.csv', sep = ',')
