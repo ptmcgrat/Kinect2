@@ -254,8 +254,8 @@ class VideoProcessor:
 
         os.makedirs(self.tempDirectory) if not os.path.exists(self.tempDirectory) else None
         
-        self.blocksize = blocksize # Number of seconds that are analyzed at a time
-        self.window = window # Size of rolling average for mean
+        self.blocksize = blocksize # Number of seconds that are decompressed at a time by a single thread
+        self.window = window # Size of rolling average for mean for smoothing analysis
 
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
 
@@ -267,8 +267,8 @@ class VideoProcessor:
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize) + ',,Window: ' + str(window))
-        self._print('HMMCreation: TotalBlocks: ' + str(total_blocks) + ',,TotalThreads: ' + str(self.cores))
+        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize(seconds): ' + str(blocksize) + ',,Window: ' + str(window))
+        self._print('HMMCreation: FramesUsed: ' + str(self.HMMframes) + ',,TotalBlocks: ' + str(total_blocks) + ',,TotalThreads: ' + str(self.cores))
         #print('TotalThreads: ' + str(self.cores), file = sys.stderr)
         #print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
         self._print('HMMCreation: Converting mp4 data to npy arrays at 1 fps')
