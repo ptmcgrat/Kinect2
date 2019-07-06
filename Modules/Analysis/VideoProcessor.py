@@ -172,6 +172,8 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'Brightness.pdf', self.cloudVideoDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
 
+        self._createMean()
+
         self._print('Done', log = False)
 
     def _validateVideo(self, tol = 0.001, log = False):
@@ -265,47 +267,47 @@ class VideoProcessor:
         # Step 1: Convert mp4 to npy files for each row
         pool = ThreadPool(self.cores) #Create pool of threads for parallel analysis of data
         start = datetime.datetime.now()
-        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize))
-        print('TotalBlocks: ' + str(total_blocks), file = sys.stderr)
-        print('TotalThreads: ' + str(self.cores), file = sys.stderr)
-        print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
-        print('Converting mp4 data to npy arrays at 1 fps', file = sys.stderr)
-        print('StartTime: ' + str(start), file = sys.stderr)
+        self._print('HMMCreation: Outfile: ' + self.hmmFile + ',,Blocksize: ' + str(blocksize) + ',,Window: ' + str(window))
+        self._print('HMMCreation: TotalBlocks: ' + str(total_blocks) + ',,TotalThreads: ' + str(self.cores))
+        #print('TotalThreads: ' + str(self.cores), file = sys.stderr)
+        #print('Video processed: ' + str(self.blocksize/60) + ' min per block, ' + str(self.blocksize/60*self.cores) + ' min per cycle', file = sys.stderr)
+        self._print('HMMCreation: Converting mp4 data to npy arrays at 1 fps')
+        self._print('StartTime: ' + str(start), log = False)
         
         for i in range(0, math.ceil(total_blocks/self.cores)):
             blocks = list(range(i*self.cores, min(i*self.cores + self.cores, total_blocks)))
-            print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ', Processing blocks: ' + str(blocks[0]) + ' to ' +  str(blocks[-1]))
+            self._print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ', Processing blocks: ' + str(blocks[0]) + ' to ' +  str(blocks[-1]), log = False)
             results = pool.map(self._readBlock, blocks)
-            print('Data read: ' + str((datetime.datetime.now() - start).seconds) + ' seconds')
+            #print('Data read: ' + str((datetime.datetime.now() - start).seconds) + ' seconds')
             for row in range(self.height):
                 row_file = self._row_fn(row)
                 out_data = np.concatenate([results[x][row] for x in range(len(results))], axis = 1)
                 if os.path.isfile(row_file):
                     out_data = np.concatenate([np.load(row_file),out_data], axis = 1)
                 np.save(row_file, out_data)
-            print('Data wrote: ' + str((datetime.datetime.now() - start).seconds) + ' seconds', file = sys.stderr)
+            #print('Data wrote: ' + str((datetime.datetime.now() - start).seconds) + ' seconds', file = sys.stderr)
         pool.close() 
         pool.join() 
-        print('TotalTime: ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes', file = sys.stderr)
+        self._print('TotalTime: ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes', log = False)
 
         # Step 2: Smooth data to remove outliers
         pool = ThreadPool(self.cores)
         start = datetime.datetime.now()
-        print('Smoothing data to filter out outliers', file = sys.stderr)
-        print('StartTime: ' + str(start), file = sys.stderr)
+        self._print('HMMCreation: Smoothing data to filter out outliers')
+        #print('StartTime: ' + str(start), file = sys.stderr)
         for i in range(0, self.height, self.cores):
             rows = list(range(i, min(i + self.cores, self.height)))
-            print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ' seconds, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), file = sys.stderr)
+            self._print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ' seconds, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), log = False)
             results = pool.map(self._smoothRow, rows)
-        print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes to smooth ' + str(self.height) + ' rows')
+        self._print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes to smooth ' + str(self.height) + ' rows', log = False)
         pool.close() 
         pool.join()
 
         # Step 3: Calculate HMM values for each row
         pool = ThreadPool(self.cores)
         start = datetime.datetime.now()
-        print('Calculating HMMs for all data', file = sys.stderr)
-        print('StartTime: ' + str(start), file = sys.stderr)
+        self._print('HMMCreation: Calculating HMMs for all data')
+        #print('StartTime: ' + str(start), file = sys.stderr)
         for i in range(0, self.height, self.cores):
             rows = list(range(i, min(i + self.cores, self.height)))
             print('Hours since start: ' + str((datetime.datetime.now() - start).seconds/3600) + ' hours, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), file = sys.stderr)
@@ -316,9 +318,9 @@ class VideoProcessor:
         
         # Step 4: Create HMM object and delete temporary data if necessary
         start = datetime.datetime.now()
-        print('Converting HMMs to internal data structure and keeping temporary data', file = sys.stderr)
+        self._print('Converting HMMs to internal data structure and keeping temporary data', log = False)
 
-        print('StartTime: ' + str(start), file = sys.stderr)
+        #self._print('StartTime: ' + str(start), file = sys.stderr)
         
         self.obj = HMMdata(self.width, self.height, self.HMMframes, self.frame_rate)
         self.obj.add_data(self.tempDirectory, self.localVideoDirectory + self.hmmFile)
@@ -329,16 +331,18 @@ class VideoProcessor:
       
         subprocess.call(['rclone', 'copy', self.localVideoDirectory, self.cloudVideoDirectory], stderr = self.fnull)
 
-        print('Took ' + str((datetime.datetime.now() - start).seconds/60) + ' convert HMMs', file = sys.stderr)
+        self._print('HMMCreation: Complete')
 
     def createClusters(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
         #self.loadVideo()
         self.loadHMM()
-        self._print('Creating ' + self.labeledCoordsFile)
+        self._print('ClusterCreation: File: ' + self.labeledCoordsFile + ',,MinMagnitude: ' + str(minMagnitude) + ',,treeR: ' + str(treeR) + ',,LeafNum: ' + str(leafNum))
+        self._print('ClusterCreation: NeighborR: ' + str(neighborR) + ',,timescale: ' + str(timescale) + ',,eps: ' + str(eps) + ',,minPts: ' + str(minPts))
+
         coords = self.obj.retDBScanMatrix(minMagnitude)
         np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
         #subprocess.call(['rclone', 'copy', self.localClusterDirectory + 'RawCoordsFile.npy', self.cloudClusterDirectory], stderr = self.fnull)
-               
+        self._print('RawCoordinates calculated', log = False)     
 
         sortData = coords[coords[:,0].argsort()][:,0:3] #sort data by time for batch processing, throwing out 4th column (magnitude)
         numBatches = int(sortData[-1,0]/delta/3600) + 1 #delta is number of hours to batch together. Can be fraction.
@@ -349,9 +353,9 @@ class VideoProcessor:
         #Calculate clusters in batches to avoid RAM overuse
         curr_label = 0 #Labels for each batch start from zero - need to offset these
             
-        print('Calculating clusters in ' + str(numBatches) + ' total batches', file = sys.stderr)
+        self._print('ClusterCreation: TotalBatches: ' + str(numBatches))
         for i in range(numBatches):
-            print('Batch: ' + str(i), file = sys.stderr)
+            self._print('Batch: # ' + str(i), log = False)
             min_time, max_time = i*delta*timeScale*3600, (i+1)*delta*timeScale*3600 # Have to deal with rescaling of time. 3600 = # seconds in an hour
             hour_range = np.where((sortData[:,0] > min_time) & (sortData[:,0] <= max_time))
             min_index, max_index = hour_range[0][0], hour_range[0][-1] + 1
@@ -366,7 +370,9 @@ class VideoProcessor:
         sortData[:,0] = sortData[:,0]/timeScale
         self.labeledCoords = np.concatenate((sortData, labels), axis = 1).astype('int64')
         np.save(self.localClusterDirectory + self.labeledCoordsFile, self.labeledCoords)
+        self._print('Sycncing with cloud', log = False)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
+        self._print('ClusterCreation: Completed')
 
     def createClusterSummary(self, depthObj, Nclips = 200):
         #self.loadVideo()
@@ -770,7 +776,7 @@ class VideoProcessor:
             counter += 1
         return ad
 
-    def _smoothRow(self, row, seconds_to_change = 60*30, non_transition_bins = 2, std = 100):
+    def _smoothRow(self, row):
 
         ad = np.load(self._row_fn(row))
         original_shape = ad.shape

@@ -248,7 +248,12 @@ class MachineLearningMaker:
                     try:
                         LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
                     except IndexError: #MC6_5
+                        self._print(clip)
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                    except ValueError:
+                        self._print('ClipError: ' + str(clip))
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+
 
                     try:
                         subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
