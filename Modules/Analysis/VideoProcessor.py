@@ -6,6 +6,8 @@ from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
 from collections import defaultdict
 from random import shuffle
+from joblib import Parallel, delayed
+
 
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import radius_neighbors_graph
@@ -477,24 +479,41 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def createClusterClips(self, delta_xy = 100, delta_t = 60, smallLimit = 500, manualOnly = False):
-        print('ClipCreation: ManualOnly: ' + str(manualOnly))
         self.loadVideo()
         self.loadHMM()
         self.loadClusters()
         self.loadClusterSummary()
+        self._print('ClipCreation: ManualOnly: ' + str(manualOnly))
+
         #self._createMean()
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
-        count = 0
         
         for row in self.clusterData.itertuples():
-            #if count ==30:
-            #    break
             LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
                 continue
+            else:
+                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
+
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(row, manualOnly) for row in self.clusterData[self.ClusterData.ClipCreated == 'Yes'].itertuples())
+
+        self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+        
+        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualLabelClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
+        if not manualOnly:
+            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
+            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
+        self._print('ClipCreation: Finished')
+
+    def _createClip(row, manualOnly):
+
+            LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             #print('ffmpeg')
             #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
             #t1 = datetime.datetime.now()
@@ -544,16 +563,7 @@ class VideoProcessor:
 
                 outAllHMM.release()
 
-        self._print('ClipCreation: ClipsCreated: ' + str(count) + ',,Syncying...')
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        
-        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualLabelClipsDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
-        if not manualOnly:
-            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
-            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
-        self._print('ClipCreation: Finished')
+ 
 
     def _createMean(self, numFrames = 5000):
         self._print('Creating: ' + self.meansFile)
