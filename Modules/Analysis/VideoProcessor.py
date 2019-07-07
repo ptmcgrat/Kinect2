@@ -489,16 +489,17 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         
+        LIDs = []
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
-                continue
             else:
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
+                LIDS.append(LID)
 
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(row, manualOnly) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly) for LID in LIDs)
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
@@ -511,9 +512,11 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
 
-    def _createClip(row, manualOnly):
+    def _createClip(LID, manualOnly):
 
-            LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
+            row = self.clusterData.loc[self.clusterData.LID == LID]
+
+            LID, N, t, x, y, ml = [x.values[0] for x in [row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation]]
             #print('ffmpeg')
             #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
             #t1 = datetime.datetime.now()
