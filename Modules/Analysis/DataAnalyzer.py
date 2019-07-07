@@ -84,7 +84,7 @@ class DataAnalyzer:
 
         # Create Video objects (low overhead even if video is not processed)
         for x in index:
-            VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
+            vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.loadVideo()
