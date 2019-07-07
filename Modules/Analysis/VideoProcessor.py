@@ -340,7 +340,7 @@ class VideoProcessor:
         #self.loadVideo()
         self.loadHMM()
         self._print('ClusterCreation: File: ' + self.labeledCoordsFile + ',,MinMagnitude: ' + str(minMagnitude) + ',,treeR: ' + str(treeR) + ',,LeafNum: ' + str(leafNum))
-        self._print('ClusterCreation: NeighborR: ' + str(neighborR) + ',,timescale: ' + str(timescale) + ',,eps: ' + str(eps) + ',,minPts: ' + str(minPts))
+        self._print('ClusterCreation: NeighborR: ' + str(neighborR) + ',,timescale: ' + str(timeScale) + ',,eps: ' + str(eps) + ',,minPts: ' + str(minPts))
 
         coords = self.obj.retDBScanMatrix(minMagnitude)
         np.save(self.localClusterDirectory + 'RawCoords.npy', coords)
