@@ -490,7 +490,7 @@ class VideoProcessor:
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         
         LIDs = []
-        for row ßin self.clusterData.itertuples():
+        for row in self.clusterData.itertuples():
             LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
                 #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
