@@ -486,7 +486,6 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         count = 0
-        """
         for row in self.clusterData.itertuples():
             #if count ==30:
             #    break
@@ -547,13 +546,14 @@ class VideoProcessor:
         self._print('ClipCreation: ClipsCreated: ' + str(count) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        """
-        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualClipsDirectory], stderr = self.fnull)
+
+        subprocess.call(['tar', '-cvf', self.localManualClipsDirectory[:-1] + '.tar', self.localManualClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
             subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
+
 
     def _createMean(self, numFrames = 5000):
         self._print('Creating: ' + self.meansFile)
@@ -572,20 +572,16 @@ class VideoProcessor:
         np.save(self.localVideoDirectory + self.meansFile, outData)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
 
-    def loadClusterClips(self, allClips = True, mlClips = False):
-        if allClips:
-            subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xcf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
-        if mlClips:
-            subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xcf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
-
+    def loadClusterClips(self):
+        subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
+        subprocess.call(['tar', '-xcf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
-        self._print('ManualLabelCreation: ClustersRequested: ' + str(number))
+        self._print('Labeling cluster')
         self.loadClusterSummary()
-        self.loadClusterClips(allClips = False, mlClips = True)
+        print(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory])
+        subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localManualLabelClipsDirectory], stderr = self.fnull)
 
         if 'MLabeler' not in self.clusterData:
             self.clusterData['MLabeler'] = ''
@@ -601,6 +597,7 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
+        self._print(str(len(clips)) + ' clips have been produced for this video', log=False)
         categories = ['c','f','p','t','b','m','s','x','o','d','q', 'k']
 
         print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit; 'k': skip")
@@ -649,15 +646,16 @@ class VideoProcessor:
             newClips.append(f.replace('_ManualLabel',''))
             annotatedClips += 1
 
-            subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
-
             if number is not None and annotatedClips > number:
                 break
 
-        self._print('Syncing labeled data with cloud', log=False)
-
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
+        print('Updating ML directories...')
+        for clip in newClips:
+            print(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName ])
+            subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
@@ -668,9 +666,6 @@ class VideoProcessor:
         tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
-
-        self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
-
 
     def predictLabels(self, modelLocation, modelIDs):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
