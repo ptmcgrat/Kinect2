@@ -566,10 +566,10 @@ class VideoProcessor:
                     outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
                 outAllHMM.release()
-                
+
             cap.release()
 
- 
+            return True
 
     def _createMean(self, numFrames = 5000):
         self._print('Creating: ' + self.meansFile)
