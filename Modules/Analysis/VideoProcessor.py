@@ -486,7 +486,6 @@ class VideoProcessor:
         self._print('ClipCreation: ManualOnly: ' + str(manualOnly))
 
         #self._createMean()
-        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         
         LIDs = []
@@ -513,6 +512,8 @@ class VideoProcessor:
         self._print('ClipCreation: Finished')
 
     def _createClip(LID, manualOnly):
+
+            cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
             row = self.clusterData.loc[self.clusterData.LID == LID]
 
@@ -565,6 +566,8 @@ class VideoProcessor:
                     outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
                 outAllHMM.release()
+                
+            cap.release()
 
  
 
