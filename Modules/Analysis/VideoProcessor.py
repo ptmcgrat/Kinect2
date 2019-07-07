@@ -548,7 +548,7 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         """
-        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualClipsDirectory], stderr = self.fnull)
+        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualLabelClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
             subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
