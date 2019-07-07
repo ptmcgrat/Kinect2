@@ -31,7 +31,7 @@ class VideoProcessor:
     # 4. Uses DeepLabCut to annotate fish
 
     #Parameters - blocksize, 
-    def __init__(self, projectID, videoObj, localMasterDirectory, cloudMasterDirectory, transM):
+    def __init__(self, projectID, videoObj, localMasterDirectory, cloudMasterDirectory, transM, depthObj):
 
         # Main location for machine learning clips
         
@@ -49,6 +49,7 @@ class VideoProcessor:
         self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
         self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
         self.transM = transM
+        self.depthObj = depthObj
 
         self.baseName = self.videofile.split('/')[-1].split('.')[0]
         self.localVideoDirectory = self.localMasterDirectory + 'VideoAnalysis/' + self.baseName + '/'
@@ -66,7 +67,7 @@ class VideoProcessor:
         self.cloudManualLabelClipsDirectory = self.cloudClusterDirectory + 'ManualLabelClips/'
 
         self.localAllClipsDirectory = self.localClusterDirectory + 'AllClips/'
-        self.cloudAllClipsDirectory = self.cloudClusterDirectory + 'AllClips/'
+        self.cloudAllClipsDirectory = self.cloudClusterDirectory + 'AllClips.tar'
 
         os.makedirs(self.localManualLabelClipsDirectory) if not os.path.exists(self.localManualLabelClipsDirectory) else None
         os.makedirs(self.localAllClipsDirectory) if not os.path.exists(self.localAllClipsDirectory) else None
@@ -200,7 +201,7 @@ class VideoProcessor:
         cap.release()
 
     def loadHMM(self):
-        print('Loading HMM', file = sys.stderr)
+        #print('Loading HMM', file = sys.stderr)
         try:
             self.obj
         except AttributeError:
@@ -215,7 +216,7 @@ class VideoProcessor:
                 self.obj = HMMdata(filename = self.localVideoDirectory + self.hmmFile)
 
     def loadClusters(self):
-        print('Loading Clusters', file = sys.stderr)
+        #print('Loading Clusters', file = sys.stderr)
         try:
             self.labeledCoords
         except AttributeError:
@@ -229,7 +230,7 @@ class VideoProcessor:
                 self.labeledCoords = np.load(self.localClusterDirectory + self.labeledCoordsFile)
           
     def loadClusterSummary(self):
-        print('Loading ClusterSummary', file = sys.stderr)
+        #print('Loading ClusterSummary', file = sys.stderr)
         try:
             self.clusterData
         except AttributeError:
@@ -377,7 +378,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClusterCreation: Completed')
 
-    def createClusterSummary(self, depthObj, Nclips = 500):
+    def createClusterSummary(self, Nclips = 500):
         #self.loadVideo()
         #self.loadHMM()
         self.loadClusters()
@@ -385,7 +386,6 @@ class VideoProcessor:
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
         self._print('ClusterSummaryCreation: TotalHMMTransitions: ' + str(self.labeledCoords.shape[0]) + ',,AssignedHMMTransitions: ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ',,NumClusters: ' + str(len(uniqueLabels)))
-        print('Grouping data', file = sys.stderr)
 
         df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])
         clusterData = df.groupby('LID').apply(lambda x: pd.Series({
@@ -429,7 +429,7 @@ class VideoProcessor:
         # Identify rows for manual labeling
         smallClips = 0
 
-        print('Identifying ' + str(Nclips) + ' clusters for manual annotation. ' + str(clipsCreated) + ' clips already identified', file = sys.stderr)
+        self._print('ManualClipIdentification: TotalClips: ' + str(Nclips) + ',,ClipsAlreadyIdentified' + str(clipsCreated))
 
         for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples():
             if clipsCreated > Nclips:
@@ -463,13 +463,13 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-    def _addHeightChange(self, depthObj):
+    def _addHeightChange(self):
         self.loadClusterSummary()
         self.clusterData['DepthChange'] = np.nan
         for row in self.clusterData.itertuples():
             LID, timeStamp, xDepth, yDepth  = row.LID, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
             try:
-                currentDepth = depthObj._returnHeightChange(depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
+                currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
             except IndexError:
                 continue
             self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
@@ -477,13 +477,12 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def createClusterClips(self, delta_xy = 100, delta_t = 60, smallLimit = 500, manualOnly = False):
-        print('Creating clip files for machine learning', file = sys.stderr)
+        print('ClipCreation: ManualOnly: ' + str(manualOnly))
         self.loadVideo()
         self.loadHMM()
         self.loadClusters()
         self.loadClusterSummary()
-        self._createMean()
-        self._print('Creating manual label clip videos, and clip videos for all clusters')
+        #self._createMean()
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         count = 0
@@ -505,7 +504,7 @@ class VideoProcessor:
             #except:
             #    ffmpegTime = t2 - t1
 
-            if not manualOnly:
+            if not manualOnly or ml == 'Yes':
                 outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
                 for i in range(delta_t*2):
@@ -513,6 +512,8 @@ class VideoProcessor:
                     outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
                 outAll.release()
                 count+=1
+                if ml == 'Yes':
+                    subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
             #t3 = datetime.datetime.now()
             #try:
             #    cvTime += t3-t2
@@ -542,14 +543,15 @@ class VideoProcessor:
 
                 outAllHMM.release()
 
-        print('Syncing data', file = sys.stderr)
+        self._print('ClipCreation: ClipsCreated: ' + str(count))
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'delete', self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         if not manualOnly:
+            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
             subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
-            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudAllClipsDirectory], stderr = self.fnull)
+            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudClusterDirectory], stderr = self.fnull)
 
     def _createMean(self, numFrames = 5000):
         self._print('Creating: ' + self.meansFile)
@@ -569,8 +571,9 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
 
     def loadClusterClips(self):
-        subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localAllClipsDirectory], stderr = self.fnull)
-   
+        subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
+        subprocess.call(['tar', '-xcf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
         self._print('Labeling cluster')
@@ -863,6 +866,16 @@ class VideoProcessor:
 
     def _fixData(self, depthObject, cloudMLDirectory):
         self.loadClusterSummary()
+        #MC16_2 and TI2_4 run at the wrong frame rate
+        if self.projectID == 'MC16_2':
+            self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+            self._addHeightChange()
+        if self.projectID == 'TI2_4':
+            if self.baseName != '0004_vid':
+                self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+                self._addHeightChange()
+
+
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, manualAnnotation, manualLabel = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ManualLabel
             if manualAnnotation == 'No':

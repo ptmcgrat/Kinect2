@@ -43,12 +43,15 @@ class DepthProcessor:
         self.convertPixel = 0.1030168618 # cm / pixel
 
         self.anLF = open(self.localDepthDirectory + 'DepthAnalysisLog.txt', 'a')
+        print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,ProjectID: ' + self.lp.projectID + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
+        self.anLF.close()
+
         self.fnull = open(os.devnull, 'a')
         
     def createTray(self):
         
         # Log info 
-        self._print('Created ' + self.trayFile)
+        self._print('Creating ' + self.trayFile)
 
         # Download first and last depth data frame to use for tray identification
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.lp.frames[0].npy_file, self.localMasterDirectory + self.lp.frames[0].frameDir], stderr = self.fnull)
@@ -533,9 +536,13 @@ class DepthProcessor:
         if t0 > t1:
             print('Warning: Second timepoint ' + str(t1) + ' is earlier than first timepoint ' + str(t0), file = sys.stderr)
 
-    def _print(self, outtext):
-        print(str(getpass.getuser()) + ' analyzed at ' + str(datetime.datetime.now()) + ' on ' + socket.gethostname() + ': ' + outtext, file = self.anLF)
+    def _print(self, outtext, log = True):
+        if log:
+            self.anLF = open(self.localDepthDirectory + 'DepthAnalysisLog.txt', 'a')
+            print('  ' + outtext + ',,Time: ' + str(datetime.datetime.now()), file = self.anLF)
+            self.anLF.close()
+            subprocess.call(['rclone', 'copy', self.localDepthDirectory + 'DepthAnalysisLog.txt', self.cloudDepthDirectory])
+
         print(outtext, file = sys.stderr)
-        self.anLF.close() # Close and reopen file to flush it
-        self.anLF = open(self.localDepthDirectory + 'DepthAnalysisLog.txt', 'a')
+
 

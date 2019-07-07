@@ -65,11 +65,11 @@ class HMMdata:
         #minMagnitude is the size of the color change for a pixel to need to have
         #densityFilter filters out time points that have to many changes occur across the frame (1 = 1% of all pixels)
 
-        print(str(self.data.shape[0] - self.width*self.height) + ' raw transitions', file = sys.stderr)
+        print('DBScanMatrixCreation: ' + str(self.data.shape[0] - self.width*self.height) + ' raw transitions are found in the entire video', file = sys.stderr)
         
         #Identify total pixel changes in a unit of time
         time, counts = np.unique(self.data[:,0], return_counts = True)
-        threshold = counts[0]*densityFilter/100
+        threshold = counts[0]*densityFilter/100 # This excludes frames where too many pixels are changing in a frame (i.e. lighting changes)
         
         row = 0
         column = -1
@@ -89,7 +89,7 @@ class HMMdata:
             prev_mag = d[2]
             
         allCoords = allCoords[allCoords[:,3] > minMagnitude].copy()
-        print(str(allCoords.shape[0]) + ' HMM transitions passed filtering criteria', file = sys.stderr)
+        print('DBScanMatrixCreation: ' + str(allCoords.shape[0]) + ' HMM transitions passed magnitude and density filtering criteria', file = sys.stderr)
         return allCoords
             
     def _add_row(self, data, row):

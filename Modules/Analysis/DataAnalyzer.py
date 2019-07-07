@@ -84,31 +84,31 @@ class DataAnalyzer:
 
         # Create Video objects (low overhead even if video is not processed)
         for x in index:
-            vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
+            vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.loadVideo()
                 vo.createHMM()
-                vo.createClusterSummary(self.depthObj)
+                vo.createClusterSummary(j)
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
                 print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusters()
-                vo.createClusterSummary(self.depthObj)
+                vo.createClusterSummary()
                 vo.createClusterClips()
                 vo.cleanup()
 
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterSummary(self.depthObj)
+                vo.createClusterSummary()
                 vo.createClusterClips()
                 vo.cleanup()
 
             else:
                 print('Rewriting cluster clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterClips(manualOnly = True)
+                vo.createClusterClips()
                 vo.cleanup()
 
     def fixIssues(self, index, mlDirectory):
