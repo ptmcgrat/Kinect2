@@ -498,7 +498,7 @@ class VideoProcessor:
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
                 LIDs.append(LID)
 
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly) for LID in LIDs)
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
@@ -511,7 +511,7 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
 
-    def _createClip(LID, manualOnly):
+    def _createClip(LID, manualOnly, delta_xy, delta_t):
 
             cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
@@ -527,7 +527,7 @@ class VideoProcessor:
             #    ffmpegTime += t2-t1
             #except:
             #    ffmpegTime = t2 - t1
-
+            """
             if not manualOnly or ml == 'Yes':
                 outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
@@ -537,6 +537,7 @@ class VideoProcessor:
                 outAll.release()
                 if ml == 'Yes':
                     subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
+            """
             #t3 = datetime.datetime.now()
             #try:
             #    cvTime += t3-t2
