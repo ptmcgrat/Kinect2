@@ -543,15 +543,17 @@ class VideoProcessor:
 
                 outAllHMM.release()
 
-        self._print('ClipCreation: ClipsCreated: ' + str(count))
+        self._print('ClipCreation: ClipsCreated: ' + str(count) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        subprocess.call(['rclone', 'delete', self.cloudManualLabelClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory, self.cloudManualLabelClipsDirectory], stderr = self.fnull)
+
+        subprocess.call(['tar', '-cvf', self.localManualClipsDirectory[:-1] + '.tar', self.localManualClipsDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
             subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
-            subprocess.call(['rclone', 'delete', self.cloudAllClipsDirectory], stderr = self.fnull)
-            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory, self.cloudClusterDirectory], stderr = self.fnull)
+            subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
+        self._print('ClipCreation: Finished')
+
 
     def _createMean(self, numFrames = 5000):
         self._print('Creating: ' + self.meansFile)
