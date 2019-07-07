@@ -77,33 +77,32 @@ class DataAnalyzer:
 
         self.depthObj.createDataSummary()
         
-    def processVideos(self, index, rewriteClusters, rewriteSummaries, Nvideos):
+    def processVideos(self, index, rewriteClusters, rewriteSummaries):
 
         self._loadRegistration()
         self.depthObj.loadSmoothedArray()
 
         # Create Video objects (low overhead even if video is not processed)
-        vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
-
-        for vo in vos:
+        for x in index:
+            VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
             if self.rewriteFlag:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.loadVideo()
                 vo.createHMM()
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
+                vo.createClusterSummary(self.depthObj)
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()
             elif rewriteClusters:
                 print('Rewriting cluster data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.createClusters()
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
+                vo.createClusterSummary(self.depthObj)
                 vo.createClusterClips()
                 vo.cleanup()
 
             elif rewriteSummaries:
                 print('Rewriting cluster summary and clips for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
-                vo.createClusterSummary(self.depthObj, Nclips = int(2000/Nvideos))
+                vo.createClusterSummary(self.depthObj)
                 vo.createClusterClips()
                 vo.cleanup()
 
@@ -121,18 +120,13 @@ class DataAnalyzer:
             vo._fixData(self.depthObj, mlDirectory)
             vo.cleanup()
             
-    def labelVideos(self, index, mainDT, cloudMLDirectory):
+    def labelVideos(self, index, mainDT, cloudMLDirectory, number):
         self._loadRegistration()
 
-        # Create Video objects (low overhead even if video is not processed)
-        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
-        if index is None:
-            vos = self.videoObjs
-        else:
-            vos = [self.videoObjs[x-1] for x in index]
-            
-        for vo in vos:
-            vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory)
+        # Create Video objects (low overhead even if video is not processed)            
+        for x in index:
+            vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
+            vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory, n)
 
     def countFish(self, index, cloudCountDirectory):
         self._loadRegistration()
@@ -151,13 +145,12 @@ class DataAnalyzer:
         self._loadRegistration()
 
         print(modelLocation)
-        vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
             
         clusterData = []
-        for vo in vos:
+        for x in index:
+            vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM)
             clusterData.append(vo.predictLabels(modelLocation, modelIDs))
 
-        pdb.set_trace()
         fullClusterData = pd.concat(clusterData, ignore_index=True)
 
         fullClusterData.to_csv(self.localMasterDirectory + 'VideoAnalysis/AllClusterData.csv', sep = ',')

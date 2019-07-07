@@ -5,6 +5,7 @@ import pandas as pd
 from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
 from collections import defaultdict
+from random import shuffle
 
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import radius_neighbors_graph
@@ -376,7 +377,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClusterCreation: Completed')
 
-    def createClusterSummary(self, depthObj, Nclips = 200):
+    def createClusterSummary(self, depthObj, Nclips = 500):
         #self.loadVideo()
         #self.loadHMM()
         self.loadClusters()
@@ -415,7 +416,7 @@ class VideoProcessor:
         self._addHeightChange(depthObj)
         #self._createMean()
 
-    def _identifyManualClusters(self, Nclips = 200, delta_xy = 100, delta_t = 60, smallLimit = 500):
+    def _identifyManualClusters(self, Nclips = 500, delta_xy = 100, delta_t = 60, smallLimit = 500):
     
         self.loadClusterSummary()
 
@@ -570,7 +571,7 @@ class VideoProcessor:
     def loadClusterClips(self):
         subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localAllClipsDirectory], stderr = self.fnull)
    
-    def labelClusters(self, rewrite, mainDT, cloudMLDirectory):
+    def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
         self._print('Labeling cluster')
         self.loadClusterSummary()
@@ -597,7 +598,8 @@ class VideoProcessor:
         print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit; 'k': skip")
         
         newClips = []
-        for f in clips:
+        annotatedClips = 0
+        for f in shuffle(clips):
             clusterID = int(f.split('_')[0])
 
             # If already labeled and rewrite = False, then skip
@@ -637,6 +639,10 @@ class VideoProcessor:
             self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
             
             newClips.append(f.replace('_ManualLabel',''))
+            annotatedClips += 1
+
+            if number is not None and annotatedClips > number:
+                break
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
