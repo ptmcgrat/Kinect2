@@ -535,7 +535,6 @@ class VideoProcessor:
                     ret, frame = cap.read()
                     outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
                 outAll.release()
-                count+=1
                 if ml == 'Yes':
                     subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
             #t3 = datetime.datetime.now()
@@ -544,7 +543,6 @@ class VideoProcessor:
             #except:
             #    cvTime = t3 - t2
             #print('ff: ' + str(ffmpegTime) + ' cv: ' + str(cvTime))
-                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
 
             if ml == 'Yes':
                 outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
