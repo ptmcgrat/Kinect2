@@ -413,7 +413,7 @@ class VideoProcessor:
         
         # Identify rows for manual labeling
         self._identifyManualClusters(Nclips)
-        self._addHeightChange(depthObj)
+        self._addHeightChange()
         #self._createMean()
 
     def _identifyManualClusters(self, Nclips = 500, delta_xy = 100, delta_t = 60, smallLimit = 500):
