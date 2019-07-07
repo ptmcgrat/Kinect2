@@ -543,7 +543,7 @@ class VideoProcessor:
             #except:
             #    cvTime = t3 - t2
             #print('ff: ' + str(ffmpegTime) + ' cv: ' + str(cvTime))
-
+            """
             if ml == 'Yes':
                 outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
                 frame_idx = int(self.frame_rate*(t) - delta_t)
@@ -564,7 +564,7 @@ class VideoProcessor:
                     outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
                 outAllHMM.release()
-
+            """
             cap.release()
 
             return True
