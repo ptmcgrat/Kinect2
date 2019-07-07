@@ -429,7 +429,7 @@ class VideoProcessor:
         # Identify rows for manual labeling
         smallClips = 0
 
-        self._print('ManualClipIdentification: TotalClips: ' + str(Nclips) + ',,ClipsAlreadyIdentified' + str(clipsCreated))
+        self._print('ManualClipIdentification: TotalClips: ' + str(Nclips) + ',,ClipsAlreadyIdentified: ' + str(clipsCreated))
 
         for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples():
             if clipsCreated > Nclips:
@@ -486,7 +486,7 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         count = 0
-        """
+        
         for row in self.clusterData.itertuples():
             #if count ==30:
             #    break
@@ -547,7 +547,7 @@ class VideoProcessor:
         self._print('ClipCreation: ClipsCreated: ' + str(count) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        """
+        
         subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualLabelClipsDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
