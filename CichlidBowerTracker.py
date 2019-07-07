@@ -77,6 +77,7 @@ videoParser.add_argument('-f', '--FixIssues', action = 'store_true', help = 'Use
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
+MlabelParser.add_argument('-n', '--Number', type = str, help = 'Number of clips for each video you would like to annotate')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
@@ -144,14 +145,14 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 if args.FixIssues:
                     da_obj.fixIssues(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
                 else:
-                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries, Nvideos = inputData.nVideos[projectID])
+                    da_obj.processVideos(videos, args.RewriteClusters, args.RewriteClusterSummaries)
                 da_obj.cleanup()
 
     elif args.command == 'ManuallyLabelVideos':
         print(inputData.manPredData)
         for projectID, videos in inputData.manPredData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory)
+                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, args.Number)
                 da_obj.cleanup()
 
     elif args.command == 'CountFish':
