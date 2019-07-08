@@ -446,14 +446,17 @@ class VideoProcessor:
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
+        
+        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0)
 
         # Identify clusters to make clips for
         self._print('Identifying clusters to make clips for', log = False)
         smallClips, clipsCreated = 0,0 # keep track of clips with small number of pixel changes
         for row in clusterData.sample(n = clusterData.shape[0]).itertuples(): # Randomly go through the dataframe
-            LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, row.TimeStamp, int(row.X_depth), int(row.Y_depth)
+            LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
             try:
-                currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
+                currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
                 currentDepth = np.nan
             clusterData.loc[clusterData.LID == LID,'DepthChange'] = currentDepth
@@ -461,7 +464,7 @@ class VideoProcessor:
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width:
                 continue
             # Check temporal compatability (part a):
-            elif self.frame_rate*t - delta_t < 0 or self.frame_rate*t+delta_t >= self.frames or LID == -1:
+            elif self.frame_rate*t - delta_t < 0 or LID == -1:
                 continue
                 #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
                 clusterData.loc[clusterData.LID == LID,'ClipCreated'] = 'No'
@@ -479,7 +482,7 @@ class VideoProcessor:
                     clipsCreated += 1
 
         clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0)
+        self.clusterData = clusterData
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
     def createClusterClips(self, manualOnly = False, delta_xy = 100, delta_t = 60):
@@ -525,6 +528,8 @@ class VideoProcessor:
 
                 outAllHMM.release()
             mlClips += 1
+
+            
         cap.release()
 
         self._print('ClipCreation: ManualLabelClipsCreated: ' + str(mlClips) + ',,Syncying...')
