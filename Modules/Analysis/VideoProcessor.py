@@ -512,8 +512,8 @@ class VideoProcessor:
         self._print('ClipCreation: Finished')
 
     def _createClip(LID, manualOnly, delta_xy, delta_t):
-
-            cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+            pass
+            #cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
             #row = self.clusterData.loc[self.clusterData.LID == LID]
 
