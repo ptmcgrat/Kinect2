@@ -25,7 +25,7 @@ import scipy.ndimage
 #from sklearn.neighbors import NearestNeighbors
 np.warnings.filterwarnings('ignore')
 
-def createClip(LID, delta_xy, delta_t):
+def createClip(LID, manualOnly, delta_xy, delta_t):
     pass
 
 class VideoProcessor:
