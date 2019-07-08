@@ -501,7 +501,7 @@ class VideoProcessor:
                 LIDs.append(LID)
 
         #processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, manualOnly, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
