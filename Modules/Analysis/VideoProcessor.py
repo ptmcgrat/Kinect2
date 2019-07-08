@@ -515,9 +515,9 @@ class VideoProcessor:
 
             cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
-            row = self.clusterData.loc[self.clusterData.LID == LID]
+            #row = self.clusterData.loc[self.clusterData.LID == LID]
 
-            LID, N, t, x, y, ml = [x.values[0] for x in [row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation]]
+            #LID, N, t, x, y, ml = [x.values[0] for x in [row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation]]
             #print('ffmpeg')
             #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
             #t1 = datetime.datetime.now()
