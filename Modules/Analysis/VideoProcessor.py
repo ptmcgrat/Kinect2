@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from hmmlearn import hmm
 from Modules.Analysis.HMM_data import HMMdata
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from random import shuffle
 from joblib import Parallel, delayed
 
@@ -35,7 +35,30 @@ def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
         ret, frame = cap.read()
         outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
     outAll.release()
+    # return mean and std
+    return np.stack([frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy].mean(axis = (0,1)),frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy].std(axis = (0,1))])
 
+def createClip_ffmpeg(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
+    #ffmpeg -i in.mp4 -filter:v "crop=80:60:200:100" -c:a copy out.mp4
+    LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
+
+    command = OrderedDict()
+    command['-ss'] = str(t)
+    command['-i'] = videofile
+    command['-frames:v'] = str(int(2*delta_t))
+    command['-filter:v'] = 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy)
+    
+    outCommand = ['ffmpeg']
+    [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+    outCommand.append(outputDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4')
+    print(outCommand)
+    subprocess.call(outCommand, stderr = open(os.devnull, 'w'))
+    #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
+
+
+def createClip_scikit(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
+    LID, t, x, y = row.LID, row.t, row.X, row.Y
+    rdr1 = skvideo.io.vreader(fname, inputdict={'--start_number': '0', '-vframes': '500'})
 
 class VideoProcessor:
     # This class takes in an mp4 videofile and an output directory and performs the following analysis on it:
@@ -186,8 +209,6 @@ class VideoProcessor:
         self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'Brightness.pdf', self.cloudVideoDirectory], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
-
-        self._createMean()
 
         self._print('Done', log = False)
 
@@ -391,7 +412,7 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.labeledCoordsFile, self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClusterCreation: Completed')
 
-    def createClusterSummary(self, Nclips = 500):
+    def createClusterSummary(self, Nclips = 400, startHour = 8, stopHour = 18, delta_xy = 100, delta_t = 60, smallLimit = 500):
         #self.loadVideo()
         #self.loadHMM()
         self.loadClusters()
@@ -399,6 +420,10 @@ class VideoProcessor:
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
         self._print('ClusterSummaryCreation: TotalHMMTransitions: ' + str(self.labeledCoords.shape[0]) + ',,AssignedHMMTransitions: ' + str(self.labeledCoords[self.labeledCoords[:,3] != -1].shape[0]) + ',,NumClusters: ' + str(len(uniqueLabels)))
+        self._print('ClusterSummaryCreation: deltaXY: ' + str(delta_xy) + ',,deltaT: ' + str(delta_t) + ',,startHour: ' + str(startHour) + ',,stopHour: ' + str(stopHour) + ',,smallLimit: ' + str(smallLimit))
+
+        minTime = self.startTime.replace(hour = startHour, minute = 0, second = 0, microsecond = 0)
+        maxTime = self.startTime.replace(hour = stopHour, minute = 0, second = 0, microsecond = 0)
 
         df = pd.DataFrame(self.labeledCoords, columns=['T','X','Y','LID'])
         clusterData = df.groupby('LID').apply(lambda x: pd.Series({
@@ -414,6 +439,7 @@ class VideoProcessor:
             'ManualAnnotation': 'No',
             'ManualLabel': '',
             'ClipCreated': 'No',
+            'DepthChange': np.nan,
         })
         )
         self._print('Calculating X and Y positions with respect to Kinect coordinate system', log = False)
@@ -421,75 +447,42 @@ class VideoProcessor:
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
 
-        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0)
-        
-        # Identify rows for manual labeling
-        self._identifyManualClusters(Nclips)
-        self._addHeightChange()
-        #self._createMean()
-
-    def _identifyManualClusters(self, Nclips = 500, delta_xy = 100, delta_t = 60, smallLimit = 500):
-    
-        self.loadClusterSummary()
-
-
-        try:
-            clipsCreated = self.clusterData.groupby('ManualAnnotation').count()['LID']['Yes']
-        except KeyError:
-            clipsCreated = 0
-
-        # Identify rows for manual labeling
-        smallClips = 0
-
-        self._print('ManualClipIdentification: TotalClips: ' + str(Nclips) + ',,ClipsAlreadyIdentified: ' + str(clipsCreated))
-
-        for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples():
-            if clipsCreated > Nclips:
-                break
-            
-            LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
-            try:
-                manualAnnotation = row.ManualAnnotation
-            except AttributeError:
-                self.clusterData['ManualAnnotation'] = 'No'
-                manualAnnotation = 'No'
-            if manualAnnotation == 'Yes':
-                continue
-            try:
-                manualLabel = row.ManualLabel
-                if manualLabel == manualLabel and manualLabel != '':
-                    continue
-            except AttributeError:
-                continue
-            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0:
-                continue
-            if N < smallLimit:
-                if smallClips > Nclips/20:
-                    continue
-            self.clusterData.loc[self.clusterData.LID == LID,'ManualAnnotation'] = 'Yes'
-            clipsCreated += 1
-            if N < smallLimit:
-                smallClips += 1
-
-        
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-
-    def _addHeightChange(self):
-        self.loadClusterSummary()
-        self.clusterData['DepthChange'] = np.nan
-        for row in self.clusterData.itertuples():
-            LID, timeStamp, xDepth, yDepth  = row.LID, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
+        # Identify clusters to make clips for
+        self._print('Identifying clusters to make clips for', log = False)
+        smallClips, clipsCreated = 0,0 # keep track of clips with small number of pixel changes
+        for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples(): # Randomly go through the dataframe
+            LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, row.TimeStamp, int(row.X_depth), int(row.Y_depth)
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
-            except IndexError:
-                continue
+            except IndexError: # x and y values are outside of depth field of view
+                currentDepth = np.nan
             self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
-        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+            # Check spatial compatability:
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width:
+                continue
+            # Check temporal compatability (part a):
+            elif self.frame_rate*t - delta_t < 0 or self.frame_rate*t+delta_t >= self.frames or LID == -1:
+                continue
+                #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
+                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
+            # Check temporal compatability (part b):
+            elif time < minTime or time > maxTime:
+                continue
+            else:
+                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
+                if N < smallLimit:
+                    if smallClips > Nclips/20:
+                        continue
+                    smallClips += 1
+                if clipsCreated < Nclips:
+                    self.clusterData.loc[self.clusterData.LID == LID,'ManualAnnotation'] = 'Yes'
+                    clipsCreated += 1
+
+        clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, sep = ',', header = 0)
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-    def createClusterClips(self, delta_xy = 100, delta_t = 60, smallLimit = 500, manualOnly = False):
+    def createClusterClips(self, manualOnly = False, delta_xy = 100, delta_t = 60):
         self.loadVideo()
         self.loadHMM()
         self.loadClusters()
@@ -498,21 +491,43 @@ class VideoProcessor:
 
         #self._createMean()
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
-        
-        LIDs = []
-        for row in self.clusterData.itertuples():
-            LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
-            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
-                #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
-                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
-            else:
-                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
-                LIDs.append(LID)
 
-        #processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
+        # Clip creation is super slow so we do it in parallel
         processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
+        self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
-        self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
+        # Calculate mean and standard deviations of clip videos
+        allData = np.stack(processedVideos)
+        outData = np.zeros(shape = (2,3))
+        outData = np.flip(allData.mean(axis = 0), axis = 1)
+        np.save(self.localVideoDirectory + self.meansFile, outData)
+        subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
+        self._print('ClipCreation: MeansCalculated: ' + str(outData))
+        # Now create manual label clips, which require extra data
+        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+
+        mlClips = 0
+        for row in self.clusterData[self.clusterData.ManualAnnotation == 'Yes'].itertuples():
+            LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
+            
+            outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
+            HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
+            clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
+
+            for i in range(delta_t*2):
+                ret, frame = cap.read()
+                frame2 = frame.copy()
+                frame[HMMChanges != 0] = [300,125,125]
+                for coord in clusteredPoints: # This can probably be improved to speed up clip generation (get rid of the python loop)
+                    frame[coord[0], coord[1]] = [125,125,300]
+                outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
+
+                outAllHMM.release()
+            mlClips += 1
+        cap.release()
+
+        self._print('ClipCreation: ManualLabelClipsCreated: ' + str(mlClips) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         
@@ -582,23 +597,6 @@ class VideoProcessor:
 
             return True
 
-    def _createMean(self, numFrames = 5000):
-        self._print('Creating: ' + self.meansFile)
-        self.loadVideo()
-        means = np.zeros(shape = (numFrames,3))
-        stds = np.zeros(shape = (numFrames,3))
-        outData = np.zeros(shape = (2,3))
-        for i in range(numFrames):
-            frame = random.randint(0,self.frames-1)
-            pic = self._retFrame(frame, noBackground = False)
-            means[i] = np.flip(pic.mean(axis = (0,1))) # open cv does bgr, so we flip the mean
-            stds[i] = np.flip(pic.std(axis = (0,1)))
-
-        outData[0] = means.mean(axis = 0)
-        outData[1] = stds.mean(axis = 0)
-        np.save(self.localVideoDirectory + self.meansFile, outData)
-        subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
-
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
@@ -606,7 +604,6 @@ class VideoProcessor:
         if mlClips:
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
             subprocess.call(['tar', '-xcf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
-
 
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
@@ -697,7 +694,6 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
-
 
     def predictLabels(self, modelLocation, modelIDs):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
