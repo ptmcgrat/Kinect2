@@ -25,6 +25,8 @@ import scipy.ndimage
 #from sklearn.neighbors import NearestNeighbors
 np.warnings.filterwarnings('ignore')
 
+def createClip(LID, delta_xy, delta_t):
+    pass
 
 class VideoProcessor:
     # This class takes in an mp4 videofile and an output directory and performs the following analysis on it:
@@ -980,5 +982,3 @@ class VideoProcessor:
         #    self.createClusterClips(manualOnly = True)
         """
 
-    def createClip(LID, delta_xy, delta_t):
-        pass
