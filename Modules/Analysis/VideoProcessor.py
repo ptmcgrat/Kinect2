@@ -566,7 +566,7 @@ class VideoProcessor:
 
                 outAllHMM.release()
             """
-            cap.release()
+            #cap.release()
 
             return True
 
@@ -978,3 +978,6 @@ class VideoProcessor:
         #    self._identifyManualClusters(Nclips = 350)
         #    self.createClusterClips(manualOnly = True)
         """
+
+    def createClip(LID, delta_xy, delta_t):
+        pass
