@@ -25,8 +25,17 @@ import scipy.ndimage
 #from sklearn.neighbors import NearestNeighbors
 np.warnings.filterwarnings('ignore')
 
-def createClip(LID, manualOnly, delta_xy, delta_t):
-    pass
+def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
+    cap = cv2.VideoCapture(videofile)
+    LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
+    
+    outAll = cv2.VideoWriter(outputDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (2*delta_xy, 2*delta_xy))
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
+    for i in range(delta_t*2):
+        ret, frame = cap.read()
+        outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+    outAll.release()
+
 
 class VideoProcessor:
     # This class takes in an mp4 videofile and an output directory and performs the following analysis on it:
@@ -501,7 +510,7 @@ class VideoProcessor:
                 LIDs.append(LID)
 
         #processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, manualOnly, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
