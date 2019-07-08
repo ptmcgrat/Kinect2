@@ -450,13 +450,13 @@ class VideoProcessor:
         # Identify clusters to make clips for
         self._print('Identifying clusters to make clips for', log = False)
         smallClips, clipsCreated = 0,0 # keep track of clips with small number of pixel changes
-        for row in self.clusterData.sample(n = self.clusterData.shape[0]).itertuples(): # Randomly go through the dataframe
+        for row in clusterData.sample(n = clusterData.shape[0]).itertuples(): # Randomly go through the dataframe
             LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, row.TimeStamp, int(row.X_depth), int(row.Y_depth)
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, timeStamp)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
                 currentDepth = np.nan
-            self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
+            clusterData.loc[clusterData.LID == LID,'DepthChange'] = currentDepth
             # Check spatial compatability:
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width:
                 continue
@@ -464,18 +464,18 @@ class VideoProcessor:
             elif self.frame_rate*t - delta_t < 0 or self.frame_rate*t+delta_t >= self.frames or LID == -1:
                 continue
                 #print('Cannot create clip for: ' + str(LID) + '_' + str(N) + '_' + str(x) + '_' + str(y), file = sys.stderr)
-                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
+                clusterData.loc[clusterData.LID == LID,'ClipCreated'] = 'No'
             # Check temporal compatability (part b):
             elif time < minTime or time > maxTime:
                 continue
             else:
-                self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
+                clusterData.loc[clusterData.LID == LID,'ClipCreated'] = 'Yes'
                 if N < smallLimit:
                     if smallClips > Nclips/20:
                         continue
                     smallClips += 1
                 if clipsCreated < Nclips:
-                    self.clusterData.loc[self.clusterData.LID == LID,'ManualAnnotation'] = 'Yes'
+                    clusterData.loc[clusterData.LID == LID,'ManualAnnotation'] = 'Yes'
                     clipsCreated += 1
 
         clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
