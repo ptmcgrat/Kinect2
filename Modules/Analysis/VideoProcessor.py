@@ -498,7 +498,8 @@ class VideoProcessor:
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
                 LIDs.append(LID)
 
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
+        #processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
