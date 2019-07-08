@@ -30,12 +30,12 @@ def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
     LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
     
     outAll = cv2.VideoWriter(outputDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (2*delta_xy, 2*delta_xy))
-    cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_rate*(t) - delta_t))
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
     for i in range(delta_t*2):
         ret, frame = cap.read()
         outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
     outAll.release()
-
+    return True
 
 class VideoProcessor:
     # This class takes in an mp4 videofile and an output directory and performs the following analysis on it:
@@ -499,7 +499,6 @@ class VideoProcessor:
         #self._createMean()
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         
-        LIDs = []
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, ml = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation
             if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width or LID == -1 or self.frame_rate*t - delta_t <0 or self.frame_rate*t+delta_t >= self.frames:
@@ -507,10 +506,34 @@ class VideoProcessor:
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'No'
             else:
                 self.clusterData.loc[self.clusterData.LID == LID,'ClipCreated'] = 'Yes'
-                LIDs.append(LID)
 
         #processedVideos = Parallel(n_jobs=self.cores)(delayed(self._createClip)(LID, manualOnly, delta_xy, delta_t) for LID in LIDs)
         processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
+        self._print('ClipCreation: AllClipsCompleted')
+
+        for row in self.clusterData.itertuples():
+            if ml == 'Yes':
+                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
+                frame_idx = int(self.frame_rate*(t) - delta_t)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
+                HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
+                clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
+
+                for i in range(delta_t*2):
+                    #try:
+                    #    frame = cap[int(frame_idx + i)]
+                    #except IndexError:
+                    #    print(int(frame_idx + i))
+                    ret, frame = cap.read()
+                    frame2 = frame.copy()
+                    frame[HMMChanges != 0] = [300,125,125]
+                    for coord in clusteredPoints: # This can probably be improved to speed up clip generation (get rid of the python loop)
+                        frame[coord[0], coord[1]] = [125,125,300]
+                    outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
+
+                outAllHMM.release()
+
+                subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
 
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)) + ',,Syncying...')
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
