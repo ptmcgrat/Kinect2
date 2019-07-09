@@ -746,7 +746,7 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
         for i in range(max_t - min_t):
             cap.set(cv2.CAP_PROP_POS_FRAMES, int((i+min_t)*self.frame_rate))
-            ret, frame = self.cap.read()
+            ret, frame = cap.read()
             if not ret:
                 raise Exception('Cant read frame')
             ad[:,:,i] =  0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0] #opencv does bgr instead of rgb
