@@ -9,25 +9,25 @@ from collections import defaultdict, OrderedDict
 
 
 class MachineLearningMaker:
-    def __init__(self, modelID, projects, localMasterDirectory, cloudModelDirectory, cloudClipsDirectory, labeledClusterFile = None, classIndFile = None):
+    def __init__(self, modelIDs, localMasterDirectory, cloudMasterDirectory, localClipsDirectories, labeledClusterFile = None, classIndFile):
+        self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
 
-        if modelID != '' and modelID[0:5].lower() != 'model':
-            raise Exception('modelID must start with "model", user named modelID=' + modelID)
+        for modelID in modelIDs:
+            if modelID[0:5].lower() != 'model':
+                raise Exception('modelID must start with "model", user named modelID=' + modelID)
         # Include code to check if model exists already
 
-        self.modelID = modelID # Name of machine learning model
-        self.projects = projects # Projects that will be included in this data
+        self.modelIDs = modelIDs # Name of machine learning model
 
         # Store relevant directories for cloud and local data   
-        self.cloudModelDirectory = cloudModelDirectory + '/' if cloudModelDirectory[-1] != '/' else cloudModelDirectory # Master directory
-        self.cloudClipsDirectory = cloudClipsDirectory + '/' if cloudClipsDirectory[-1] != '/' else cloudClipsDirectory # Where manually labeled clips are stored
+        self.cloudMasterDirectory = cloudMasterDirectory + '/' if cloudMasterDirectory[-1] != '/' else cloudMasterDirectory # Master directory
 
         self.localMasterDirectory = localMasterDirectory + '/' if localMasterDirectory[-1] != '/' else localMasterDirectory
-        self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
-        self.localClipsDirectory = self.localOutputDirectory + 'Clips/' # Where mp4 clips and created jpg images will be stored
+
+        self.localClipsDirectories = localClipsDirectories
 
         # Create directories if necessary
-        os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
+        #os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
 
         # Directory containg python3 scripts for creating 3D Resnet 
         self.resnetDirectory = os.getenv("HOME") + '/3D-resnets/'
@@ -35,17 +35,21 @@ class MachineLearningMaker:
         # Store file names
         self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
         
-        self.classIndFile = classIndFile # This file lists the allowed label classes
+        # Store and download label file
+        self.classIndFile = self.localMasterDirectoy + classIndFile # This file lists the allowed label classes
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + classIndFile, self.localMasterDirectory], stderr = self.fnull)
+        assert os.path.exists(self.localMasterDirectory + 'classInd.txt')
+        
+        # Identify classes
+        self.classes, self.numClasses = self._identifyClasses()
 
-        self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
+        print(command, file = sys.stderr)
+
 
         self._print('ModelInitialization: modelID: ' + modelID + ',,projectsUsed:' + ','.join(projects))
 
-    def prepareData(self):
+    def prepareData(self, labeledClusterFile = None):
 
-        # Determine how many label classes are possible from classIndFile
-        if self.classIndFile is not None:
-            self.classes, self.numClasses = self._identifyClasses()
 
         # Download and open manual label file if necessary
         if self.labeledClusterFile is not None:
@@ -71,7 +75,8 @@ class MachineLearningMaker:
     def runTraining(self, GPU = 0):
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
-       
+               self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
+
         self._print('modelCreation: GPU:' + str(GPU))
 
         processes = []

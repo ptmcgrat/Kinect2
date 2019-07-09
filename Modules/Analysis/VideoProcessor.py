@@ -742,15 +742,26 @@ class VideoProcessor:
         min_t = block*self.blocksize
         max_t = min((block+1)*self.blocksize, int(self.HMMframes/self.frame_rate))
         ad = np.empty(shape = (self.height, self.width, max_t - min_t), dtype = 'uint8')
-        cap = pims.Video(self.localMasterDirectory + self.videofile)
-        counter = 0
-        for i in range(min_t, max_t):
-            current_frame = int(i*self.frame_rate)
-            frame = cap[current_frame]
-            ad[:,:,counter] =  0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
-            counter += 1
-        cap.close()
-        return ad
+        
+        cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
+        for i in range(max_t - min_t):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int((i+min_t)*self.frame_rate))
+            ret, frame = self.cap.read()
+            if not ret:
+                raise Exception('Cant read frame')
+             ad[:,:,i] =  0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0] #opencv does bgr instead of rgb
+        cap.release()
+        return ad 
+          
+        #cap = pims.Video(self.localMasterDirectory + self.videofile)
+        #counter = 0
+        #for i in range(min_t, max_t):
+        #    current_frame = int(i*self.frame_rate)
+        #    frame = cap[current_frame]
+        #    ad[:,:,counter] =  0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
+        #    counter += 1
+        #cap.close()
+        #return ad
 
     def _smoothRow(self, row):
 
