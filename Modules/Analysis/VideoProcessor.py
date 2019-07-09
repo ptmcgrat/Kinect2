@@ -502,8 +502,9 @@ class VideoProcessor:
         allData = np.stack(processedVideos)
         outData = np.zeros(shape = (2,3))
         outData = np.flip(allData.mean(axis = 0), axis = 1)
-        np.save(self.localVideoDirectory + self.meansFile, outData)
-        subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
+        np.save(self.localAllClipsDirectory + self.meansFile, outData)
+        np.save(self.localManualLabelClipsDirectory + self.meansFile, outData)
+        #subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
         self._print('ClipCreation: MeansCalculated: ' + str(outData))
         # Now create manual label clips, which require extra data
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
@@ -614,12 +615,12 @@ class VideoProcessor:
             self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
             self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
             self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
-            
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+
             newClips.append(f.replace('_ManualLabel',''))
             annotatedClips += 1
 
             subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
-
             if number is not None and annotatedClips > number:
                 break
 
@@ -627,7 +628,8 @@ class VideoProcessor:
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-            
+        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + self.meansFile, self.cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
         tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)

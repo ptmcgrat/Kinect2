@@ -32,23 +32,18 @@ class MachineLearningMaker:
         #os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
 
         # Directory containg python3 scripts for creating 3D Resnet 
-        self.resnetDirectory = os.getenv("HOME") + '/3D-resnets/'
-
-        # Store file names
-        self.labeledClusterFile = labeledClusterFile # This file that contains the manual label information for each clip
+        self.resnetDirectory = os.getenv("HOME") + '/3D-ResNets/'
         
         # Store and download label file
-        self.classIndFile = self.localMasterDirectoy + classIndFile # This file lists the allowed label classes
+        self.classIndFile = self.localMasterDirectory + classIndFile # This file lists the allowed label classes
+        #print(['rclone', 'copy', self.cloudMasterDirectory + classIndFile, self.localMasterDirectory])
         subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + classIndFile, self.localMasterDirectory], stderr = self.fnull)
-        assert os.path.exists(self.localMasterDirectory + 'classInd.txt')
+        assert os.path.exists(self.classIndFile)
         
         # Identify classes
         self.classes, self.numClasses = self._identifyClasses()
 
-        print(command, file = sys.stderr)
-
-
-        self._print('ModelInitialization: modelID: ' + modelID + ',,projectsUsed:' + ','.join(projects))
+        self._print('ModelInitialization: modelIDs: ' + ','.join(modelIDs))
 
     def prepareData(self, labeledClusterFile = None):
 
@@ -61,58 +56,85 @@ class MachineLearningMaker:
         self._convertClips()
 
         # Run cichlids_json script to create json info for all clips
-        if self.classIndFile is not None:
-            command = []
-            command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
-            command += [self.localOutputDirectory]
-            command += [self.classIndFile]
-            print(command)
-            subprocess.call(command)
+ 
 
-    def runTraining(self, GPU = 0):
+    def runTraining(self, projects, GPU = 0):
+        """ Projects is a dictionary mapping the model ID to the projects that should be used"""
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
         #self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
-
-        self._print('modelCreation: GPU:' + str(GPU))
-
         processes = []
+        for modelID in self.modelIDs:
+            localModelDirectory = self.localMasterDirectory + modelID + '/'
+            resultsDirectory = 'resnet18/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+            with open(localModelDirectory + 'cichlids_train_list.txt', 'w') as f, open(localModelDirectory + 'cichlids_test_list.txt', 'w') as g, open(localModelDirectory + 'AnnotationFile.csv', 'w') as h:
+                for clipsDirectory in self.localClipsDirectories:
+                    clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+                assert len(clips) != 0
+                for clip in clips:
+                    try:
+                        LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                    except IndexError: #MC6_5
+                        self._print(clip)
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                    except ValueError:
+                        self._print('ClipError: ' + str(clip))
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-        command = OrderedDict()
-        command['python'] = self.resnetDirectory + 'main.py'
-        command['--root_path'] = self.localOutputDirectory
-        command['--video_path'] = 'Clips'
-        command['--annotation_path'] = 'cichlids.json'
-        command['--model'] = 'resnet'
-        command['--model_depth'] = '18'
-        command['--n_classes'] = str(self.numClasses)
-        command['--batch_size'] = '3'
-        command['--n_threads'] = '5'
-        command['--checkpoint'] = '5'
-        command['--dataset'] = 'cichlids'
-        command['--sample_duration'] = 90
-        command['--sample_size'] = 260
-        command['--n_epochs'] = '100'
-        command['--weight_decay'] = str(1e-23)
-        command['--n_val_samples'] = '1'
-        command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
-        command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
+                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
+                    projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
 
-        resultsDirectory = 'resnet18/'
-        shutil.rmtree(self.localOutputDirectory + resultsDirectory) if os.path.exists(self.localOutputDirectory + resultsDirectory) else None
-        os.makedirs(self.localOutputDirectory + resultsDirectory)
-        trainEnv = os.environ.copy()
-        trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
-        command['--result_path'] = resultsDirectory
+                    if projectID in projects[modelID]:
+                        if randint(0,4) == 4: # Test data
+                            print(label + '/' + clip.replace('.mp4',''), file = g)
+                            print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                        else: # Train data
+                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
+                            print(clip.replace('.mp4','') + ',Train,' + label + ',' + projectID + ':' + videoID, file = h)
 
-        pickle.dump(command, open(self.localOutputDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+            command = []
+            command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
+            command += [localModelDirectory]
+            command += [self.classIndFile]
+            subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
+            print(command)
+            subprocess.call(command)
 
-        outCommand = []
-        [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-        self._print(' '.join(outCommand))
-        process = subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w'))
-       
-        return process
+            self._print('modelCreation: GPU:' + str(GPU))
+
+            command = OrderedDict()
+            command['python'] = self.resnetDirectory + 'main.py'
+            command['--root_path'] = self.localMasterDirectory
+            command['--video_path'] = 'Clips'
+            command['--annotation_path'] = modelID + '/cichlids.json'
+            command['--model'] = 'resnet'
+            command['--model_depth'] = '18'
+            command['--n_classes'] = str(self.numClasses)
+            command['--batch_size'] = '3'
+            command['--n_threads'] = '5'
+            command['--checkpoint'] = '5'
+            command['--dataset'] = 'cichlids'
+            command['--sample_duration'] = 90
+            command['--sample_size'] = 260
+            command['--n_epochs'] = '100'
+            command['--weight_decay'] = str(1e-23)
+            command['--n_val_samples'] = '1'
+            command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
+            command['--annotation_file'] = self.localMasterDirectory + 'AnnotationFile.csv'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+        
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+            
+            pickle.dump(command, open(localModelDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            #processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+        return True
 
     def predictLabels(self, modelIDs, GPU = 4):
 
@@ -198,9 +220,9 @@ class MachineLearningMaker:
         self._print('ModelInitialization: numClasses: ' + str(len(classes)) + ',,ClassIDs: ' + ','.join(sorted(classes)))
         return classes, len(classes)
 
-    def _loadClusterFile(self):
+    def _loadClusterFile(self, labeledClusterFile):
         #subprocess.call(['rclone', 'copy', self.cloudModelDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
-        dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
+        dt = pd.read_csv(labeledClusterFile, sep = ',', header = 0, index_col=0)
         #dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
         #dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
         #self._print('ClassDistribution:')
@@ -209,51 +231,17 @@ class MachineLearningMaker:
 
     def _convertClips(self):
 
-        clips = defaultdict(list)
         means = {}
 
-        for clipsDirectory in self.localClipsDirectories:
-            clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
-            assert len(clips) != 0
-            assert os.path.exists(clipsDirectory + 'means.npy')
-
-
-
-        for projectID in self.projects:
-            if projectID == '':
-                videoID = ''
-                clips[projectID].extend([x for x in os.listdir(self.localClipsDirectory) if '.mp4' in x])
-                print(['rclone', 'copy', self.cloudClipsDirectory.replace('ClusterData/AllClips/','') + 'Means.npy', self.localOutputDirectory])
-                subprocess.call(['rclone', 'copy', self.cloudClipsDirectory.replace('ClusterData/AllClips/','') + 'Means.npy', self.localOutputDirectory])
-                means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
-
-            else:
-                for videoID in os.listdir(self.localClipsDirectory + projectID):
-                    clips[projectID].extend([projectID + '/' + videoID + '/' + x for x in os.listdir(self.localClipsDirectory + projectID + '/' + videoID + '/') if '.mp4' in x])
-                    print(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                    subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID + '/' + videoID + '/' + 'Means.npy', self.localOutputDirectory])
-                    means[projectID + ':' + videoID] = np.load(self.localOutputDirectory + 'Means.npy')
-
-        with open(self.localOutputDirectory + 'Means.csv', 'w') as f:
-            print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
-            for meanID,data in means.items():
-                print(meanID + ',' + ','.join([str(x) for x in list(data[0]) + list(data[1])]), file = f)
-
-        try:
-            if sum(len(x) for x in clips.values()) != self.numLabeledClusters:
-                self._print('Warning: The number of clips, ' + str(sum(len(x) for x in clips.values())) + ', does not match the number of labeled clusters, ' + str(self.numLabeledClusters))
-        except AttributeError: # no manual label cluster file
-            pass
-
-        self._print('ModelInitialization: # of clips: ' + str(sum(len(x) for x in clips.values())))
-
-        with open(self.localOutputDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localOutputDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localOutputDirectory + 'AnnotationFile.csv', 'w') as h:
+        with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localMasterDirectory + 'AnnotationFile.csv', 'w') as h:
             print('Location,Dataset,Label,meanID', file = h)
-            for projectID in clips:
-                outDirectories = []
-                for i,clip in enumerate(clips[projectID]):
-                    if i%100 == 0:
-                        self._print('Processed ' + str(i) + ' videos from ' + projectID, log = False)
+
+            for clipsDirectory in self.localClipsDirectories:
+                self._print('Processing ' + clipsDirectory, log = False)
+                clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+                assert len(clips) != 0
+                assert os.path.exists(clipsDirectory + 'Means.npy')
+                for clip in clips:
                     try:
                         LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
                     except IndexError: #MC6_5
@@ -263,33 +251,25 @@ class MachineLearningMaker:
                         self._print('ClipError: ' + str(clip))
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-
                     try:
-                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]['ManualLabel']
+                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
+                    except AttributeError:
+                        projectID, videoID, label = '','',self.classes[0]
+                        print(label + '/' + clip.replace('.mp4',''), file = g)
+                        print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                    else:
                         if len(subTable) == 0:
                             raise Exception('No label for: ' + clip)
                         elif len(subTable) > 1:
                             raise Exception('Multiple labels for: ' + clip)
                         else:
-                            label = subTable.values[0]
-                        if randint(0,4) == 4: # Test data
-                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
-                            print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
-                        else: # Train data
-                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
-                            print(clip.split('/')[-1].replace('.mp4','') + ',Train,' + label + ',' + clip.split('/')[0] + ':' + clip.split('/')[1], file = h)
-                     
-                    except AttributeError: # we will be predicting labels, not creating a model
-                        label = 'b'
-                        print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = g)
-                        print(clip.split('/')[-1].replace('.mp4','') + ',Test,' + label + ',' + ':', file = h)
-                            
-                    outDirectory = self.localClipsDirectory + label + '/' + clip.split('/')[-1].replace('.mp4','') + '/'
-                    outDirectories.append(outDirectory)
-                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    os.makedirs(outDirectory) 
+                            projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
+            
+                    outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
+                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    #os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    subprocess.call(['ffmpeg', '-i', self.localClipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
@@ -300,19 +280,14 @@ class MachineLearningMaker:
 
                     with open(outDirectory + 'n_frames', 'w') as i:
                         print(str(self.nFrames), file = i)
-                # Normalize imgages using mean and std
-                #self._print('ModelCreation: ' + projectID + '_Means: ' + ','.join([str(x) for x in means.mean(axis=0)]) + ',,' + projectID + '_Stds: ' + ','.join([str(x) for x in stds.mean(axis=0)]))
-                """for i,outDirectory in enumerate(outDirectories):
-                    if i%100 == 0:
-                        self._print('Normalized ' + str(i) + ' videos from ' + projectID, log = False)
-                    frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
-                    for frame in frames:
-                        img = io.imread(outDirectory + frames[0])
-                        norm = (img - mean)/(std/30) + 125
-                        norm[norm < 0] = 0
-                        norm[norm > 255] = 255
-                        io.imsave(outDirectory + frames[0], norm.astype('uint8'))
-                """
+
+
+                means[projectID + ':' + videoID] = np.load(clipsDirectory + 'Means.npy')
+
+        with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
+            print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
+            for meanID,data in means.items():
+                print(meanID + ',' + ','.join([str(x) for x in list(data[0]) + list(data[1])]), file = f)
     
     def _summarizeModel(self):
         with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w') as g:
@@ -329,6 +304,8 @@ class MachineLearningMaker:
         subprocess.call(['rclone', 'copy', self.localOutputDirectory, self.cloudModelDirectory])
 
     def _print(self, outtext, log = True):
+        print(outtext, file = sys.stderr)
+        return
         if log:
             with open(self.localOutputDirectory + self.modelID + '_MachineLearningLog.txt', 'a') as f:
                 print(str(outtext) + '...' + str(getpass.getuser()) + ', ' + str(datetime.datetime.now()) + ', ' + socket.gethostname(), file = f)
