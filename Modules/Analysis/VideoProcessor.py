@@ -297,7 +297,7 @@ class VideoProcessor:
 
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
 
-        self.HMMframes = min(self.frames, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
+        self.HMMframes = min(self.frames - 60, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
         #self.hmm_time = hmm_time
         
         total_blocks = math.ceil(self.HMMframes/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
@@ -528,7 +528,7 @@ class VideoProcessor:
 
                 outAllHMM.release()
             mlClips += 1
-
+            subprocess.call['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y), self.localManualLabelClipsDirectory]
             
         cap.release()
 
