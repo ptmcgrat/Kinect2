@@ -315,14 +315,14 @@ class VideoProcessor:
             blocks = list(range(i*self.cores, min(i*self.cores + self.cores, total_blocks)))
             self._print('Minutes since start: ' + str((datetime.datetime.now() - start).seconds/60) + ', Processing blocks: ' + str(blocks[0]) + ' to ' +  str(blocks[-1]), log = False)
             results = pool.map(self._readBlock, blocks)
-            #print('Data read: ' + str((datetime.datetime.now() - start).seconds) + ' seconds')
+            print('Data read: ' + str((datetime.datetime.now() - start).seconds) + ' seconds')
             for row in range(self.height):
                 row_file = self._row_fn(row)
                 out_data = np.concatenate([results[x][row] for x in range(len(results))], axis = 1)
                 if os.path.isfile(row_file):
                     out_data = np.concatenate([np.load(row_file),out_data], axis = 1)
                 np.save(row_file, out_data)
-            #print('Data wrote: ' + str((datetime.datetime.now() - start).seconds) + ' seconds', file = sys.stderr)
+            print('Data wrote: ' + str((datetime.datetime.now() - start).seconds) + ' seconds', file = sys.stderr)
         pool.close() 
         pool.join() 
         self._print('TotalTime: ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes', log = False)

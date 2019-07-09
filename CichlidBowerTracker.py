@@ -1,4 +1,4 @@
-import argparse, os, socket, sys, subprocess
+import argparse, os, socket, sys, subprocess, pdb
 from subprocess import call
 from collections import defaultdict
 
@@ -171,16 +171,34 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/', args.ModelNames)
                 
     elif args.command == 'CreateModel':
-        if socket.gethostname() != 'biocomputesrg':
-            raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
+        #if socket.gethostname() != 'biocomputesrg':
+        #    raise Exception('TrainModel analysis must be run on SRG or some other machine with good GPUs')
         #if os.environ['CUDA_VISIBLE_DEVICES'] != '6':
         #    raise Exception('CUDA_VISIBLE_DEVICES is not set. Run "export CUDA_VISIBLE_DEVICES=6" and rerun')
         #print(os.environ['CONDA_DEFAULT_ENV'])
-        print(inputData.mLearningData)
-        processes = []
-        confusionMatrices = []
-        count = 0
+        projects = set()
+        cloudMasterMLDirectory = rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory
+        localMasterMLDirectory = localMasterDirectory + machineLearningDirectory
+
         for mlID in inputData.mLearningData:
+            projects.update(inputData.mLearningData[mlID])
+
+        print('Downloading clip data from the following projects: ' + ', '.join(sorted(projects)), file = sys.stderr)
+        processes = []
+        for projectID in projects:
+            processes.append(subprocess.Popen(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID], stderr=open(os.devnull, 'w')))
+        [p.communicate() for p in processes]
+
+        clipDirectories = []
+        for projectID in projects:
+            clipDirectories.extend([localMasterMLDirectory + 'Clips/' + projectID + '/' + x + '/' for x in os.listdir(localMasterMLDirectory + 'Clips/' + projectID)])
+
+        pdb.set_trace()
+
+        for mlID in inputData.mLearningData:
+
+            self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
+            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
             ml_obj = MLM(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Clips/', manualLabelFile, args.classIndFile)
             ml_obj.prepareData()
             processes.append(ml_obj.runTraining(GPU = count))
