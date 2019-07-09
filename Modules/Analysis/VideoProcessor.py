@@ -55,7 +55,6 @@ def createClip_ffmpeg(row, videofile, outputDirectory, frame_rate, delta_xy, del
     subprocess.call(outCommand, stderr = open(os.devnull, 'w'))
     #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
 
-
 def createClip_scikit(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
     LID, t, x, y = row.LID, row.t, row.X, row.Y
     rdr1 = skvideo.io.vreader(fname, inputdict={'--start_number': '0', '-vframes': '500'})
@@ -297,7 +296,7 @@ class VideoProcessor:
 
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
 
-        self.HMMframes = min(self.frames - 60, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
+        self.HMMframes = min(self.frames, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
         #self.hmm_time = hmm_time
         
         total_blocks = math.ceil(self.HMMframes/(blocksize*self.frame_rate)) #Number of blocks that need to be analyzed for the full video
@@ -314,7 +313,7 @@ class VideoProcessor:
         
         for i in range(0, math.ceil(total_blocks/self.cores)):
             blocks = list(range(i*self.cores, min(i*self.cores + self.cores, total_blocks)))
-            self._print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ', Processing blocks: ' + str(blocks[0]) + ' to ' +  str(blocks[-1]), log = False)
+            self._print('Minutes since start: ' + str((datetime.datetime.now() - start).seconds/60) + ', Processing blocks: ' + str(blocks[0]) + ' to ' +  str(blocks[-1]), log = False)
             results = pool.map(self._readBlock, blocks)
             #print('Data read: ' + str((datetime.datetime.now() - start).seconds) + ' seconds')
             for row in range(self.height):
@@ -335,7 +334,7 @@ class VideoProcessor:
         #print('StartTime: ' + str(start), file = sys.stderr)
         for i in range(0, self.height, self.cores):
             rows = list(range(i, min(i + self.cores, self.height)))
-            self._print('Seconds since start: ' + str((datetime.datetime.now() - start).seconds) + ' seconds, Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), log = False)
+            self._print('Minutes since start: ' + str((datetime.datetime.now() - start).seconds/60) + ', Processing rows: ' + str(rows[0]) + ' to ' +  str(rows[-1]), log = False)
             results = pool.map(self._smoothRow, rows)
         self._print('TotalTime: Took ' + str((datetime.datetime.now() - start).seconds/60) + ' minutes to smooth ' + str(self.height) + ' rows', log = False)
         pool.close() 
@@ -528,7 +527,7 @@ class VideoProcessor:
 
                 outAllHMM.release()
             mlClips += 1
-            subprocess.call['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y), self.localManualLabelClipsDirectory]
+
             
         cap.release()
 
@@ -542,65 +541,6 @@ class VideoProcessor:
             subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
-
-    def _createClip(LID, manualOnly, delta_xy, delta_t):
-            pass
-            #cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
-
-            #row = self.clusterData.loc[self.clusterData.LID == LID]
-
-            #LID, N, t, x, y, ml = [x.values[0] for x in [row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation]]
-            #print('ffmpeg')
-            #command = ['ffmpeg', '-i', self.localMasterDirectory + self.videofile, '-filter:v', 'crop=' + str(2*delta_xy) + ':' + str(2*delta_xy) + ':' + str(y-delta_xy) + ':' + str(x-delta_xy) + '', '-ss', str(t - int(delta_t/self.frame_rate)), '-frames:v', str(2*delta_t), self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4']
-            #t1 = datetime.datetime.now()
-            #subprocess.call(command, stderr = self.fnull)
-            #t2 = datetime.datetime.now()
-            #try:
-            #    ffmpegTime += t2-t1
-            #except:
-            #    ffmpegTime = t2 - t1
-            """
-            if not manualOnly or ml == 'Yes':
-                outAll = cv2.VideoWriter(self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (2*delta_xy, 2*delta_xy))
-                cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
-                for i in range(delta_t*2):
-                    ret, frame = cap.read()
-                    outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
-                outAll.release()
-                if ml == 'Yes':
-                    subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
-            """
-            #t3 = datetime.datetime.now()
-            #try:
-            #    cvTime += t3-t2
-            #except:
-            #    cvTime = t3 - t2
-            #print('ff: ' + str(ffmpegTime) + ' cv: ' + str(cvTime))
-            """
-            if ml == 'Yes':
-                outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
-                frame_idx = int(self.frame_rate*(t) - delta_t)
-                cap.set(cv2.CAP_PROP_POS_FRAMES, int(self.frame_rate*(t) - delta_t))
-                HMMChanges = self.obj.ret_difference(self.frame_rate*(t) - delta_t, self.frame_rate*(t) + delta_t)
-                clusteredPoints = self.labeledCoords[self.labeledCoords[:,3] == LID][:,1:3]
-
-                for i in range(delta_t*2):
-                    #try:
-                    #    frame = cap[int(frame_idx + i)]
-                    #except IndexError:
-                    #    print(int(frame_idx + i))
-                    ret, frame = cap.read()
-                    frame2 = frame.copy()
-                    frame[HMMChanges != 0] = [300,125,125]
-                    for coord in clusteredPoints: # This can probably be improved to speed up clip generation (get rid of the python loop)
-                        frame[coord[0], coord[1]] = [125,125,300]
-                    outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
-
-                outAllHMM.release()
-            """
-            #cap.release()
-
-            return True
 
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
@@ -719,17 +659,6 @@ class VideoProcessor:
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
         return self.clusterData
-
-    def summarizeData(self):
-        self.loadClusters()
-        pass
-        t_hours = int(self.frames/(self.frame_rate*60*60))
-        rel_diff = np.zeros(shape = (t_hours, self.height, self.width), dtype = 'uint8')
-        
-        for i in range(1,t_hours+1):
-            rel_diff[i-1] = self.obj.ret_difference((i-1)*60*60*25,i*60*60*25 - 1)
-
-        return rel_diff
 
     def cleanup(self):
         shutil.rmtree(self.localVideoDirectory)
