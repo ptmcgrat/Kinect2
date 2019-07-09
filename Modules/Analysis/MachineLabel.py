@@ -50,16 +50,11 @@ class MachineLearningMaker:
 
     def prepareData(self, labeledClusterFile = None):
 
-
         # Download and open manual label file if necessary
-        if self.labeledClusterFile is not None:
-            self.labeledData, self.numLabeledClusters = self._loadClusterFile()
+        if labeledClusterFile is not None:
+            self.labeledData, self.numLabeledClusters = self._loadClusterFile(labeledClusterFile)
  
         # Download clips
-        for projectID in self.projects:
-            self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
-
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
         self._convertClips()
 
@@ -75,7 +70,7 @@ class MachineLearningMaker:
     def runTraining(self, GPU = 0):
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
-               self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
+        #self.localOutputDirectory = self.localMasterDirectory + modelID + '/' # Where all model data will be stored
 
         self._print('modelCreation: GPU:' + str(GPU))
 
@@ -202,18 +197,25 @@ class MachineLearningMaker:
         return classes, len(classes)
 
     def _loadClusterFile(self):
-        subprocess.call(['rclone', 'copy', self.cloudModelDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
+        #subprocess.call(['rclone', 'copy', self.cloudModelDirectory + self.labeledClusterFile, self.localOutputDirectory], stderr = self.fnull)
         dt = pd.read_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',', header = 0, index_col=0)
-        dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
-        dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
-        self._print('ClassDistribution:')
-        self._print(dt.groupby(['ManualLabel']).count()['LID'])
+        #dt = dt[dt.projectID.isin(self.projects)] # Filter to only include data for projectIDs included for this model
+        #dt.to_csv(self.localOutputDirectory + self.labeledClusterFile, sep = ',') # Overwrite csv file to only include this data
+        #self._print('ClassDistribution:')
+        #self._print(dt.groupby(['ManualLabel']).count()['LID'])
         return dt, len(dt)
 
     def _convertClips(self):
 
         clips = defaultdict(list)
         means = {}
+
+        for clipsDirectory in self.localClipsDirectories:
+            clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+            assert len(clips) != 0
+            assert os.path.exists(clipsDirectory + 'means.npy')
+
+
 
         for projectID in self.projects:
             if projectID == '':
