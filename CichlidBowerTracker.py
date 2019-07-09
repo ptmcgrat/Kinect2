@@ -184,6 +184,8 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
             projects.update(inputData.mLearningData[mlID])
 
         print('Downloading clip data from the following projects: ' + ', '.join(sorted(projects)), file = sys.stderr)
+        #print(['rclone', 'copy', cloudMasterMLDirectory + manualLabelFile, localMasterMLDirectory])
+        subprocess.call(['rclone', 'copy', cloudMasterMLDirectory + manualLabelFile, localMasterMLDirectory])
         processes = []
         for projectID in projects:
             processes.append(subprocess.Popen(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID], stderr=open(os.devnull, 'w')))
@@ -193,22 +195,11 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         for projectID in projects:
             clipDirectories.extend([localMasterMLDirectory + 'Clips/' + projectID + '/' + x + '/' for x in os.listdir(localMasterMLDirectory + 'Clips/' + projectID)])
 
-        pdb.set_trace()
+        ml_obj = MLM(inputData.mLearningData, localMasterMLDirectory, cloudMasterMLDirectory, clipDirectories, args.classIndFile)
+        ml_obj.prepareData(localMasterMLDirectory + manualLabelFile)
+        ml_obj.runTraining(inputData.mLearningData, GPU = 0)
 
-        for mlID in inputData.mLearningData:
-
-            self._print('Downloading clips for ' + projectID + ' from ' + self.cloudClipsDirectory + projectID, log=False)
-            subprocess.call(['rclone', 'copy', self.cloudClipsDirectory + projectID, self.localClipsDirectory + projectID], stderr = self.fnull)
-            ml_obj = MLM(mlID, inputData.mLearningData[mlID], localMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Clips/', manualLabelFile, args.classIndFile)
-            ml_obj.prepareData()
-            processes.append(ml_obj.runTraining(GPU = count))
-            count += 1
-
-        for process in processes:
-            process.communicate()
-
-        for mlID in inputData.mLearningData:
-            subprocess.Popen(['rclone', 'copy', localMasterDirectory + machineLearningDirectory + mlID, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + mlID])
+        
 
         #for projectID, videos in inputData.clusterData.items():
         #    with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
