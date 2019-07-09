@@ -749,6 +749,7 @@ class VideoProcessor:
             frame = cap[current_frame]
             ad[:,:,counter] =  0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
             counter += 1
+        cap.close()
         return ad
 
     def _smoothRow(self, row):
