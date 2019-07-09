@@ -32,7 +32,7 @@ class MachineLearningMaker:
         #os.makedirs(self.localClipsDirectory) if not os.path.exists(self.localClipsDirectory) else None
 
         # Directory containg python3 scripts for creating 3D Resnet 
-        self.resnetDirectory = os.getenv("HOME") + '/3D-ResNets/'
+        self.resnetDirectory = os.getenv("HOME") + '/3D-resrets/'
         
         # Store and download label file
         self.classIndFile = self.localMasterDirectory + classIndFile # This file lists the allowed label classes
@@ -98,7 +98,6 @@ class MachineLearningMaker:
             command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
             command += [localModelDirectory]
             command += [self.classIndFile]
-            subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
             print(command)
             subprocess.call(command)
 
@@ -128,11 +127,14 @@ class MachineLearningMaker:
             trainEnv = os.environ.copy()
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
             
+            subprocess.call(['cp', self.localMasterDirectory + 'Means.csv', localModelDirectory])
+            subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
             pickle.dump(command, open(localModelDirectory + 'commands.pkl', 'wb'))
 
             outCommand = []
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
             self._print(' '.join(outCommand))
+            GPU += 1
             #processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
         return True
 
@@ -233,56 +235,53 @@ class MachineLearningMaker:
 
         means = {}
 
-        with open(self.localMasterDirectory + 'cichlids_train_list.txt', 'w') as f, open(self.localMasterDirectory + 'cichlids_test_list.txt', 'w') as g, open(self.localMasterDirectory + 'AnnotationFile.csv', 'w') as h:
-            print('Location,Dataset,Label,meanID', file = h)
+        for clipsDirectory in self.localClipsDirectories:
+            self._print('Processing ' + clipsDirectory, log = False)
+            clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+            assert len(clips) != 0
+            assert os.path.exists(clipsDirectory + 'Means.npy')
+            for clip in clips:
+                try:
+                    LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                except IndexError: #MC6_5
+                    self._print(clip)
+                    LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                except ValueError:
+                    self._print('ClipError: ' + str(clip))
+                    LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-            for clipsDirectory in self.localClipsDirectories:
-                self._print('Processing ' + clipsDirectory, log = False)
-                clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
-                assert len(clips) != 0
-                assert os.path.exists(clipsDirectory + 'Means.npy')
-                for clip in clips:
-                    try:
-                        LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
-                    except IndexError: #MC6_5
-                        self._print(clip)
-                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
-                    except ValueError:
-                        self._print('ClipError: ' + str(clip))
-                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
-
-                    try:
-                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
-                    except AttributeError:
-                        projectID, videoID, label = '','',self.classes[0]
-                        print(label + '/' + clip.replace('.mp4',''), file = g)
-                        print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                try:
+                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
+                except AttributeError:
+                    projectID, videoID, label = '','',self.classes[0]
+                    print(label + '/' + clip.replace('.mp4',''), file = g)
+                    print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                else:
+                    if len(subTable) == 0:
+                        raise Exception('No label for: ' + clip)
+                    elif len(subTable) > 1:
+                        raise Exception('Multiple labels for: ' + clip)
                     else:
-                        if len(subTable) == 0:
-                            raise Exception('No label for: ' + clip)
-                        elif len(subTable) > 1:
-                            raise Exception('Multiple labels for: ' + clip)
-                        else:
-                            projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
+                        projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
             
-                    outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
-                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    #os.makedirs(outDirectory) 
-                    #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
+                shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                os.makedirs(outDirectory) 
+                #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
-                    frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
-                    try:
-                        if self.nFrames != len(frames):
-                            raise Exception('Different number of frames than expected in: ' + clip)
-                    except AttributeError:
-                        self.nFrames = len(frames)
+                frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
+                try:
+                    if self.nFrames != len(frames):
+                        raise Exception('Different number of frames than expected in: ' + clip)
+                except AttributeError:
+                    self.nFrames = len(frames)
 
-                    with open(outDirectory + 'n_frames', 'w') as i:
-                        print(str(self.nFrames), file = i)
+                with open(outDirectory + 'n_frames', 'w') as i:
+                    print(str(self.nFrames), file = i)
 
 
-                means[projectID + ':' + videoID] = np.load(clipsDirectory + 'Means.npy')
+            means[projectID + ':' + videoID] = np.load(clipsDirectory + 'Means.npy')
 
         with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
