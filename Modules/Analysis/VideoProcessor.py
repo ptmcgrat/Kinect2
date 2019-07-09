@@ -749,10 +749,10 @@ class VideoProcessor:
             ret, frame = self.cap.read()
             if not ret:
                 raise Exception('Cant read frame')
-             ad[:,:,i] =  0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0] #opencv does bgr instead of rgb
+            ad[:,:,i] =  0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0] #opencv does bgr instead of rgb
         cap.release()
         return ad 
-          
+
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
         #counter = 0
         #for i in range(min_t, max_t):
