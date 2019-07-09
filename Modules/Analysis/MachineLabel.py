@@ -9,7 +9,9 @@ from collections import defaultdict, OrderedDict
 
 
 class MachineLearningMaker:
+    
     def __init__(self, modelIDs, localMasterDirectory, cloudMasterDirectory, localClipsDirectories, labeledClusterFile = None, classIndFile):
+        
         self.fnull = open(os.devnull, 'w') # for getting rid of standard error if desired
 
         for modelID in modelIDs:
