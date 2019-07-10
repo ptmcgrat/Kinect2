@@ -77,7 +77,15 @@ class VideoProcessor:
         self.movieDir = videoObj.movieDir
         self.height = videoObj.height
         self.width = videoObj.width
-        self.frame_rate = videoObj.framerate
+
+        self.baseName = self.videofile.split('/')[-1].split('.')[0]
+
+        if self.projectID == 'MC16_2':
+            self.frame_rate = 25
+        elif self.projectID == 'TI2_4' and self.baseName != '0004_vid':
+            self.frame_rate = 25
+        else:
+            self.frame_rate = videoObj.framerate
         self.startTime = videoObj.time
         self.endTime = videoObj.end_time
 
@@ -86,7 +94,6 @@ class VideoProcessor:
         self.transM = transM
         self.depthObj = depthObj
 
-        self.baseName = self.videofile.split('/')[-1].split('.')[0]
         self.localVideoDirectory = self.localMasterDirectory + 'VideoAnalysis/' + self.baseName + '/'
         self.cloudVideoDirectory = self.cloudMasterDirectory + 'VideoAnalysis/' + self.baseName + '/'
         
@@ -863,7 +870,10 @@ class VideoProcessor:
         self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, index_col = 0, sep = ',', header = 0)
 
         for row in self.clusterData.itertuples():
-            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, ml = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
+            try:
+                LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, ml = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
+            except ValueError:
+                print('LID: ' + str(LID) + ',,' + 'Time:' + str(row.TimeStamp))
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
