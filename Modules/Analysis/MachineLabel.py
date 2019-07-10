@@ -144,7 +144,7 @@ class MachineLearningMaker:
             os.makedirs(localModelDirectory + resultsDirectory)
 
             GPU += 1
-            command['--batch_size'] = '3'
+            command['--batch_size'] = '4'
             command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
 
