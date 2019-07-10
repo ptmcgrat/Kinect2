@@ -500,7 +500,7 @@ class VideoProcessor:
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
 
         # Clip creation is super slow so we do it in parallel
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[(self.clusterData.ClipCreated == 'Yes') & (self.clusterData.ManualAnnotation == 'Yes')].itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
         # Calculate mean and standard deviations of clip videos
@@ -854,13 +854,31 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
+
+        maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0)
+
         self.loadClusterSummary()
         #MC16_2 and TI2_4 run at the wrong frame rate
         if self.projectID == 'MC16_2':
             self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
         if self.projectID == 'TI2_4':
-            if self.baseName != '0004_vid':
-                self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
+            if self.baseName == '0004_vid':
+                return
+            self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
+
+        for row in self.clusterData.itertuples()
+            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth)
+            try:
+                currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
+            except IndexError: # x and y values are outside of depth field of view
+                currentDepth = np.nan
+            clusterData.loc[clusterData.LID == LID,'DepthChange'] = currentDepth
+
+            if time > maxTime:
+                self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
+            if manualAnnotation == 'Yes':
+                self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
+                subprocess.call(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
