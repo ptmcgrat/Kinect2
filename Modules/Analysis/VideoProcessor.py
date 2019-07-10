@@ -500,7 +500,7 @@ class VideoProcessor:
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
 
         # Clip creation is super slow so we do it in parallel
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[(self.clusterData.ClipCreated == 'Yes') & ([self.clusterData.ManualAnnotation == 'Yes'])].itertuples())
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
         # Calculate mean and standard deviations of clip videos
@@ -536,7 +536,8 @@ class VideoProcessor:
             mlClips += 1
 
             subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
-            
+            pdb.set_trace()
+            assert(os.path.exists(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'))
         cap.release()
 
         self._print('ClipCreation: ManualLabelClipsCreated: ' + str(mlClips) + ',,Syncying...')
