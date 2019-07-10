@@ -73,27 +73,27 @@ class MachineLearningMaker:
                 print('Location,Dataset,Label,MeanID', file = h)
                 for clipsDirectory in self.localClipsDirectories:
                     clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
-                assert len(clips) != 0
-                for clip in clips:
-                    try:
-                        LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
-                    except IndexError: #MC6_5
-                        self._print(clip)
-                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
-                    except ValueError:
-                        self._print('ClipError: ' + str(clip))
-                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                    assert len(clips) != 0
+                    for clip in clips:
+                        try:
+                            LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                        except IndexError: #MC6_5
+                            self._print(clip)
+                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                        except ValueError:
+                            self._print('ClipError: ' + str(clip))
+                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
-                    projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
+                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
+                        projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
 
-                    if projectID in projects[modelID]:
-                        if randint(0,4) == 4: # Test data
-                            print(label + '/' + clip.replace('.mp4',''), file = g)
-                            print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
-                        else: # Train data
-                            print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
-                            print(clip.replace('.mp4','') + ',Train,' + label + ',' + projectID + ':' + videoID, file = h)
+                        if projectID in projects[modelID]:
+                            if randint(0,4) == 4: # Test data
+                                print(label + '/' + clip.replace('.mp4',''), file = g)
+                                print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                            else: # Train data
+                                print(label + '/' + clip.split('/')[-1].replace('.mp4',''), file = f)
+                                print(clip.replace('.mp4','') + ',Train,' + label + ',' + projectID + ':' + videoID, file = h)
 
             command = []
             command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
@@ -136,7 +136,7 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
             self._print(' '.join(outCommand))
             GPU += 1
-            #processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(self.localOutputDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(self.localOutputDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            #processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
         return True
 
     def predictLabels(self, modelIDs, GPU = 4):
