@@ -867,10 +867,11 @@ class VideoProcessor:
 
             if time > maxTime:
                 self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
-            if manualAnnotation == 'Yes':
-                self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
-                print(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
-                subprocess.call(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
+
+                if manualAnnotation == 'Yes':
+                    self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
+                    print(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
+                    subprocess.call(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
