@@ -179,7 +179,6 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         projects = set()
         cloudMasterMLDirectory = rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory
         localMasterMLDirectory = localMasterDirectory + machineLearningDirectory
-        pdb.set_trace()
         for mlID in inputData.mLearningData:
             projects.update(inputData.mLearningData[mlID])
 
