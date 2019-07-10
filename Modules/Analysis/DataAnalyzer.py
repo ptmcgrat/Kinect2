@@ -121,10 +121,7 @@ class DataAnalyzer:
             vo.cleanup()
 
         # Create Video objects (low overhead even if video is not processed)
-        vos = [VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in index]
-        for vo in vos:
-            vo._fixData(self.depthObj, mlDirectory)
-            vo.cleanup()
+    
             
     def labelVideos(self, index, mainDT, cloudMLDirectory, number):
         self._loadRegistration()
