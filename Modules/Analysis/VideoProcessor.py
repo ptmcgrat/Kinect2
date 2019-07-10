@@ -900,6 +900,9 @@ class VideoProcessor:
                 self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'Yes'
                 if ml==ml and ml != '':
                     self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'Yes'
+                else:
+                    self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
+
         print(self.clusterData.shape)
         print(self.clusterData[self.clusterData.ClipCreated=='Yes'].shape)
         print(self.clusterData[self.clusterData.ManualAnnotation=='Yes'].shape)
