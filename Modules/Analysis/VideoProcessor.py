@@ -483,7 +483,7 @@ class VideoProcessor:
         self.clusterData = clusterData
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-    def createClusterClips(self, manualOnly = False, delta_xy = 100, delta_t = 60):
+    def createClusterClips(self, delta_xy = 100, delta_t = 60):
         self.loadVideo()
         self.loadHMM()
         self.loadClusters()
@@ -493,9 +493,8 @@ class VideoProcessor:
         shutil.rmtree(self.localManualLabelClipsDirectory) if os.path.exists(self.localManualLabelClipsDirectory) else None
         os.makedirs(self.localManualLabelClipsDirectory)
 
-        if not manualOnly:
-            shutil.rmtree(self.localAllClipsDirectory) if os.path.exists(self.localAllClipsDirectory) else None
-            os.makedirs(self.localAllClipsDirectory)
+        shutil.rmtree(self.localAllClipsDirectory) if os.path.exists(self.localAllClipsDirectory) else None
+        os.makedirs(self.localAllClipsDirectory)
 
         #self._createMean()
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
@@ -536,6 +535,7 @@ class VideoProcessor:
             outAllHMM.release()
             mlClips += 1
 
+            subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
             
         cap.release()
 
@@ -630,6 +630,7 @@ class VideoProcessor:
             newClips.append(f.replace('_ManualLabel',''))
             annotatedClips += 1
 
+            print(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
             subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
             if number is not None and annotatedClips > number:
                 break
