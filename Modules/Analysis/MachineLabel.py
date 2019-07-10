@@ -113,7 +113,7 @@ class MachineLearningMaker:
             command['--model'] = 'resnet'
             command['--model_depth'] = '18'
             command['--n_classes'] = str(self.numClasses)
-            command['--batch_size'] = '4'
+            command['--batch_size'] = '5'
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
@@ -145,7 +145,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--batch_size'] = '3'
-            command['--model_depth'] = '50'
+            command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
 
             trainEnv = os.environ.copy()
