@@ -536,10 +536,10 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         
-        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', '-C', self.localClusterDirectory, self.localManualLabelClipsDirectory.split('/')[-1]], stderr = self.fnull)
+        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', '-C', self.localClusterDirectory, self.localManualLabelClipsDirectory.split('/')[-2]], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
-            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', '-C', self.localClusterDirectory, self.localAllClipsDirectory.split('/')[-1]], stderr = self.fnull)
+            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', '-C', self.localClusterDirectory, self.localAllClipsDirectory.split('/')[-2]], stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
 
