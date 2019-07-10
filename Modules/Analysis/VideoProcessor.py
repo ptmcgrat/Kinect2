@@ -118,7 +118,7 @@ class VideoProcessor:
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
 
-        os.makedirs(self.localVideoDirectory) if not os.exists(self.localVideoDirectory) else None
+        os.makedirs(self.localVideoDirectory) if not os.path.exists(self.localVideoDirectory) else None
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
         print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,VideoID: ' + self.baseName + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
         self.anLF.close()
@@ -205,7 +205,7 @@ class VideoProcessor:
 
         self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'Brightness.pdf', self.cloudVideoDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        subprocess.Popen(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
 
         self._print('Done', log = False)
 
@@ -638,7 +638,7 @@ class VideoProcessor:
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + self.meansFile, self.cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
