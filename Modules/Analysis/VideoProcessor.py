@@ -104,9 +104,6 @@ class VideoProcessor:
         self.localAllClipsDirectory = self.localClusterDirectory + 'AllClips/'
         self.cloudAllClipsDirectory = self.cloudClusterDirectory + 'AllClips.tar'
 
-        os.makedirs(self.localManualLabelClipsDirectory) if not os.path.exists(self.localManualLabelClipsDirectory) else None
-        os.makedirs(self.localAllClipsDirectory) if not os.path.exists(self.localAllClipsDirectory) else None
-
         # Set paramaters
         self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
 
@@ -373,6 +370,7 @@ class VideoProcessor:
     def createClusters(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
         #self.loadVideo()
         self.loadHMM()
+        
         self._print('ClusterCreation: File: ' + self.labeledCoordsFile + ',,MinMagnitude: ' + str(minMagnitude) + ',,treeR: ' + str(treeR) + ',,LeafNum: ' + str(leafNum))
         self._print('ClusterCreation: NeighborR: ' + str(neighborR) + ',,timescale: ' + str(timeScale) + ',,eps: ' + str(eps) + ',,minPts: ' + str(minPts))
 
@@ -491,6 +489,13 @@ class VideoProcessor:
         self.loadClusterSummary()
         self._print('ClipCreation: ManualOnly: ' + str(manualOnly))
 
+        shutil.rmtree(self.localManualLabelClipsDirectory) if os.path.exists(self.localManualLabelClipsDirectory) else None
+        os.makedirs(self.localManualLabelClipsDirectory)
+
+        if not manualOnly:
+            shutil.rmtree(self.localAllClipsDirectory) if os.path.exists(self.localAllClipsDirectory) else None
+            os.makedirs(self.localAllClipsDirectory)
+
         #self._createMean()
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
 
@@ -526,7 +531,8 @@ class VideoProcessor:
                     frame[coord[0], coord[1]] = [125,125,300]
                 outAllHMM.write(np.concatenate((frame2[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy], frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy]), axis = 1))
 
-                outAllHMM.release()
+            
+            outAllHMM.release()
             mlClips += 1
 
             
@@ -546,10 +552,10 @@ class VideoProcessor:
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
         if mlClips:
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
@@ -577,7 +583,10 @@ class VideoProcessor:
         
         newClips = []
         annotatedClips = 0
-        for f in shuffle(clips):
+        #pdb.set_trace()
+
+        shuffle(clips)
+        for f in clips:
             clusterID = int(f.split('_')[0])
 
             # If already labeled and rewrite = False, then skip
