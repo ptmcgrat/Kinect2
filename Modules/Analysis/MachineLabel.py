@@ -103,6 +103,8 @@ class MachineLearningMaker:
 
             self._print('modelCreation: GPU:' + str(GPU))
 
+            resultsDirectory = 'resnet18/'
+
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
             command['--root_path'] = self.localMasterDirectory
@@ -124,7 +126,6 @@ class MachineLearningMaker:
             command['--annotation_file'] = localModelDirectory + 'AnnotationFile.csv'
             command['--result_path'] = modelID + '/' + resultsDirectory
         
-            resultsDirectory = 'resnet18/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -156,6 +157,8 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+            GPU += 1
 
         for p in processes:
             p.communicate()
