@@ -873,6 +873,12 @@ class VideoProcessor:
             try:
                 LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, ml = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
             except ValueError:
+                if row.LID == -1:
+                    self.clusterData.loc[self.clusterData.LID == LID, 'TimeStamp'] = maxTime
+                    self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
+                    self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
+                    self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = np.nan
+                    continue
                 print('LID: ' + str(row.LID) + ',,' + 'Time:' + str(row.TimeStamp))
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
