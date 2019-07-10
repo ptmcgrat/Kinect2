@@ -159,7 +159,7 @@ class MachineLearningMaker:
 
         for p in processes:
             p.communicate()
-            
+
         return True
 
     def predictLabels(self, modelIDs, GPU = 4):
@@ -288,10 +288,10 @@ class MachineLearningMaker:
                         projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
             
                 outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
-                shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                os.makedirs(outDirectory) 
+                #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                #os.makedirs(outDirectory) 
                 #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                 frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                 try:
