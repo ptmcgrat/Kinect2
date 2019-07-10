@@ -118,6 +118,7 @@ class VideoProcessor:
         # For redirecting stderr to null
         self.fnull = open(os.devnull, 'w')
 
+        os.makedirs(self.localVideoDirectory) if not os.exists(self.localVideoDirectory) else None
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
         print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,VideoID: ' + self.baseName + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
         self.anLF.close()
