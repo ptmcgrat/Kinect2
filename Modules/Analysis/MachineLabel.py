@@ -70,6 +70,7 @@ class MachineLearningMaker:
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
             with open(localModelDirectory + 'cichlids_train_list.txt', 'w') as f, open(localModelDirectory + 'cichlids_test_list.txt', 'w') as g, open(localModelDirectory + 'AnnotationFile.csv', 'w') as h:
+                print('Location,Dataset,Label,MeanID', file = h)
                 for clipsDirectory in self.localClipsDirectories:
                     clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
                 assert len(clips) != 0
@@ -121,7 +122,7 @@ class MachineLearningMaker:
             command['--weight_decay'] = str(1e-23)
             command['--n_val_samples'] = '1'
             command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
-            command['--annotation_file'] = self.localMasterDirectory + 'AnnotationFile.csv'
+            command['--annotation_file'] = localModelDirectory + 'AnnotationFile.csv'
             command['--result_path'] = modelID + '/' + resultsDirectory
         
             trainEnv = os.environ.copy()
@@ -139,7 +140,6 @@ class MachineLearningMaker:
         return True
 
     def predictLabels(self, modelIDs, GPU = 4):
-
 
         processes = []
         for modelID in modelIDs:
