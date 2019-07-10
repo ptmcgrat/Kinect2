@@ -865,7 +865,7 @@ class VideoProcessor:
                 return
             self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
 
-        for row in self.clusterData.itertuples()
+        for row in self.clusterData.itertuples():
             LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth)
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
