@@ -863,7 +863,7 @@ class VideoProcessor:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
                 currentDepth = np.nan
-            self.clusterData.loc[clusterData.LID == LID,'DepthChange'] = currentDepth
+            self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
 
             if time > maxTime:
                 self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
