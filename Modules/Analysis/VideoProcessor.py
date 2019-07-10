@@ -900,6 +900,9 @@ class VideoProcessor:
                 self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'Yes'
                 if ml==ml and ml != '':
                     self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'Yes'
+        print(self.clusterData.shape)
+        print(self.clusterData[self.clusterData.ClipCreated=='Yes'].shape)
+        print(self.clusterData[self.clusterData.ManualAnnotation=='Yes'].shape)
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
