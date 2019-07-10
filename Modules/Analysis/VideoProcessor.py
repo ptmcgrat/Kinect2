@@ -857,21 +857,29 @@ class VideoProcessor:
                 return
             self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
 
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        self.clusterData = pd.read_csv(self.localClusterDirectory + self.clusterFile, index_col = 0, sep = ',', header = 0)
+
         for row in self.clusterData.itertuples():
-            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth)
+            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, ml = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
                 currentDepth = np.nan
             self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
 
-            if time > maxTime:
+            if x - delta_xy < 0 or x + delta_xy >= self.height or y - delta_xy < 0 or y + delta_xy >= self.width:
                 self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
+                self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
 
-                if manualAnnotation == 'Yes':
-                    self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
-                    print(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
-                    subprocess.call(['rclone', 'delete', cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName + '/' + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'])
+            elif time > maxTime:
+                self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'No'
+                self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'No'
+
+            else:
+                self.clusterData.loc[self.clusterData.LID == LID, 'ClipCreated'] = 'Yes'
+                if ml==ml and ml != '':
+                    self.clusterData.loc[self.clusterData.LID == LID, 'ManualAnnotation'] = 'Yes'
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
