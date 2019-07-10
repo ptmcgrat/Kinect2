@@ -536,20 +536,20 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
         
-        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', self.localManualLabelClipsDirectory], stderr = self.fnull)
+        subprocess.call(['tar', '-cvf', self.localManualLabelClipsDirectory[:-1] + '.tar', '-C', self.localManualLabelClipsDirectory, '.'], stderr = self.fnull)
         subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         if not manualOnly:
-            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', self.localAllClipsDirectory], stderr = self.fnull)
+            subprocess.call(['tar', '-cvf', self.localAllClipsDirectory[:-1] + '.tar', '-C', self.localAllClipsDirectory, '.'], stderr = self.fnull)
             subprocess.call(['rclone', 'copy', self.localAllClipsDirectory[:-1] + '.tar', self.cloudClusterDirectory], stderr = self.fnull)
         self._print('ClipCreation: Finished')
 
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xcf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+            subprocess.call(['tar', '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
         if mlClips:
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory[:-1] + '.tar', self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-xcf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+            subprocess.call(['tar', '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
 
