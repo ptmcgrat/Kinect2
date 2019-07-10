@@ -858,10 +858,10 @@ class VideoProcessor:
         self.loadClusterSummary()
         #MC16_2 and TI2_4 run at the wrong frame rate
         if self.projectID == 'MC16_2':
-            self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+            self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
         if self.projectID == 'TI2_4':
             if self.baseName != '0004_vid':
-                self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+                self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
