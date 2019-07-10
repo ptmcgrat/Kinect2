@@ -36,7 +36,7 @@ def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
         outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
     outAll.release()
     # return mean and std
-    return np.stack([frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy].mean(axis = (0,1)),frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy].std(axis = (0,1))])
+    return True
 
 def createClip_ffmpeg(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
     #ffmpeg -i in.mp4 -filter:v "crop=80:60:200:100" -c:a copy out.mp4
@@ -111,7 +111,6 @@ class VideoProcessor:
         self.hmmFile = self.baseName + '.hmm.npy'
         self.clusterFile = 'LabeledClusters.csv'
         self.labeledCoordsFile = 'LabeledCoords.npy'
-        self.meansFile = 'Means.npy'
 
         #print('VideoProcessor: Analyzing ' + self.videofile, file = sys.stderr)
 
@@ -504,13 +503,9 @@ class VideoProcessor:
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
         # Calculate mean and standard deviations of clip videos
-        allData = np.stack(processedVideos)
-        outData = np.zeros(shape = (2,3))
-        outData = np.flip(allData.mean(axis = 0), axis = 1)
-        np.save(self.localAllClipsDirectory + self.meansFile, outData)
-        np.save(self.localManualLabelClipsDirectory + self.meansFile, outData)
+
         #subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, self.cloudVideoDirectory], stderr = self.fnull)
-        self._print('ClipCreation: MeansCalculated: ' + str(outData))
+        self._print('ClipCreation: AllClipsCreated')
         # Now create manual label clips, which require extra data
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
@@ -638,7 +633,6 @@ class VideoProcessor:
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
         subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
         tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
@@ -648,7 +642,6 @@ class VideoProcessor:
 
         tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
-        subprocess.call(['rclone', 'copy', self.localVideoDirectory + self.meansFile, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
 
@@ -722,7 +715,6 @@ class VideoProcessor:
                 break
 
         subprocess.call(['rclone', 'copy', self.localCountDirectory, cloudCountDirectory + self.projectID + '/' + self.baseName + '/'])
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.meansFile, cloudCountDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
     def _retFrame(self, frameNum, noBackground = True, cutoff = 15):
         try:
