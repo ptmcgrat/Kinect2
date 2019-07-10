@@ -536,7 +536,6 @@ class VideoProcessor:
             mlClips += 1
 
             subprocess.call(['cp', self.localAllClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4', self.localManualLabelClipsDirectory])
-            pdb.set_trace()
             assert(os.path.exists(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'))
         cap.release()
 
