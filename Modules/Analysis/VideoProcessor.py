@@ -495,7 +495,7 @@ class VideoProcessor:
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
 
         # Clip creation is super slow so we do it in parallel
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].head(500).itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[self.clusterData.ClipCreated == 'Yes'].head(50).itertuples())
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
         # Calculate mean and standard deviations of clip videos
@@ -510,7 +510,7 @@ class VideoProcessor:
         cap = cv2.VideoCapture(self.localMasterDirectory + self.videofile)
 
         mlClips = 0
-        for row in self.clusterData[self.clusterData.ManualAnnotation == 'Yes'].head(500).itertuples():
+        for row in self.clusterData[self.clusterData.ManualAnnotation == 'Yes'].head(20).itertuples():
             LID, N, t, x, y = row.LID, row.N, row.t, row.X, row.Y
             
             outAllHMM = cv2.VideoWriter(self.localManualLabelClipsDirectory + str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '_ManualLabel.mp4', cv2.VideoWriter_fourcc(*"mp4v"), self.frame_rate, (4*delta_xy, 2*delta_xy))
