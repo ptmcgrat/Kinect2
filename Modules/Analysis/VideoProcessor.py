@@ -845,6 +845,8 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
+        delta_xy = 100
+        delta_t = 60
 
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0)
 
