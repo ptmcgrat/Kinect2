@@ -873,7 +873,7 @@ class VideoProcessor:
             try:
                 LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, ml = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
             except ValueError:
-                print('LID: ' + str(LID) + ',,' + 'Time:' + str(row.TimeStamp))
+                print('LID: ' + str(row.LID) + ',,' + 'Time:' + str(row.TimeStamp))
             try:
                 currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
             except IndexError: # x and y values are outside of depth field of view
