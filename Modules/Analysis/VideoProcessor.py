@@ -488,7 +488,7 @@ class VideoProcessor:
         self.loadHMM()
         self.loadClusters()
         self.loadClusterSummary()
-        self._print('ClipCreation: ManualOnly: ' + str(manualOnly))
+        self._print('ClipCreation: Starting')
 
         shutil.rmtree(self.localManualLabelClipsDirectory) if os.path.exists(self.localManualLabelClipsDirectory) else None
         os.makedirs(self.localManualLabelClipsDirectory)
@@ -854,18 +854,20 @@ class VideoProcessor:
 
         print(outtext, file = sys.stderr)
 
-    def _fixData(self, depthObject, cloudMLDirectory):
+    def _fixData(self, cloudMLDirectory):
         self.loadClusterSummary()
         #MC16_2 and TI2_4 run at the wrong frame rate
         if self.projectID == 'MC16_2':
             self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
-            self._addHeightChange()
         if self.projectID == 'TI2_4':
             if self.baseName != '0004_vid':
                 self.clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
-                self._addHeightChange()
+
+        self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+        subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
 
+        """
         for row in self.clusterData.itertuples():
             LID, N, t, x, y, manualAnnotation, manualLabel = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ManualLabel
             if manualAnnotation == 'No':
@@ -875,7 +877,7 @@ class VideoProcessor:
             else:
                 clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
                 subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-
+        """
         #self._createMean()
         #self.loadClusterSummary()
         #self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
