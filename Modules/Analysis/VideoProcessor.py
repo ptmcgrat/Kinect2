@@ -500,7 +500,7 @@ class VideoProcessor:
         #cap = pims.Video(self.localMasterDirectory + self.videofile)
 
         # Clip creation is super slow so we do it in parallel
-        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[(self.clusterData.ClipCreated == 'Yes') & ([self.clusterData.ManualAnnotation == 'Yes'])].itertuples())
+        processedVideos = Parallel(n_jobs=self.cores)(delayed(createClip)(row, self.localMasterDirectory + self.videofile, self.localAllClipsDirectory, self.frame_rate, delta_xy, delta_t) for row in self.clusterData[(self.clusterData.ClipCreated == 'Yes') & (self.clusterData.ManualAnnotation == 'Yes')].itertuples())
         self._print('ClipCreation: ClipsCreated: ' + str(len(processedVideos)))
 
         # Calculate mean and standard deviations of clip videos
@@ -858,10 +858,10 @@ class VideoProcessor:
         self.loadClusterSummary()
         #MC16_2 and TI2_4 run at the wrong frame rate
         if self.projectID == 'MC16_2':
-            self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+            self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
         if self.projectID == 'TI2_4':
             if self.baseName != '0004_vid':
-                self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t/25*30))), axis=1)
+                self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25))), axis=1)
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
