@@ -211,7 +211,7 @@ class VideoProcessor:
 
         self._print('Uploading ' + self.videofile + ' to cloud...', log = False)
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'Brightness.pdf', self.cloudVideoDirectory], stderr = self.fnull)
-        subprocess.Popen(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videofile, self.cloudMasterDirectory + self.movieDir], stderr = self.fnull)
 
         self._print('Done', log = False)
 
@@ -676,6 +676,9 @@ class VideoProcessor:
         shutil.rmtree(self.localVideoDirectory)
         if os.path.exists(self.localMasterDirectory + self.videofile):
             os.remove(self.localMasterDirectory + self.videofile)
+        if os.path.exists(self.localMasterDirectory + self.h264_file):
+            os.remove(self.localMasterDirectory + self.h264_file)
+
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
          
     def countFish(self, rewrite, cloudCountDirectory, nFrames = 500):
