@@ -578,7 +578,7 @@ class VideoProcessor:
             self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
             subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-        clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if '.mp4' in x]
+        clips = [x for x in os.listdir(self.localManualLabelClipsDirectory) if 'Label.mp4' in x]
         categories = ['c','f','p','t','b','m','s','x','o','d','q', 'k']
 
         print("Type 'c': build scoop; 'f': feed scoop; 'p': build spit; 't': feed spit; 'b': build multiple; 'm': feed multiple; 'd': drop sand; s': spawn; 'o': fish other; 'x': nofish other; 'q': quit; 'k': skip")
