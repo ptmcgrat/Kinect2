@@ -125,6 +125,8 @@ class VideoProcessor:
         self.fnull = open(os.devnull, 'w')
 
         os.makedirs(self.localVideoDirectory) if not os.path.exists(self.localVideoDirectory) else None
+        os.makedirs(self.localClusterDirectory) if not os.path.exists(self.localClusterDirectory) else None
+
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
         print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,VideoID: ' + self.baseName + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
         self.anLF.close()
@@ -376,6 +378,8 @@ class VideoProcessor:
 
     def createClusters(self, minMagnitude = 0, treeR = 22, leafNum = 190, neighborR = 22, timeScale = 10, eps = 18, minPts = 90, delta = 1.0):
         #self.loadVideo()
+
+
         self.loadHMM()
         
         self._print('ClusterCreation: File: ' + self.labeledCoordsFile + ',,MinMagnitude: ' + str(minMagnitude) + ',,treeR: ' + str(treeR) + ',,LeafNum: ' + str(leafNum))
@@ -855,6 +859,22 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
+
+        if self.projectID == 'TI2_4' and self.baseName == '0004_vid':
+            return
+
+        self.createClusterClips()
+        #self.loadClusterClips(allClips = False, mlClips = True)
+        self.loadClusterSummary()
+        for row in self.clusterData[self.ManualAnnotation == 'Yes'].itertuples():
+            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, label = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
+
+            if label == label:
+                if label in ['c','f','p','t','b','m','s','x','o','d','q', 'k']:
+                    clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+                    subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+
+
         delta_xy = 100
         delta_t = 60
 
