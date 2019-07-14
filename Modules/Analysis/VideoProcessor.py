@@ -89,6 +89,8 @@ class VideoProcessor:
         self.startTime = videoObj.time
         self.endTime = videoObj.end_time
 
+        pdb.set_trace()
+
         self.localMasterDirectory = localMasterDirectory if localMasterDirectory[-1] == '/' else localMasterDirectory + '/'
         self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
         self.transM = transM
