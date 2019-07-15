@@ -9,7 +9,7 @@ class CichlidTracker:
     def __init__(self, cloudMasterDirectory):
 
         # 0: Store data
-        self.cloudMasterDirectory = cloudMasterDirectory
+        self.cloudMasterDirectory = cloudMasterDirectory if cloudMasterDirectory[-1] == '/' else cloudMasterDirectory + '/'
         
         # 1: Define valid commands and ignore warnings
         self.commands = ['New', 'Restart', 'Stop', 'Rewrite', 'UploadData', 'LocalDelete', 'Snapshots']
@@ -128,6 +128,8 @@ class CichlidTracker:
         self.frameDirectory = self.projectDirectory + 'Frames/'
         self.backgroundDirectory = self.projectDirectory + 'Backgrounds/'
         self.videoDirectory = self.projectDirectory + 'Videos/'
+        self.cloudVideoDirectory = self.cloudMasterDirectory + projectID + '/Videos/'
+
         if command == 'New':
             # Project Directory should not exist. If it does, report error
             if os.path.exists(self.projectDirectory):
@@ -167,6 +169,8 @@ class CichlidTracker:
         if command in ['New', 'Rewrite']:
             self._print('MasterStart: System: '+self.system + ',,Device: ' + self.device + ',,Camera: ' + str(self.piCamera) + ',,Uname: ' + str(platform.uname()) + ',,TankID: ' + self.tankID + ',,ProjectID: ' + self.projectID)
             self._print('MasterRecordInitialStart: Time: ' + str(self.masterStart))
+            self._print('PrepFiles: FirstDepth: PrepFiles/FirstDepth.npy,,LastDepth: PrepFiles/LastDepth.npy,,PiCameraRGB: PiCameraRGB.jpg,,DepthRGB: DepthRGB.jpg')
+
             self._createROI(useROI = False)
 
         else:
@@ -203,6 +207,7 @@ class CichlidTracker:
                 elif not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    subprocess.Popen(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", self.cloudVideoDirectory])
                     self.videoCounter += 1
 
             # Capture a frame and background if necessary
@@ -238,7 +243,6 @@ class CichlidTracker:
                     break
             else:
                 self._modifyPiGS(error = '')
-
 
     def _authenticateGoogleSpreadSheets(self):
         scope = [
@@ -469,8 +473,7 @@ class CichlidTracker:
             self._print('GoogleError: Time: ' + str(datetime.datetime.now()) + ',,Error: ' + str(e))
         except TypeError:
             self._print('GoogleError: Time: ' + str(datetime.datetime.now()) + ',,Error: Unknown. Gspread does not handle RequestErrors properly')
-
-            
+    
     def _video_recording(self):
         if datetime.datetime.now().hour >= 8 and datetime.datetime.now().hour <= 18:
             return True
@@ -532,8 +535,7 @@ class CichlidTracker:
         else:
             self.r = (0,0,reg_image.shape[1],reg_image.shape[0])
             self._print('ROI: No Bounding box created,, Image: None,, Shape: ' + str(self.r))
-
-            
+    
     def _diagnose_speed(self, time = 10):
         print('Diagnosing speed for ' + str(time) + ' seconds.', file = sys.stderr)
         delta = datetime.timedelta(seconds = time)
@@ -561,8 +563,7 @@ class CichlidTracker:
         self._print('DiagnoseSpeed: Rate: ' + str(counter/time))
 
         self._print('FirstFrameCaptured: FirstFrame: Frames/FirstFrame.npy,,GoodDataCount: Frames/FirstDataCount.npy,,StdevCount: Frames/StdevCount.npy')
-
-        
+    
     def _captureFrame(self, endtime, new_background = False, max_frames = 40, stdev_threshold = 25, snapshots = False):
         # Captures time averaged frame of depth data
         
@@ -644,8 +645,28 @@ class CichlidTracker:
         self._modifyPiGS(status = 'Running')
             
     def _uploadFiles(self):
-        self._modifyPiGS(status = 'DropboxUpload')    
+        self._modifyPiGS(status = 'DropboxUpload')
+        
+        prepDirectory = self.projectDirectory + 'PrepFiles/'
+        shutil.rmtree(prepDirectory) if os.path.exists(prepDirectory) else None
+        os.makedirs(prepDirectory)
 
+        lp = LP.LogParser(self.loggerFile)
+        videoObj = [x for x in self.lp.movies if x.time.hour >= 8 and x.time.hour <= 20][0]
+        subprocess.call(['cp', self.projectDirectory + videoObj.pic_file, prepDirectory + 'PiCameraRGB.jpg'])
+        # Find depthfile that is closest to the video file time
+        depthObj = [x for x in self.lp.frames if x.time > videoObj.time][0]
+        subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
+
+        subprocess.call(['cp', self.frameDirectory + 'Frame_000001.npy', prepDirectory + 'FirstDepth.npy'])
+        subprocess.call(['cp', self.frameDirectory + 'Frame_' + str(self.frameCounter-1).zfill(6) + '.npy', prepDirectory + 'LastDepth.npy'])
+
+        subprocess.call(['tar', '-cvf', 'Frames.tar', '-C', self.projectDirectory, 'Frames'])
+        subprocess.call(['tar', '-cvf', 'Backgrounds.tar', '-C', self.projectDirectory, 'Backgrounds'])
+
+        shutil.rmtree(self.frameDirectory)
+        shutil.rmtree(self.backgroundDirectory)
+        
         #        subprocess.call(['python3', '/home/pi/Kinect2/Modules/UploadData.py', self.projectDirectory, self.projectID])
         print(['rclone', 'copy', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'])
         subprocess.call(['rclone', 'copy', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'])
