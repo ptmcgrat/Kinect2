@@ -227,13 +227,13 @@ class VideoProcessor:
         new_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         predicted_frames = int((self.endTime - self.startTime).total_seconds()*self.frame_rate)
 
-        if log:
-            self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
+        self._print('VideoValidation: Size: ' + str((new_height,new_width)) + ',,fps: ' + str(new_framerate) + ',,Frames: ' + str(new_frames) + ',,PredictedFrames: ' + str(predicted_frames), log = log)
 
-        assert new_height == self.height
-        assert new_width == self.width
-        assert abs(new_framerate - self.frame_rate) < tol*self.frame_rate
-        assert abs(predicted_frames - new_frames) < tol*predicted_frames
+        if self.projectID not in ['MC16_2', 'TI2_4']:
+            assert new_height == self.height
+            assert new_width == self.width
+            assert abs(new_framerate - self.frame_rate) < tol*self.frame_rate
+            assert abs(predicted_frames - new_frames) < tol*predicted_frames
 
         self.frames = new_frames
 
@@ -862,17 +862,17 @@ class VideoProcessor:
 
         if self.projectID == 'TI2_4' and self.baseName == '0004_vid':
             return
-
-        self.createClusterClips()
+        self.loadVideo()
+        #self.createClusterClips()
         #self.loadClusterClips(allClips = False, mlClips = True)
         self.loadClusterSummary()
-        for row in self.clusterData[self.ManualAnnotation == 'Yes'].itertuples():
-            LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, label = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
+        #for row in self.clusterData[self.ManualAnnotation == 'Yes'].itertuples():
+        #    LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, label = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
 
-            if label == label:
-                if label in ['c','f','p','t','b','m','s','x','o','d','q', 'k']:
-                    clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
-                    subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+        #    if label == label:
+        #        if label in ['c','f','p','t','b','m','s','x','o','d','q', 'k']:
+        #            clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+        #            subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
 
         delta_xy = 100
@@ -880,7 +880,7 @@ class VideoProcessor:
 
         maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0)
 
-        self.loadClusterSummary()
+        #self.loadClusterSummary()
         #MC16_2 and TI2_4 run at the wrong frame rate
         if self.projectID == 'MC16_2':
             self.clusterData['TimeStamp'] = self.clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t*25/30))), axis=1)
@@ -932,6 +932,8 @@ class VideoProcessor:
 
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
+        self.createClusterClips()
 
 
         """

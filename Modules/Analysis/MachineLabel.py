@@ -261,58 +261,65 @@ class MachineLearningMaker:
 
         means = {}
 
-        for clipsDirectory in self.localClipsDirectories:
-            self._print('Processing ' + clipsDirectory, log = False)
-            clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
-            assert len(clips) != 0
-            assert os.path.exists(clipsDirectory + 'Means.npy')
-            for clip in clips:
-                try:
-                    LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
-                except IndexError: #MC6_5
-                    self._print(clip)
-                    LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
-                except ValueError:
-                    self._print('ClipError: ' + str(clip))
-                    LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+        with open(self.localMasterDirectory + 'MeansAll.csv', 'w') as f:
+            print('ProjectID,VideoID,Clip,MeanR,MeanG,MeanB,StdR,StdG,StdB', file = f)
+            for clipsDirectory in self.localClipsDirectories:
+                self._print('Processing ' + clipsDirectory, log = False)
+                clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+                assert len(clips) != 0
+                for clip in clips:
+                    try:
+                        LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                    except IndexError: #MC6_5
+                        self._print(clip)
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                    except ValueError:
+                        self._print('ClipError: ' + str(clip))
+                        LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
-                try:
-                    subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
-                except AttributeError:
-                    projectID, videoID, label = '','',self.classes[0]
-                    print(label + '/' + clip.replace('.mp4',''), file = g)
-                    print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
-                else:
-                    if len(subTable) == 0:
-                        raise Exception('No label for: ' + clip)
-                    elif len(subTable) > 1:
-                        raise Exception('Multiple labels for: ' + clip)
+                    try:
+                        subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
+                    except AttributeError:
+                        projectID, videoID, label = '','',self.classes[0]
+                        print(label + '/' + clip.replace('.mp4',''), file = g)
+                        print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
                     else:
-                        projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
+                        if len(subTable) == 0:
+                            raise Exception('No label for: ' + clip)
+                        elif len(subTable) > 1:
+                            raise Exception('Multiple labels for: ' + clip)
+                        else:
+                            projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
             
-                outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
-                #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                #os.makedirs(outDirectory) 
-                #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
+                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    #os.makedirs(outDirectory) 
+                    #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
+                    #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
-                frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
-                try:
-                    if self.nFrames != len(frames):
-                        raise Exception('Different number of frames than expected in: ' + clip)
-                except AttributeError:
-                    self.nFrames = len(frames)
+                    frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
+                    try:
+                        if self.nFrames != len(frames):
+                            raise Exception('Different number of frames than expected in: ' + clip)
+                    except AttributeError:
+                        self.nFrames = len(frames)
 
-                with open(outDirectory + 'n_frames', 'w') as i:
-                    print(str(self.nFrames), file = i)
+                    with open(outDirectory + 'n_frames', 'w') as i:
+                        print(str(self.nFrames), file = i)
 
+                    img = io.imread(outDirectory + frames[0])
+                    mean = img.mean(axis = (0,1))
+                    std = img.std(axis = (0,1))
 
-            means[projectID + ':' + videoID] = np.load(clipsDirectory + 'Means.npy')
+                    print(projectID + ',' + videoID + ',' + clip.replace('.mp4', '') + ','.join([str(x) for x in mean]) + ',' + ','.join([str(x) for x in std]), file = f)
+
+        dt = pandas.read_csv(self.localMasterDirectory + 'MeansAll.csv')
+        means = dt.groupby(['ProjectID', 'VideoID']).mean()
 
         with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
-            for meanID,data in means.items():
-                print(meanID + ',' + ','.join([str(x) for x in list(data[0]) + list(data[1])]), file = f)
+            for row in means.itertuple():
+                print(row.Index[0] + ':' + row.Index[1] + ',' + str(row.MeanR) + ',' + str(row.MeanG) + ',' + str(row.MeanB) + ',' + str(row.StdR) + ',' + str(row.StdG) + ',' + str(row.StdB), file = f)
     
     def _summarizeModel(self):
         with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w') as g:

@@ -77,7 +77,7 @@ videoParser.add_argument('-f', '--FixIssues', action = 'store_true', help = 'Use
 
 MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command allows a user to manually label videos')
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
-MlabelParser.add_argument('-n', '--Number', type = str, help = 'Number of clips for each video you would like to annotate')
+MlabelParser.add_argument('-n', '--Number', type = int, help = 'Number of clips for each video you would like to annotate')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
@@ -163,8 +163,8 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
                 #da_obj.cleanup()
                 
     elif args.command == 'PredictLabels':
-        if socket.gethostname() != 'biocomputesrg':
-            raise Exception('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
+        #if socket.gethostname() != 'biocomputesrg':
+        #    raise Exception('PredictLabels analysis must be run on SRG or some other machine with good GPUs')
         print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
