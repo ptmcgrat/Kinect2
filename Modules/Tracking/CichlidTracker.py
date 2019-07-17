@@ -89,6 +89,12 @@ class CichlidTracker:
         # This function is used to run a specific command found int he  master Controller Google Spreadsheet
         self.projectID = projectID
         self.projectDirectory = self.masterDirectory + projectID + '/'
+        self.loggerFile = self.projectDirectory + 'Logfile.txt'
+        self.frameDirectory = self.projectDirectory + 'Frames/'
+        self.backgroundDirectory = self.projectDirectory + 'Backgrounds/'
+        self.videoDirectory = self.projectDirectory + 'Videos/'
+        self.cloudVideoDirectory = self.cloudMasterDirectory + projectID + '/Videos/'
+
         if command not in self.commands:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
@@ -104,8 +110,8 @@ class CichlidTracker:
             if self.piCamera:
                 if self.camera.recording:
                     self.camera.stop_recording()
-                    self._print('PiCameraStopped: Time=' + str(datetime.datetime.now()) + ', File=Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
-                    
+                    self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',,File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+
             self._closeFiles()
 
             self._modifyPiGS(command = 'None', status = 'AwaitingCommand')
@@ -124,11 +130,6 @@ class CichlidTracker:
         
         self._modifyPiGS(command = 'None', status = 'Running', error = '')
 
-        self.loggerFile = self.projectDirectory + 'Logfile.txt'
-        self.frameDirectory = self.projectDirectory + 'Frames/'
-        self.backgroundDirectory = self.projectDirectory + 'Backgrounds/'
-        self.videoDirectory = self.projectDirectory + 'Videos/'
-        self.cloudVideoDirectory = self.cloudMasterDirectory + projectID + '/Videos/'
 
         if command == 'New':
             # Project Directory should not exist. If it does, report error
