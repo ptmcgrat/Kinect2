@@ -118,6 +118,7 @@ class CichlidTracker:
             return
 
         if command == 'UploadData':
+
             self._modifyPiGS(command = 'None')
             self._uploadFiles()
             return
@@ -654,6 +655,9 @@ class CichlidTracker:
         os.makedirs(prepDirectory)
 
         lp = LP.LogParser(self.loggerFile)
+
+        self.frameCounter = lp.lastFrameCounter + 1
+
         videoObj = [x for x in lp.movies if x.time.hour >= 8 and x.time.hour <= 20][0]
         subprocess.call(['cp', self.projectDirectory + videoObj.pic_file, prepDirectory + 'PiCameraRGB.jpg'])
         # Find depthfile that is closest to the video file time
