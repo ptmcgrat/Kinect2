@@ -207,7 +207,8 @@ class CichlidTracker:
                 elif not self._video_recording() and self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
-                    subprocess.Popen(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", self.cloudVideoDirectory])
+                    self._print(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264"])
+                    subprocess.Popen(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", self.cloudVideoDirectory], stderr = open('rcloneError.txt', 'w'))
                     self.videoCounter += 1
 
             # Capture a frame and background if necessary
@@ -652,10 +653,10 @@ class CichlidTracker:
         os.makedirs(prepDirectory)
 
         lp = LP.LogParser(self.loggerFile)
-        videoObj = [x for x in self.lp.movies if x.time.hour >= 8 and x.time.hour <= 20][0]
+        videoObj = [x for x in lp.movies if x.time.hour >= 8 and x.time.hour <= 20][0]
         subprocess.call(['cp', self.projectDirectory + videoObj.pic_file, prepDirectory + 'PiCameraRGB.jpg'])
         # Find depthfile that is closest to the video file time
-        depthObj = [x for x in self.lp.frames if x.time > videoObj.time][0]
+        depthObj = [x for x in lp.frames if x.time > videoObj.time][0]
         subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
 
         subprocess.call(['cp', self.frameDirectory + 'Frame_000001.npy', prepDirectory + 'FirstDepth.npy'])
