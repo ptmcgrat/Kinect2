@@ -662,16 +662,16 @@ class CichlidTracker:
         subprocess.call(['cp', self.projectDirectory + videoObj.pic_file, prepDirectory + 'PiCameraRGB.jpg'])
         # Find depthfile that is closest to the video file time
         depthObj = [x for x in lp.frames if x.time > videoObj.time][0]
-        subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
 
+
+        subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
         subprocess.call(['cp', self.frameDirectory + 'Frame_000001.npy', prepDirectory + 'FirstDepth.npy'])
         subprocess.call(['cp', self.frameDirectory + 'Frame_' + str(self.frameCounter-1).zfill(6) + '.npy', prepDirectory + 'LastDepth.npy'])
-
-        subprocess.call(['tar', '-cvf', 'Frames.tar', '-C', self.projectDirectory, 'Frames'])
+        subprocess.call(['tar', '-cvf', 'Frames.tar', '-C', self.projectDirectory, 'Frames'], stderr = )
         subprocess.call(['tar', '-cvf', 'Backgrounds.tar', '-C', self.projectDirectory, 'Backgrounds'])
 
-        shutil.rmtree(self.frameDirectory)
-        shutil.rmtree(self.backgroundDirectory)
+        shutil.rmtree(self.frameDirectory) if os.path.exists(self.frameDirectory) else None
+        shutil.rmtree(self.backgroundDirectory) if os.path.exists(self.backgroundDirectory) else None
         
         #        subprocess.call(['python3', '/home/pi/Kinect2/Modules/UploadData.py', self.projectDirectory, self.projectID])
         print(['rclone', 'copy', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'])
