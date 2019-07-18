@@ -28,9 +28,9 @@ videoObjs = [x for x in lp.movies if baseName in x.h264_file]
 assert len(videoObjs) == 1
 
 framerate = videoObjs[0].framerate
-height = videoObj[0].height
-width = videoObj[0].width
-predicted_frames = int((videoObj[0].end_time - videoObj[0].time).total_seconds()*framerate)
+height = videoObjs[0].height
+width = videoObjs[0].width
+predicted_frames = int((videoObjs[0].end_time - videoObjs[0].time).total_seconds()*framerate)
 
 # Convert h264 to mp4
 subprocess.call(['ffmpeg', '-r', str(framerate), '-i', args.VideoFile, '-threads', '1', '-c:v', 'copy', '-r', str(framerate), args.VideoFile.replace('.h264', '.mp4')])
