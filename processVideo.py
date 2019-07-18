@@ -18,7 +18,7 @@ tol = 0.001
 if '.h264' not in args.VideoFile:
 	raise Exception(args.VideoFile + ' not an h264 file')
 
-lp = LP.LogParser(self.loggerFile)
+lp = LP.LogParser(args.LogFile)
 baseName = args.VideoFile.split('/')[-1]
 
 with open(uploadLog, 'a') as f:
