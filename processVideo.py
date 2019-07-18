@@ -67,14 +67,14 @@ with open(uploadLog, 'a') as f:
 
 
 # Sync with cloud (will return error if something goes wrong)
-subprocess.call(['rclone', 'copy', args.VideoFile.replace('.h264', '.mp4'), args.CloudDirectory], check = True)
+subprocess.call(['rclone', 'copy', args.VideoFile.replace('.h264', '.mp4'), args.CloudDirectory])
 
 with open(uploadLog, 'a') as f:
 	print('VideoUploaded: ' + baseName + ' - ' + str(datetime.datetime.now()), file = f)
 
 
 # Delete videos
-subprocess.call(['rm', '-f', args.VideoFile, args.VideoFile.replace('.h264', '.mp4')])
+subprocess.call(['rm', '-f', args.VideoFile])
 
 with open(uploadLog, 'a') as f:
 	print('VideoFinished: ' + baseName + ' - ' + str(datetime.datetime.now()), file = f)
