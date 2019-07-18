@@ -54,7 +54,7 @@ with open(args.MasterDirectory + 'stats.txt') as f:
 				new_framerate = int(dataValue.split('/')[0])/int(dataValue.split('/')[1])
 			if dataType == 'duration':
 				new_frames = int(int(dataValue)*new_framerate)
-		except IndexError:
+		except ValueError:
 			continue
 
 assert new_height == height
