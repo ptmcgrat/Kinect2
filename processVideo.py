@@ -1,5 +1,5 @@
 import argparse, subprocess, datetime
-from .. import LogParser as LP
+import Modules.LogParser as LP
 
 parser = argparse.ArgumentParser()
 parser.add_argument('VideoFile', type = str, help = 'Name of h264 file to be processed')
