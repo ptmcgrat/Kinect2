@@ -47,8 +47,11 @@ class CichlidTracker:
             self.camera.resolution = (1296, 972)
             self.camera.framerate = 30
             self.piCamera = 'True'
-            
-        # 8: Await instructions
+        
+        # 8: Keep track of processes spawned to convert and upload videofiles
+        self.processes = [] 
+
+        # 9: Await instructions
         self.monitorCommands()
         
     def __del__(self):
@@ -111,6 +114,9 @@ class CichlidTracker:
                 if self.camera.recording:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',,File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    command = ['python3', 'Modules/processVideos.py', self.videoDirectory + str(self.videoCounter).zfill(4) + '_vid.h264']
+                    command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
+                    self.processes.append(subprocess.Popen(command))
 
             self._closeFiles()
 
@@ -210,7 +216,9 @@ class CichlidTracker:
                     self.camera.stop_recording()
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',, File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                     self._print(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264"])
-                    subprocess.Popen(['rclone', 'copy', self.videoDirectory + str(self.videoCounter).zfill(4) + "_vid.h264", self.cloudVideoDirectory], stderr = open('rcloneError.txt', 'w'))
+                    command = ['python3', 'Modules/processVideos.py', self.videoDirectory + str(self.videoCounter).zfill(4) + '_vid.h264']
+                    command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
+                    self.processes.append(subprocess.Popen(command))
                     self.videoCounter += 1
 
             # Capture a frame and background if necessary
@@ -648,8 +656,13 @@ class CichlidTracker:
         self._modifyPiGS(status = 'Running')
             
     def _uploadFiles(self):
-        self._modifyPiGS(status = 'DropboxUpload')
+        self._modifyPiGS(status = 'Finishing converting and uploading of videos')
+        for p in self.processes:
+            p.communicate()
         
+        self._modifyPiGS(status = 'Finishing upload of frames and backgrounds')
+
+        # Move files around as appropriate
         prepDirectory = self.projectDirectory + 'PrepFiles/'
         shutil.rmtree(prepDirectory) if os.path.exists(prepDirectory) else None
         os.makedirs(prepDirectory)
