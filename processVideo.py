@@ -7,6 +7,8 @@ parser.add_argument('LogFile', type = str, help = 'Name of logfile')
 parser.add_argument('MasterDirectory', type = str, help = 'Masterdirectory')
 parser.add_argument('CloudDirectory', type = str, help = 'Masterdirectory')
 
+args = parser.parse_args()
+
 uploadLog = args.MasterDirectory + 'ProcessLog.txt'
 
 args = parser.parse_args()
