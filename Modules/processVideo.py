@@ -1,5 +1,5 @@
 import argparse, subprocess, datetime, os
-import Modules.LogParser as LP
+import LogParser as LP
 
 parser = argparse.ArgumentParser()
 parser.add_argument('VideoFile', type = str, help = 'Name of h264 file to be processed')
@@ -65,6 +65,7 @@ assert abs(predicted_frames - new_frames) < tol*predicted_frames
 with open(uploadLog, 'a') as f:
 	print('VideoValidated: ' + baseName + ' - ' + str(datetime.datetime.now()), file = f)
 
+subprocess.call(['rm', '-f', args.MasterDirectory + 'stats.txt'])
 
 # Sync with cloud (will return error if something goes wrong)
 subprocess.call(['rclone', 'copy', args.VideoFile.replace('.h264', '.mp4'), args.CloudDirectory])
