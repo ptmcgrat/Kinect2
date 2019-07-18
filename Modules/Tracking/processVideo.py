@@ -14,7 +14,7 @@ args = parser.parse_args()
 tol = 0.001
 
 if '.h264' not in args.VideoFile:
-	raise Exception(args.VideoFile ' not an h264 file')
+	raise Exception(args.VideoFile + ' not an h264 file')
 
 lp = LP.LogParser(self.loggerFile)
 baseName = args.VideoFile.split('/')[-1]
