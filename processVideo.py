@@ -25,7 +25,7 @@ with open(uploadLog, 'a') as f:
 	print('VideoProcessStart: ' + baseName + ' - ' + str(datetime.datetime.now()), file = f)
 
 videoObjs = [x for x in lp.movies if baseName in x.h264_file]
-assert len(VideoObjs) == 1
+assert len(videoObjs) == 1
 
 framerate = videoObjs[0].framerate
 height = videoObj[0].height
