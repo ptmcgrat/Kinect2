@@ -33,7 +33,7 @@ width = videoObjs[0].width
 predicted_frames = int((videoObjs[0].end_time - videoObjs[0].time).total_seconds()*framerate)
 
 # Convert h264 to mp4
-subprocess.call(['ffmpeg', '-r', str(framerate), '-i', args.VideoFile, '-threads', '1', '-c:v', 'copy', '-r', str(framerate), args.VideoFile.replace('.h264', '.mp4')], stderr = open(os.devnull,'wb'))
+#subprocess.call(['ffmpeg', '-r', str(framerate), '-i', args.VideoFile, '-threads', '1', '-c:v', 'copy', '-r', str(framerate), args.VideoFile.replace('.h264', '.mp4')], stderr = open(os.devnull,'wb'))
 assert os.path.isfile(args.VideoFile.replace('.h264', '.mp4'))
 
 with open(uploadLog, 'a') as f:
@@ -53,7 +53,7 @@ with open(args.MasterDirectory + 'stats.txt') as f:
 			if dataType == 'avg_frame_rate':
 				new_framerate = int(dataValue.split('/')[0])/int(dataValue.split('/')[1])
 			if dataType == 'duration':
-				new_frames = int(int(dataValue)*new_framerate)
+				new_frames = int(float(dataValue)*new_framerate)
 		except ValueError:
 			continue
 
