@@ -127,6 +127,8 @@ class VideoProcessor:
         os.makedirs(self.localVideoDirectory) if not os.path.exists(self.localVideoDirectory) else None
         os.makedirs(self.localClusterDirectory) if not os.path.exists(self.localClusterDirectory) else None
 
+        subprocess.call(['rclone', 'copy', self.cloudVideoDirectory + 'VideoAnalysisLog.txt', self.localVideoDirectory])
+
         self.anLF = open(self.localVideoDirectory + 'VideoAnalysisLog.txt', 'a')
         print('AnalysisStart: User: ' + str(getpass.getuser()) + ',,VideoID: ' + self.baseName + ',,StartTime: ' + str(datetime.datetime.now()) + ',,ComputerID: ' + socket.gethostname(), file = self.anLF)
         self.anLF.close()
@@ -424,6 +426,8 @@ class VideoProcessor:
         #self.loadVideo()
         #self.loadHMM()
         self.loadClusters()
+        self.depthObj.loadSmoothedArray()
+
         self._print('ClusterSummaryCreation: File: ' + self.clusterFile + ',,Nclips: ' + str(Nclips))
         uniqueLabels = set(self.labeledCoords[:,3])
         uniqueLabels.remove(-1)
@@ -560,7 +564,9 @@ class VideoProcessor:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
             subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
         if mlClips:
+            print(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory])
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
+            print(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'])
             subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
     def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
@@ -862,19 +868,22 @@ class VideoProcessor:
 
         if self.projectID == 'TI2_4' and self.baseName == '0004_vid':
             return
-        self.loadVideo()
+
+        self.loadClusterClips(allClips = False, mlClips = True)
+        #self.loadVideo()
         #self.createClusterClips()
         #self.loadClusterClips(allClips = False, mlClips = True)
         self.loadClusterSummary()
-        #for row in self.clusterData[self.ManualAnnotation == 'Yes'].itertuples():
-        #    LID, N, t, x, y, time, manualAnnotation, xDepth, yDepth, label = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), row.ManualAnnotation, int(row.X_depth), int(row.Y_depth), row.ManualLabel
+        for row in self.clusterData[self.clusterData.ManualAnnotation == 'Yes'].itertuples():
+            LID, N, t, x, y, manualAnnotation, label = row.LID, row.N, row.t, row.X, row.Y, row.ManualAnnotation, row.ManualLabel
 
-        #    if label == label:
-        #        if label in ['c','f','p','t','b','m','s','x','o','d','q', 'k']:
-        #            clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
-        #            subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+            if label == label and manualAnnotation == 'Yes':
+                if label in ['c','f','p','t','b','m','s','x','o','d']:
+                    clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
+                    print(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+                    subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
-
+        return
         delta_xy = 100
         delta_t = 60
 

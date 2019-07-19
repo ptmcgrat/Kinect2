@@ -680,8 +680,8 @@ class CichlidTracker:
         subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
         subprocess.call(['cp', self.frameDirectory + 'Frame_000001.npy', prepDirectory + 'FirstDepth.npy'])
         subprocess.call(['cp', self.frameDirectory + 'Frame_' + str(self.frameCounter-1).zfill(6) + '.npy', prepDirectory + 'LastDepth.npy'])
-        subprocess.call(['tar', '-cvf', 'Frames.tar', '-C', self.projectDirectory, 'Frames'])
-        subprocess.call(['tar', '-cvf', 'Backgrounds.tar', '-C', self.projectDirectory, 'Backgrounds'])
+        subprocess.call(['tar', '-cvf', self.projectDirectory + 'Frames.tar', '-C', self.projectDirectory, 'Frames'])
+        subprocess.call(['tar', '-cvf', self.projectDirectory + 'Backgrounds.tar', '-C', self.projectDirectory, 'Backgrounds'])
 
         shutil.rmtree(self.frameDirectory) if os.path.exists(self.frameDirectory) else None
         shutil.rmtree(self.backgroundDirectory) if os.path.exists(self.backgroundDirectory) else None

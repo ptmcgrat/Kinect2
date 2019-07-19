@@ -80,7 +80,6 @@ class DataAnalyzer:
     def processVideos(self, index, rewriteClusters, rewriteSummaries):
 
         self._loadRegistration()
-        self.depthObj.loadSmoothedArray()
 
         # Create Video objects (low overhead even if video is not processed)
         for x in index:
@@ -113,12 +112,11 @@ class DataAnalyzer:
 
     def fixIssues(self, index, mlDirectory):
         self._loadRegistration()
-        self.depthObj.loadSmoothedArray()
 
         for x in index:
             vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
             vo._fixData(mlDirectory)
-            vo.cleanup()
+            #vo.cleanup()
 
         # Create Video objects (low overhead even if video is not processed)
     
