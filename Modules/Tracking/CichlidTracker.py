@@ -116,6 +116,7 @@ class CichlidTracker:
                     self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',,File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
                     command = ['python3', 'Modules/processVideos.py', self.videoDirectory + str(self.videoCounter).zfill(4) + '_vid.h264']
                     command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
+                    self._print(command)
                     self.processes.append(subprocess.Popen(command))
 
             self._closeFiles()
