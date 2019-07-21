@@ -1,4 +1,4 @@
-import argparse, datetime
+import argparse, datetime, cv2
 import numpy as np
 import scipy.ndimage
 from hmmlearn import hmm

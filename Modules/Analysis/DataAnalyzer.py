@@ -116,7 +116,7 @@ class DataAnalyzer:
         for x in index:
             vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
             vo._fixData(mlDirectory)
-            #vo.cleanup()
+            vo.cleanup()
 
         # Create Video objects (low overhead even if video is not processed)
     

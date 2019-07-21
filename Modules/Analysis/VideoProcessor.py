@@ -880,7 +880,7 @@ class VideoProcessor:
             if label == label and manualAnnotation == 'Yes':
                 if label in ['c','f','p','t','b','m','s','x','o','d']:
                     clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
-                    print(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+                    #print(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
                     subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
 
         return
