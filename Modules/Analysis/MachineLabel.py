@@ -66,6 +66,8 @@ class MachineLearningMaker:
         processes = []
         for modelID in self.modelIDs:
             localModelDirectory = self.localMasterDirectory + modelID + '/'
+            os.makedirs(localModelDirectory) if not os.path.exists(localModelDirectory) else None
+
             with open(localModelDirectory + 'cichlids_train_list.txt', 'w') as f, open(localModelDirectory + 'cichlids_test_list.txt', 'w') as g, open(localModelDirectory + 'AnnotationFile.csv', 'w') as h:
                 print('Location,Dataset,Label,MeanID', file = h)
                 for clipsDirectory in self.localClipsDirectories:
@@ -173,6 +175,8 @@ class MachineLearningMaker:
 
             cloudModelDir = self.cloudModelDirectory + modelID + '/'
             localModelDir = self.localOutputDirectory + modelID + '/'
+            os.makedirs(localModelDir) if not os.path.exists(localModelDir) else None
+
             subprocess.call(['rclone', 'copy', cloudModelDir + 'model.pth', localModelDir])
             assert os.path.exists(localModelDir + 'model.pth')
             subprocess.call(['rclone', 'copy', cloudModelDir + 'commands.pkl', localModelDir])
@@ -311,7 +315,7 @@ class MachineLearningMaker:
                     mean = img.mean(axis = (0,1))
                     std = img.std(axis = (0,1))
 
-                    print(projectID + ',' + videoID + ',' + clip.replace('.mp4', '') + ','.join([str(x) for x in mean]) + ',' + ','.join([str(x) for x in std]), file = f)
+                    print(projectID + ',' + videoID + ',' + clip.replace('.mp4', '') + ',' + ','.join([str(x) for x in mean]) + ',' + ','.join([str(x) for x in std]), file = f)
 
         dt = pd.read_csv(self.localMasterDirectory + 'MeansAll.csv')
         means = dt.groupby(['ProjectID', 'VideoID']).mean()
