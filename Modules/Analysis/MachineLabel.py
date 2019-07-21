@@ -313,7 +313,7 @@ class MachineLearningMaker:
 
                     print(projectID + ',' + videoID + ',' + clip.replace('.mp4', '') + ','.join([str(x) for x in mean]) + ',' + ','.join([str(x) for x in std]), file = f)
 
-        dt = pandas.read_csv(self.localMasterDirectory + 'MeansAll.csv')
+        dt = pd.read_csv(self.localMasterDirectory + 'MeansAll.csv')
         means = dt.groupby(['ProjectID', 'VideoID']).mean()
 
         with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
