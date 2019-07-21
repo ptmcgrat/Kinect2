@@ -318,7 +318,7 @@ class MachineLearningMaker:
 
         with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
-            for row in means.itertuple():
+            for row in means.itertuples():
                 print(row.Index[0] + ':' + row.Index[1] + ',' + str(row.MeanR) + ',' + str(row.MeanG) + ',' + str(row.MeanB) + ',' + str(row.StdR) + ',' + str(row.StdG) + ',' + str(row.StdB), file = f)
     
     def _summarizeModel(self):
