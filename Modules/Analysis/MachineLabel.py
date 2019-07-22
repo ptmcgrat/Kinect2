@@ -168,6 +168,7 @@ class MachineLearningMaker:
             
             command['--batch_size'] = '3'
             command['--model_depth'] = '50'
+            command['--sample_size'] = 160
             command['--result_path'] = modelID + '/' + resultsDirectory
 
             trainEnv = os.environ.copy()
