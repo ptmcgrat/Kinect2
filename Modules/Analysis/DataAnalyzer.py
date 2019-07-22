@@ -131,7 +131,7 @@ class DataAnalyzer:
 
     def countFish(self, index, cloudCountDirectory):
         self._loadRegistration()
-        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM) for x in self.lp.movies]
+        self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj) for x in self.lp.movies]
         if index is None:
             vos = self.videoObjs
         else:
