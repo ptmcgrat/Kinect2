@@ -21,10 +21,10 @@ ad = np.zeros(shape = (args.Width, args.NumSeconds), dtype = 'uint8')
 cap = cv2.VideoCapture(args.VideoFile)
 for i in range(args.NumSeconds):
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(i*args.FrameRate))
-        ret, frame = cap.read()
-        if not ret:
-            raise Exception('Cant read frame')
-        ad[:,i] =  0.2125 * frame[args.RowIndex,:,2] + 0.7154 * frame[args.RowIndex,:,1] + 0.0721 * frame[args.RowIndex,:,0] #opencv does bgr instead of rgb
+    ret, frame = cap.read()
+    if not ret:
+        raise Exception('Cant read frame')
+    ad[:,i] =  0.2125 * frame[args.RowIndex,:,2] + 0.7154 * frame[args.RowIndex,:,1] + 0.0721 * frame[args.RowIndex,:,0] #opencv does bgr instead of rgb
 cap.release()
 
 print('SmoothingData: ' + str(datetime.datetime.now()))
