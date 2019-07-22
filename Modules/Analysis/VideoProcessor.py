@@ -700,13 +700,16 @@ class VideoProcessor:
         frames = set()
         counts = defaultdict(int)
         total = 0
+        maxTime = self.startTime.replace(hour = 18, minute = 0, second = 0, microsecond = 0) # Lights dim at 6pm. 
+        HMMframes = min(self.frames, int((maxTime - self.startTime).total_seconds()*self.frame_rate))
+
         while True:
             if total % 50 == 0:
                 print(total)
                 print(counts)
             if total > nFrames:
                 break
-            frame = random.randint(0,self.frames-1)
+            frame = random.randint(0,HMMframes-1)
             if frame in frames:
                 continue
             frames.add(frame)
@@ -754,7 +757,7 @@ class VideoProcessor:
             raise Exception('Cant read frame number: ' + str(frameNum))
 
         if noBackground:
-            frame = 0.2125 * frame[:,:,0] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,2]
+            frame = 0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0]
             HMMChanges = self.obj.ret_image(frameNum)
             diff = frame - HMMChanges
             diff[(diff>cutoff) | (diff < -1*cutoff)] = 125
