@@ -88,7 +88,7 @@ class DataAnalyzer:
                 print('Rewriting all video data for ' + self.projectID + ' and videos ' + str(index), file = sys.stderr)
                 vo.loadVideo()
                 vo.createHMM()
-                vo.createClusterSummary(j)
+                vo.createClusterSummary()
                 vo.createClusterClips()
                 #vo.summarizeData()
                 vo.cleanup()

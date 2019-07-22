@@ -141,7 +141,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet50/'
+            resultsDirectory = 'resnet34/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -160,8 +160,26 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-            GPU += 1
 
+            resultsDirectory = 'resnet50/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+            GPU += 1
+            
+            command['--batch_size'] = '3'
+            command['--model_depth'] = '50'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+        
         for p in processes:
             p.communicate()
 

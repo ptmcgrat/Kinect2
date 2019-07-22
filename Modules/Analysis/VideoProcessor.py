@@ -112,7 +112,7 @@ class VideoProcessor:
         self.cloudAllClipsDirectory = self.cloudClusterDirectory + 'AllClips.tar'
 
         # Set paramaters
-        self.cores = psutil.cpu_count() # Number of cores that should be used to analyze the video
+        self.cores = int(psutil.cpu_count()) # Number of cores that should be used to analyze the video
 
         # Create file names
         self.hmmFile = self.baseName + '.hmm.npy'
@@ -349,6 +349,8 @@ class VideoProcessor:
         pool.join()
 
         # Step 3: Calculate HMM values for each row
+        self.cores = int(self.cores/4)
+
         pool = ThreadPool(self.cores)
         start = datetime.datetime.now()
         self._print('HMMCreation: Calculating HMMs for all data')
