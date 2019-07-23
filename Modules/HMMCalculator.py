@@ -7,15 +7,16 @@ np.warnings.filterwarnings('ignore')
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('VideoFile', type = float, help = '')
-parser.add_argument('FrameRate', type = int, help = '')
-parser.add_argument('NumSeconds', type = int)
-parser.add_argument('Width', type = int)
-parser.add_argument('RowIndex', type = int)
+parser.add_argument('NpyFile', type = float, help = '')
+#parser.add_argument('FrameRate', type = int, help = '')
+#parser.add_argument('NumSeconds', type = int)
+#parser.add_argument('Width', type = int)
+#parser.add_argument('RowIndex', type = int)
 args = parser.parse_args()
 
 print('LoadingData: ' + str(datetime.datetime.now()))
-
+ad = np.load(args.NpyFile)
+"""
 ad = np.zeros(shape = (args.Width, args.NumSeconds), dtype = 'uint8')
 
 cap = cv2.VideoCapture(args.VideoFile)
@@ -26,7 +27,7 @@ for i in range(args.NumSeconds):
         raise Exception('Cant read frame')
     ad[:,i] =  0.2125 * frame[args.RowIndex,:,2] + 0.7154 * frame[args.RowIndex,:,1] + 0.0721 * frame[args.RowIndex,:,0] #opencv does bgr instead of rgb
 cap.release()
-
+"""
 print('SmoothingData: ' + str(datetime.datetime.now()))
 
 window, seconds_to_change, non_transition_bins, std, hmm_window = 120, 1800, 2, 100, 60
