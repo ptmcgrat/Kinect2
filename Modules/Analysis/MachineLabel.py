@@ -289,7 +289,8 @@ class MachineLearningMaker:
                         print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
                     else:
                         if len(subTable) == 0:
-                            raise Exception('No label for: ' + clip)
+                            print('No label for: ' + clipsDirectory + clip)
+                            continue
                         elif len(subTable) > 1:
                             raise Exception('Multiple labels for: ' + clip)
                         else:
