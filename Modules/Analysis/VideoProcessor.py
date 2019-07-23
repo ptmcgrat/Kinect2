@@ -698,7 +698,7 @@ class VideoProcessor:
         self.videoCrop = videoCrop
         print(cloudCountDirectory)
         self.loadVideo()
-        categories = list(range(0,10)) + ['p']
+        categories = list(range(0,10)) + ['p', 'q']
         frames = set()
         counts = defaultdict(int)
         total = 0
