@@ -17,6 +17,8 @@ class DataAnalyzer:
         self.cloudMasterDirectory = remote + ':' + cloudDir + projectID + '/'
         self.videoCropFile = 'videoCrop.npy'
         self.videoPointsFile = 'videoCropPoints.npy'
+        self.videoCropFig = 'videoCrop.pdf'
+
         self.transMFile = 'depthVideoTransformation.npy'
         self.transFig = 'depthVideoTransformation.pdf'
         
@@ -231,6 +233,7 @@ class DataAnalyzer:
             im1_gray[~self.videoCrop] = 0
             plt.imshow(im1_gray, cmap='gray')
             plt.title('Close window and type q in terminal if this is acceptable')
+            fig.savefig(self.localMasterDirectory + self.videoCropFig)
             plt.show()
 
             userInput = input('Type q if this is acceptable: ')
@@ -242,6 +245,8 @@ class DataAnalyzer:
         np.save(self.localMasterDirectory + self.videoPointsFile, videoPoints)
 
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videoCropFile, self.cloudMasterDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videoCropFig, self.cloudMasterDirectory], stderr = self.fnull)
+
         subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videoPointsFile, self.cloudMasterDirectory], stderr = self.fnull)
 
     def _createRegistration(self):
