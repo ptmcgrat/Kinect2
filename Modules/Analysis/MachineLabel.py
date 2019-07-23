@@ -88,7 +88,7 @@ class MachineLearningMaker:
                             projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
                         except IndexError:
                             continue
-                            
+
                         if projectID in projects[modelID]:
                             if randint(0,4) == 4: # Test data
                                 print(label + '/' + clip.replace('.mp4',''), file = g)
@@ -164,7 +164,8 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-        
+            GPU += 1
+
         for p in processes:
             p.communicate()
 
