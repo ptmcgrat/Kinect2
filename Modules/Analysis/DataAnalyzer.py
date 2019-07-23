@@ -144,7 +144,6 @@ class DataAnalyzer:
             
         for vo in vos:
             vo.countFish(self.rewriteFlag, cloudCountDirectory, self.videoCrop)
-            break
 
 
     def predictLabels(self, index, modelLocation, modelIDs):
