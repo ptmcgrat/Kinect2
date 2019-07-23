@@ -84,8 +84,11 @@ class MachineLearningMaker:
                             LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
                         subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
-                        projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
-
+                        try:
+                            projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
+                        except IndexError:
+                            continue
+                            
                         if projectID in projects[modelID]:
                             if randint(0,4) == 4: # Test data
                                 print(label + '/' + clip.replace('.mp4',''), file = g)
