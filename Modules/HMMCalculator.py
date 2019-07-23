@@ -1,21 +1,47 @@
-import argparse, datetime, cv2
+import argparse, datetime
+from scipy.ndimage.filters import uniform_filter
 import numpy as np
-import scipy.ndimage
 from hmmlearn import hmm
 import LogParser as LP
 np.warnings.filterwarnings('ignore')
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('NpyFile', type = float, help = '')
+parser.add_argument('NpyFile', type = str, help = '')
 #parser.add_argument('FrameRate', type = int, help = '')
 #parser.add_argument('NumSeconds', type = int)
 #parser.add_argument('Width', type = int)
 #parser.add_argument('RowIndex', type = int)
 args = parser.parse_args()
 
+
+def nanData(numpyFile):
+	window, seconds_to_change, non_transition_bins, std, hmm_window = 120, 1800, 2, 100, 60
+	# Smooth out data
+	ad = np.load(numpyFile)
+	# Load data
+	
+	ad[ad == 0] = 1 # 0 used for bad data to save space and use uint8 for storing data (np.nan must be a float).
+	
+	# Calculate mean for window before and after data point (llr and rrm)
+	lrm = uniform_filter(ad, size = (1,window), mode = 'reflect', origin = -1*int(window/2)).astype('uint8')
+	rrm = np.roll(lrm, int(window), axis = 1).astype('uint8')
+	rrm[:,0:window] = lrm[:,0:1]
+
+	# Identify data that falls outside of mean and set it to zero
+	ad[(((ad > lrm + 7.5) & (ad > rrm + 7.5)) | ((ad < lrm - 7.5) & (ad < rrm - 7.5)))] = 0
+
+	return ad
+
+def	interpData(ad):
+	# Interpolation missing data for HMM
+	ad = ad.ravel(order = 'C') #np.interp requires flattend data
+	nans, x = ad==0, lambda z: z.nonzero()[0]
+	ad[nans]= np.interp(x(nans), x(~nans), ad[~nans])
+
 print('LoadingData: ' + str(datetime.datetime.now()))
-ad = np.load(args.NpyFile)
+#ad = np.load(args.NpyFile)
+
 """
 ad = np.zeros(shape = (args.Width, args.NumSeconds), dtype = 'uint8')
 
@@ -29,30 +55,11 @@ for i in range(args.NumSeconds):
 cap.release()
 """
 print('SmoothingData: ' + str(datetime.datetime.now()))
+ad = nanData(args.NpyFile)
 
-window, seconds_to_change, non_transition_bins, std, hmm_window = 120, 1800, 2, 100, 60
-# Smooth out data
+ad = interpData(ad)
 
-# Load data
-original_shape = ad.shape
-
-ad[ad == 0] = 1 # 0 used for bad data to save space and use uint8 for storing data (np.nan must be a float).
-
-# Calculate mean for window before and after data point (llr and rrm)
-lrm = scipy.ndimage.filters.uniform_filter(ad, size = (1,window), mode = 'reflect', origin = -1*int(window/2)).astype('uint8')
-rrm = np.roll(lrm, int(window), axis = 1).astype('uint8')
-rrm[:,0:window] = lrm[:,0:1]
-
-# Identify data that falls outside of mean and set it to zero
-ad[(((ad > lrm + 7.5) & (ad > rrm + 7.5)) | ((ad < lrm - 7.5) & (ad < rrm - 7.5)))] = 0
-del lrm, rrm
-
-# Interpolation missing data for HMM
-ad = ad.ravel(order = 'C') #np.interp requires flattend data
-nans, x = ad==0, lambda z: z.nonzero()[0]
-ad[nans]= np.interp(x(nans), x(~nans), ad[~nans])
-del nans, x
-
+"""
 # Reshape array to save it
 data = np.reshape(ad, newshape = original_shape, order = 'C').astype('uint8')
 
@@ -107,4 +114,4 @@ outData = np.delete(outData, range(count, outData.shape[0]), axis = 0)
 
 print('Finished: ' + str(datetime.datetime.now()))
 
-
+"""
