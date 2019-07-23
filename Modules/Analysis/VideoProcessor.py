@@ -693,10 +693,12 @@ class VideoProcessor:
 
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
          
-    def countFish(self, rewrite, cloudCountDirectory, nFrames = 500):
+    def countFish(self, rewrite, cloudCountDirectory, videoCrop, nFrames = 500):
+
+        self.videoCrop = videoCrop
         print(cloudCountDirectory)
         self.loadVideo()
-        categories = list(range(0,10))
+        categories = list(range(0,10)) + ['p']
         frames = set()
         counts = defaultdict(int)
         total = 0
@@ -714,13 +716,13 @@ class VideoProcessor:
                 continue
             frames.add(frame)
             #pic = self._retFrame(frame, noBackground = False)
-            pic, num = self._retFrame(frame, noBackground = True)
+            pic, num = self._retFrame(frame, noBackground = True, crop = True)
             if counts['0'] ==200 and counts[1] == 200 and num < 18000:
                 continue
             elif counts['1'] == 200 and num > 8000 and num < 18000:
                 continue
-            pic2 = self._retFrame(frame, noBackground = False)
-            cv2.imshow("How many fish are in frame " + str(frame) + "? Pixels = " + str(num) + ". 'q': quit",cv2.resize(pic,(0,0),fx=4, fy=4))
+            pic2 = self._retFrame(frame, noBackground = False, crop = True)
+            cv2.imshow("How many fish are in frame " + str(frame) + "? Pixels = " + str(num) + ". 'q': quit",cv2.resize(pic,(0,0),fx=0.5, fy=0.5))
             info = cv2.waitKey(25)
             while info not in [ord(str(x)) for x in categories]:
                 info = cv2.waitKey(25)
@@ -732,16 +734,19 @@ class VideoProcessor:
             if counts[count] == 200:
                 continue
             counts[count] += 1
-            total += 1
+            if count != 'p':
+                total += 1
             outDirectory = self.localCountDirectory + str(chr(info)) + '/'
             os.makedirs(outDirectory) if not os.path.exists(outDirectory) else None
             cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.jpg', pic2)
+            np.save(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.npy', self._retFrame(frame,crop=True,diffOnly=True))
+            
             if info == ord('q'):
                 break
 
         subprocess.call(['rclone', 'copy', self.localCountDirectory, cloudCountDirectory + self.projectID + '/' + self.baseName + '/'])
 
-    def _retFrame(self, frameNum, noBackground = True, cutoff = 15):
+    def _retFrame(self, frameNum, noBackground = True, crop = True, diffOnly = False, cutoff = 15):
         try:
             self.cap
         except AttributeError:
@@ -756,15 +761,26 @@ class VideoProcessor:
         if not ret:
             raise Exception('Cant read frame number: ' + str(frameNum))
 
-        if noBackground:
-            frame = 0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0]
+        frame = 0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0]
+        if noBackground or diffOnly:
             HMMChanges = self.obj.ret_image(frameNum)
             diff = frame - HMMChanges
+            if diffOnly:
+                if crop:
+                    diff[~self.videoCrop] = 0
+                return diff
+
             diff[(diff>cutoff) | (diff < -1*cutoff)] = 125
             diff[diff!=125] = 0
             #pdb.set_trace()
+            if crop:
+                diff[~self.videoCrop] = 0
+                frame[~self.videoCrop] = 0
             return np.concatenate((frame.astype("uint8"),diff.astype("uint8")), axis = 1), np.count_nonzero(diff)
         else:
+            if crop:
+                frame[~self.videoCrop] = 0
+                
             return frame
 
     def _readBlock(self, block):

@@ -15,6 +15,8 @@ class DataAnalyzer:
         self.remote = remote
         self.localMasterDirectory = locDir + projectID + '/'
         self.cloudMasterDirectory = remote + ':' + cloudDir + projectID + '/'
+        self.videoCropFile = 'videoCrop.npy'
+        self.videoPointsFile = 'videoCropPoints.npy'
         self.transMFile = 'depthVideoTransformation.npy'
         self.transFig = 'depthVideoTransformation.pdf'
         
@@ -130,6 +132,7 @@ class DataAnalyzer:
             vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory, number)
 
     def countFish(self, index, cloudCountDirectory):
+        self._loadVideoCrop()
         self._loadRegistration()
         self.videoObjs = [VP(self.projectID, x, self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj) for x in self.lp.movies]
         if index is None:
@@ -138,7 +141,7 @@ class DataAnalyzer:
             vos = [self.videoObjs[x-1] for x in index]
             
         for vo in vos:
-            vo.countFish(self.rewriteFlag, cloudCountDirectory)
+            vo.countFish(self.rewriteFlag, cloudCountDirectory, self.videoCrop)
             break
 
 
@@ -164,6 +167,22 @@ class DataAnalyzer:
     def cleanup(self):
         shutil.rmtree(self.localMasterDirectory)
 
+    def _loadVideoCrop(self):
+        try:
+            self.videoCrop
+            return
+        except AttributeError:
+            pass   
+
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + self.videoCropFile, self.localMasterDirectory], stderr = self.fnull)
+        if os.path.isfile(self.localMasterDirectory + self.videoCropFile):
+            print('Loading video crop information from file on dropbox')
+            self.videoCrop = np.load(self.localMasterDirectory + self.videoCropFile)
+            return
+
+        else:
+            self._createVideoCrop()
+
     def _loadRegistration(self):
         try:
             self.transM
@@ -179,7 +198,52 @@ class DataAnalyzer:
 
         else:
             self._createRegistration()
+       
+    def _createVideoCrop(self):
+        import cv2
+        import matplotlib.pyplot as plt
+        from Modules.Analysis.roipoly import roipoly
+        videoObj = [x for x in self.lp.movies if x.time.hour >= 8 and x.time.hour <= 20][0]
+        subprocess.call(['rclone', 'copy', self.cloudMasterDirectory + videoObj.pic_file, self.localMasterDirectory + videoObj.movieDir], stderr = self.fnull)
+        im1 =  cv2.imread(self.localMasterDirectory + videoObj.pic_file)
+        im1_gray = cv2.cvtColor(im1,cv2.COLOR_BGR2GRAY)
+
+        while True:
+            im1 =  cv2.imread(self.localMasterDirectory + videoObj.pic_file)
+            im1_gray = cv2.cvtColor(im1,cv2.COLOR_BGR2GRAY)
+
+            fig = plt.figure(figsize=(9, 12))
         
+            plt.imshow(im1_gray, cmap='gray')
+
+            plt.title('Select four points in this object (Double-click on the fourth point)')
+            ROI1 = roipoly(roicolor='r')
+            plt.show()
+
+            if len(ROI1.allxpoints) != 4:
+                print('Wrong length, ROI1 = ' + str(len(ROI1.allxpoints)))
+                continue
+
+            videoPoints = np.array([[ROI1.allxpoints[0], ROI1.allypoints[0]], [ROI1.allxpoints[1], ROI1.allypoints[1]], [ROI1.allxpoints[2], ROI1.allypoints[2]], [ROI1.allxpoints[3], ROI1.allypoints[3]]])
+
+            fig = plt.figure(figsize=(9, 12))
+            self.videoCrop = ROI1.getMask(im1_gray)
+            im1_gray[~self.videoCrop] = 0
+            plt.imshow(im1_gray, cmap='gray')
+            plt.title('Close window and type q in terminal if this is acceptable')
+            plt.show()
+
+            userInput = input('Type q if this is acceptable: ')
+            if userInput == 'q':
+                self.videoCrop = ROI1.getMask(im1_gray)
+                break
+
+        np.save(self.localMasterDirectory + self.videoCropFile, self.videoCrop)
+        np.save(self.localMasterDirectory + self.videoPointsFile, videoPoints)
+
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videoCropFile, self.cloudMasterDirectory], stderr = self.fnull)
+        subprocess.call(['rclone', 'copy', self.localMasterDirectory + self.videoPointsFile, self.cloudMasterDirectory], stderr = self.fnull)
+
     def _createRegistration(self):
 
         import cv2
