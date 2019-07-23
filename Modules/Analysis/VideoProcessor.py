@@ -730,6 +730,8 @@ class VideoProcessor:
             for j in range(1,10):
                 cv2.destroyAllWindows()
                 cv2.waitKey(1)
+            if info == ord('q'):
+                break
             count = chr(info)
             if counts[count] == 200:
                 continue
@@ -740,10 +742,8 @@ class VideoProcessor:
             os.makedirs(outDirectory) if not os.path.exists(outDirectory) else None
             cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.jpg', pic2)
             np.save(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.npy', self._retFrame(frame,crop=True,diffOnly=True))
-            
-            if info == ord('q'):
-                break
-
+        
+        print('Syncing local counting directory with cloud')    
         subprocess.call(['rclone', 'copy', self.localCountDirectory, cloudCountDirectory + self.projectID + '/' + self.baseName + '/'])
 
     def _retFrame(self, frameNum, noBackground = True, crop = True, diffOnly = False, cutoff = 15):
