@@ -127,6 +127,7 @@ class MachineLearningMaker:
             command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
             command['--annotation_file'] = localModelDirectory + 'AnnotationFile.csv'
             command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
         
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
@@ -149,27 +150,7 @@ class MachineLearningMaker:
             command['--batch_size'] = '4'
             command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
-
-            trainEnv = os.environ.copy()
-            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
-
-            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
-
-            outCommand = []
-            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
-            self._print(' '.join(outCommand))
-            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
-
-
-            resultsDirectory = 'resnet50/'
-            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
-            os.makedirs(localModelDirectory + resultsDirectory)
-            GPU += 1
-            
-            command['--batch_size'] = '3'
-            command['--model_depth'] = '50'
-            command['--sample_size'] = 160
-            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
 
             trainEnv = os.environ.copy()
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
