@@ -187,8 +187,9 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         subprocess.call(['rclone', 'copy', cloudMasterMLDirectory + manualLabelFile, localMasterMLDirectory])
         processes = []
         for projectID in projects:
-            processes.append(subprocess.Popen(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID], stderr=open(os.devnull, 'w')))
-        [p.communicate() for p in processes]
+            print(projectID)
+            processes.append(subprocess.call(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID], stderr=open(os.devnull, 'w')))
+        #[p.communicate() for p in processes]
 
         clipDirectories = []
         for projectID in projects:
