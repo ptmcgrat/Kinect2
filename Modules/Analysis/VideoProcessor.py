@@ -33,7 +33,10 @@ def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_rate*(t) - delta_t))
     for i in range(delta_t*2):
         ret, frame = cap.read()
-        outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+        if ret:
+            outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+        else:
+            self._print('VideoError: BadFrame for ' + LID)
     outAll.release()
     # return mean and std
     return True
