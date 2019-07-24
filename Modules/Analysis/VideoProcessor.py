@@ -744,7 +744,7 @@ class VideoProcessor:
             outDirectory = self.localCountDirectory + str(chr(info)) + '/'
             os.makedirs(outDirectory) if not os.path.exists(outDirectory) else None
             cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.jpg', pic2)
-            np.save(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.npy', self._retFrame(frame,crop=True,diffOnly=True))
+            #cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + 'HMM.jpg', self._retFrame(frame,crop=True,diffOnly=True))
         
         print('Syncing local counting directory with cloud')    
         subprocess.call(['rclone', 'copy', self.localCountDirectory, cloudCountDirectory + self.projectID + '/' + self.baseName + '/'])
@@ -770,8 +770,8 @@ class VideoProcessor:
             diff = frame - HMMChanges
             if diffOnly:
                 if crop:
-                    diff[~self.videoCrop] = 0
-                return diff
+                    HMMChanges[~self.videoCrop] = 0
+                return HMMChanges
 
             diff[(diff>cutoff) | (diff < -1*cutoff)] = 125
             diff[diff!=125] = 0
