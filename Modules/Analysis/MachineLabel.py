@@ -104,11 +104,13 @@ class MachineLearningMaker:
             print(command)
             subprocess.call(command)
             subprocess.call(['cp', self.localMasterDirectory + 'Means.csv', localModelDirectory])
+            subprocess.call(['cp', self.localMasterDirectory + 'MeansAll.csv', localModelDirectory])
+
             subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
 
             self._print('modelCreation: GPU:' + str(GPU))
 
-            resultsDirectory = 'resnet18/'
+            resultsDirectory = 'resnet18_tstride1_batchsize5/'
 
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
@@ -122,8 +124,8 @@ class MachineLearningMaker:
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
-            command['--sample_duration'] = 90
-            command['--sample_size'] = 180
+            command['--sample_duration'] = 96
+            command['--sample_size'] = 160
             command['--n_epochs'] = '100'
             command['--weight_decay'] = str(1e-23)
             command['--n_val_samples'] = '1'
@@ -131,6 +133,7 @@ class MachineLearningMaker:
             command['--annotation_file'] = localModelDirectory + 'AnnotationFile.csv'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
+            command['--t_stride'] = 1
         
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
@@ -145,11 +148,32 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet34/'
+            resultsDirectory = 'resnet18_tstride2_batchsize6/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
             GPU += 1
+            command['--t_stride'] = 2
+            command['--batch_size'] = '6'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            
+            resultsDirectory = 'resnet34_tstride1_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 1
             command['--batch_size'] = '4'
             command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
@@ -164,6 +188,110 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            
+            resultsDirectory = 'resnet34_tstride2_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 2
+            command['--batch_size'] = '5'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+            resultsDirectory = 'resnet50_tstride1_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 1
+            command['--batch_size'] = '4'
+            command['--model_depth'] = '50'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            
+            resultsDirectory = 'resnet50_tstride2_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 2
+            command['--batch_size'] = '5'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+            resultsDirectory = 'resnet101_tstride2_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 1
+            command['--batch_size'] = '4'
+            command['--model_depth'] = '101'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+            
+            resultsDirectory = 'resnet50_tstride2_batchsize4/'
+            shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
+            os.makedirs(localModelDirectory + resultsDirectory)
+
+            GPU += 1
+            command['--t_stride'] = 2
+            command['--batch_size'] = '5'
+            command['--result_path'] = modelID + '/' + resultsDirectory
+            command['--manual_seed'] = randint(0,50000)
+
+            trainEnv = os.environ.copy()
+            trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
+
+            pickle.dump(command, open(localModelDirectory + resultsDirectory + 'commands.pkl', 'wb'))
+
+            outCommand = []
+            [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())]
+            self._print(' '.join(outCommand))
+            processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+
             GPU += 1
 
         for p in processes:
@@ -301,10 +429,10 @@ class MachineLearningMaker:
                             projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
             
                     outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
-                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    os.makedirs(outDirectory) 
+                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    #os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
