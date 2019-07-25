@@ -88,6 +88,7 @@ MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use 
 
 predictParser = subparsers.add_parser('PredictLabels', help='This command using machine learning to predict labels for each cluster')
 predictParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
+trainParser.add_argument('classIndFile', type = str, help = 'Name of class file that contains info on labels')
 predictParser.add_argument('ModelNames', type = str, nargs = '+', help = 'Machine Learning Models to use to predict the cluster labels')
 predictParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 predictParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')

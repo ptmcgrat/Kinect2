@@ -154,7 +154,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '5'
+            command['--batch_size'] = '9'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
@@ -174,7 +174,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 1
-            command['--batch_size'] = '4'
+            command['--batch_size'] = '5'
             command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
@@ -195,7 +195,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '5'
+            command['--batch_size'] = '8'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
@@ -215,7 +215,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 1
-            command['--batch_size'] = '4'
+            command['--batch_size'] = '3'
             command['--model_depth'] = '50'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
@@ -256,7 +256,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 1
-            command['--batch_size'] = '4'
+            command['--batch_size'] = '2'
             command['--model_depth'] = '101'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
@@ -277,7 +277,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '5'
+            command['--batch_size'] = '3'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
