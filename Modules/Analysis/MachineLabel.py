@@ -174,7 +174,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 1
-            command['--batch_size'] = '5'
+            command['--batch_size'] = '6'
             command['--model_depth'] = '34'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
