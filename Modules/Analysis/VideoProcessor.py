@@ -279,6 +279,9 @@ class VideoProcessor:
             self.clusterData
         except AttributeError:
             #if not os.path.isfile(self.localClusterDirectory + self.clusterFile):
+            if os.path.isfile(self.localClusterDirectory + self.clusterFile):
+                #Make backup
+                subprocess.call(['cp', self.localClusterDirectory + self.clusterFile, self.localClusterDirectory + self.clusterFile + '~'])
             print(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory])
             subprocess.call(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory], stderr = self.fnull)
                 
