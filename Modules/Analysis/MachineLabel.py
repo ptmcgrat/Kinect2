@@ -154,7 +154,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '9'
+            command['--batch_size'] = '10'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
@@ -195,7 +195,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '8'
+            command['--batch_size'] = '9'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
@@ -277,7 +277,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '3'
+            command['--batch_size'] = '4'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
