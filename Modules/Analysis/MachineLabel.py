@@ -120,7 +120,7 @@ class MachineLearningMaker:
             command['--model'] = 'resnet'
             command['--model_depth'] = '18'
             command['--n_classes'] = str(self.numClasses)
-            command['--batch_size'] = '8'
+            command['--batch_size'] = '7'
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
@@ -154,7 +154,7 @@ class MachineLearningMaker:
 
             GPU += 1
             command['--t_stride'] = 2
-            command['--batch_size'] = '15'
+            command['--batch_size'] = '13'
             command['--result_path'] = modelID + '/' + resultsDirectory
             command['--manual_seed'] = randint(0,50000)
 
