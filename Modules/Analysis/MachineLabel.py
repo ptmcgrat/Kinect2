@@ -110,7 +110,7 @@ class MachineLearningMaker:
 
             self._print('modelCreation: GPU:' + str(GPU))
 
-            resultsDirectory = 'resnet18_tstride1_batchsize5/'
+            resultsDirectory = 'resnet18_tstride1_batchsize7/'
 
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
@@ -120,7 +120,7 @@ class MachineLearningMaker:
             command['--model'] = 'resnet'
             command['--model_depth'] = '18'
             command['--n_classes'] = str(self.numClasses)
-            command['--batch_size'] = '7'
+            command['--batch_size'] = '8'
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
@@ -148,7 +148,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet18_tstride2_batchsize6/'
+            resultsDirectory = 'resnet18_tstride2_batchsize14/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -168,7 +168,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet34_tstride1_batchsize4/'
+            resultsDirectory = 'resnet34_tstride1_batchsize6/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -189,7 +189,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet34_tstride2_batchsize4/'
+            resultsDirectory = 'resnet34_tstride2_batchsize9/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -209,7 +209,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-            resultsDirectory = 'resnet50_tstride1_batchsize4/'
+            resultsDirectory = 'resnet50_tstride1_batchsize3/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -230,7 +230,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet50_tstride2_batchsize4/'
+            resultsDirectory = 'resnet50_tstride2_batchsize5/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -250,7 +250,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
 
-            resultsDirectory = 'resnet101_tstride2_batchsize4/'
+            resultsDirectory = 'resnet101_tstride1_batchsize2/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
@@ -271,7 +271,7 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            resultsDirectory = 'resnet50_tstride2_batchsize4/'
+            resultsDirectory = 'resnet101_tstride2_batchsize4/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
 
