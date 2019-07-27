@@ -670,19 +670,23 @@ class VideoProcessor:
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
 
-    def predictLabels(self, modelLocation, modelIDs):
+    def predictLabels(self, modelLocation, modelIDs, classIndFile):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
-        return self.clusterData
+        self.loadClusterClips(allClips = True, mlClips = False)
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
-        
-        MLobj = MLM('', [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
+
+        MLobj = MLM(modelIDs, self.localVideoDirectory, modelLocation, [self.localAllClipsDirectory], classIndFile)
         MLobj.prepareData()
-        labels = MLobj.predictLabels(modelIDs)
+        labels = MLobj.predictLabels()
 
         for label in labels:
+            for c in label.columns:
+                if 'model' in c:
+                    if c in self.clusterData.columns:
+                        del self.clusterData[c]
             self.clusterData = pd.merge(self.clusterData, label, on = ['LID', 'N'], how = 'left')
         
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')

@@ -53,7 +53,7 @@ class MachineLearningMaker:
  
         # Download clips
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
-        self._convertClips()
+        #self._convertClips()
 
         # Run cichlids_json script to create json info for all clips
  
@@ -67,7 +67,7 @@ class MachineLearningMaker:
         for modelID in self.modelIDs:
             localModelDirectory = self.localMasterDirectory + modelID + '/'
             os.makedirs(localModelDirectory) if not os.path.exists(localModelDirectory) else None
-
+            """
             with open(localModelDirectory + 'cichlids_train_list.txt', 'w') as f, open(localModelDirectory + 'cichlids_test_list.txt', 'w') as g, open(localModelDirectory + 'AnnotationFile.csv', 'w') as h:
                 print('Location,Dataset,Label,MeanID', file = h)
                 for clipsDirectory in self.localClipsDirectories:
@@ -107,10 +107,10 @@ class MachineLearningMaker:
             subprocess.call(['cp', self.localMasterDirectory + 'MeansAll.csv', localModelDirectory])
 
             subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
-
+            """
             self._print('modelCreation: GPU:' + str(GPU))
 
-            resultsDirectory = 'resnet18_tstride1_batchsize7/'
+            resultsDirectory = 'resnet10_tstride1_batchsize10/'
 
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
@@ -118,9 +118,9 @@ class MachineLearningMaker:
             command['--video_path'] = 'Clips'
             command['--annotation_path'] = modelID + '/cichlids.json'
             command['--model'] = 'resnet'
-            command['--model_depth'] = '18'
+            command['--model_depth'] = '10'
             command['--n_classes'] = str(self.numClasses)
-            command['--batch_size'] = '7'
+            command['--batch_size'] = '10'
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
@@ -148,6 +148,8 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
+            break
+
             resultsDirectory = 'resnet18_tstride2_batchsize14/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
@@ -299,41 +301,59 @@ class MachineLearningMaker:
 
         return True
 
-    def predictLabels(self, modelIDs, GPU = 4):
+    def predictLabels(self):
 
         processes = []
         for modelID in modelIDs:
+            cloudModelDir = self.cloudMasterDirectory + modelID + '/'
+            localModelDir = self.localMasterDirectory + modelID + '/'
+            os.makedirs(localModelDir) if not os.path.exists(localModelDir) else None
+
+            with open(localModelDir + 'cichlids_train_list.txt', 'w') as f, open(localModelDir + 'cichlids_test_list.txt', 'w') as g, open(localModelDir + 'AnnotationFile.csv', 'w') as h:
+                print('Location,Dataset,Label,MeanID', file = h)
+                for clipsDirectory in self.localClipsDirectories:
+                    clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
+                    assert len(clips) != 0
+                    for clip in clips:
+                        try:
+                            LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
+                        except IndexError: #MC6_5
+                            self._print(clip)
+                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                        except ValueError:
+                            self._print('ClipError: ' + str(clip))
+                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+
+                        projectID, videoID, label = '','',self.classes[0]
+                        print(label + '/' + clip.replace('.mp4',''), file = g)
+                        print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+
             self._print('modelPrediction: GPU:' + str(GPU) + ',,modelID:' + modelID)
 
-            cloudModelDir = self.cloudModelDirectory + modelID + '/'
-            localModelDir = self.localOutputDirectory + modelID + '/'
-            os.makedirs(localModelDir) if not os.path.exists(localModelDir) else None
 
             subprocess.call(['rclone', 'copy', cloudModelDir + 'model.pth', localModelDir])
             assert os.path.exists(localModelDir + 'model.pth')
             subprocess.call(['rclone', 'copy', cloudModelDir + 'commands.pkl', localModelDir])
             assert os.path.exists(localModelDir + 'commands.pkl')
-            print(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
-            subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', self.localOutputDirectory])
-            assert os.path.exists(self.localOutputDirectory + 'classInd.txt')
-            self.classIndFile = self.localOutputDirectory + 'classInd.txt'
-            self.classes, self.numClasses = self._identifyClasses()
+            print(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'classInd.txt', localModelDir])
+            assert os.path.exists(localModelDir + 'classInd.txt')
 
             command = []
             command += ['python', self.resnetDirectory + 'utils/cichlids_json.py']
-            command += [self.localOutputDirectory]
-            command += [self.localOutputDirectory + 'classInd.txt']
+            command += [localModelDir]
+            command += [localModelDir + 'classInd.txt']
             print(command)
             subprocess.call(command)
 
             with open(localModelDir + 'commands.pkl', 'rb') as pickle_file:
                 command = pickle.load(pickle_file) 
         
-            command['--root_path'] = self.localOutputDirectory
+            command['--root_path'] = self.localMasterDirectory
             command['--n_epochs'] = '1'
             command['--pretrain_path'] = localModelDir + 'model.pth'
-            command['--mean_file'] = self.localOutputDirectory + 'Means.csv'
-            command['--annotation_file'] = self.localOutputDirectory + 'AnnotationFile.csv'
+            command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
+            command['--annotation_file'] = self.localMasterDirectory + 'AnnotationFile.csv'
 
             resultsDirectory = 'prediction/'
             shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
@@ -355,6 +375,28 @@ class MachineLearningMaker:
 
         predictions = []
         for modelID in modelIDs:
+            cloudModelDir = self.cloudMasterDirectory + modelID + '/'
+            localModelDir = self.localMasterDirectory + modelID + '/'
+
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'cichlids_test_list.txt', localModelDir])
+            assert os.path.exists(localModelDir + 'cichlids_test_list.txt')
+            subprocess.call(['rclone', 'copy', cloudModelDir + 'cichlids_train_list.txt', localModelDir])
+            assert os.path.exists(localModelDir + 'cichlids_train_list.txt')
+
+            trains = set()
+            tests = set()
+
+            with open(localModelDir + 'cichlids_test_list.txt') as f:
+                for line in f:
+                    tokens = line.split('/')[1].split('_')
+                    tests.add(tokens[0] + '_' + tokens[1])
+            with open(localModelDir + 'cichlids_train_list.txt') as f:
+                for line in f:
+                    tokens = line.split('/')[1].split('_')
+                    trains.add(tokens[0] + '_' + tokens[1])
+
+
+
             localOutDir = self.localOutputDirectory + modelID + '/prediction/'
             dt = pd.read_csv(self.localOutputDirectory + modelID + '/prediction/ConfidenceMatrix.csv', header = None, names = ['Filename'] + self.classes, skiprows = [0], index_col = 0)
             softmax = dt.apply(scipy.special.softmax, axis = 1)
@@ -362,6 +404,14 @@ class MachineLearningMaker:
 
             prediction['LID'] = prediction.apply(lambda row: int(row.name.split('/')[-1].split('_')[0]), axis = 1)
             prediction['N'] = prediction.apply(lambda row: int(row.name.split('/')[-1].split('_')[1]), axis = 1)
+            prediction[modelID + '_type'] = ''
+
+            for row in prediction.itertuples():
+                LID, N = row.LID, row.N
+                if LID + '_' + N in trains:
+                    predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Train'
+                if LID + '_' + N in tests:
+                    predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Tests'
 
             predictions.append(prediction)
 
