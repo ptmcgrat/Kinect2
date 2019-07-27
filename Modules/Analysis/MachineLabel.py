@@ -58,7 +58,7 @@ class MachineLearningMaker:
         # Run cichlids_json script to create json info for all clips
  
 
-    def runTraining(self, projects, GPU = 0):
+    def runTraining(self, projects, GPU = 1):
         """ Projects is a dictionary mapping the model ID to the projects that should be used"""
         #self.classes, self.numClasses = self._identifyClasses()
         # Run cichlids_json script to create json info for all clips
