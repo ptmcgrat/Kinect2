@@ -111,7 +111,7 @@ class MachineLearningMaker:
             self._print('modelCreation: GPU:' + str(GPU))
 
             resultsDirectory = 'resnet10_tstride1_batchsize10/'
-
+            GPU = 1
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
             command['--root_path'] = self.localMasterDirectory
