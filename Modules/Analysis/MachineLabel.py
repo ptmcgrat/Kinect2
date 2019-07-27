@@ -110,7 +110,7 @@ class MachineLearningMaker:
             """
             self._print('modelCreation: GPU:' + str(GPU))
 
-            resultsDirectory = 'resnet10_tstride1_batchsize9/'
+            resultsDirectory = 'resnet10_tstride1_batchsize8/'
             GPU = 1
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
@@ -120,7 +120,7 @@ class MachineLearningMaker:
             command['--model'] = 'resnet'
             command['--model_depth'] = '10'
             command['--n_classes'] = str(self.numClasses)
-            command['--batch_size'] = '9'
+            command['--batch_size'] = '8'
             command['--n_threads'] = '5'
             command['--checkpoint'] = '5'
             command['--dataset'] = 'cichlids'
