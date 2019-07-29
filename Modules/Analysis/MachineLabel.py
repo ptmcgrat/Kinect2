@@ -315,7 +315,7 @@ class MachineLearningMaker:
                         try:
                             LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
                         except IndexError: #MC6_5
-                            self._print(clip)
+                            self._print('IndexError: ' + clip)
                             LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
                         except ValueError:
                             self._print('ClipError: ' + str(clip))
@@ -350,7 +350,7 @@ class MachineLearningMaker:
             command['--n_epochs'] = '1'
             command['--pretrain_path'] = localModelDir + 'model.pth'
             command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
-            command['--annotation_file'] = self.localMasterDirectory + 'AnnotationFile.csv'
+            command['--annotation_file'] = localModelDir + 'AnnotationFile.csv'
 
             resultsDirectory = 'prediction/'
             shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
@@ -371,7 +371,7 @@ class MachineLearningMaker:
             process.communicate()
 
         predictions = []
-        for modelID in modelIDs:
+        for modelID in self.modelIDs:
             cloudModelDir = self.cloudMasterDirectory + modelID + '/'
             localModelDir = self.localMasterDirectory + modelID + '/'
 
@@ -476,10 +476,10 @@ class MachineLearningMaker:
                             projectID, videoID, label = [x.values[0] for x in [subTable.projectID, subTable.videoID, subTable.ManualLabel]]
             
                     outDirectory = self.localMasterDirectory + 'Clips/' + label + '/' + clip.replace('.mp4','') + '/'
-                    shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
-                    os.makedirs(outDirectory) 
+                    #shutil.rmtree(outDirectory) if os.path.exists(outDirectory) else None
+                    #os.makedirs(outDirectory) 
                     #print(['ffmpeg', '-i', self.localClipsDirectory + projectID + '/' + videoID + '/' + clip, outDirectory + 'image_%05d.jpg'])
-                    subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
+                    #subprocess.call(['ffmpeg', '-i', clipsDirectory + clip, outDirectory + 'image_%05d.jpg'], stderr = self.fnull)
 
                     frames = [x for x in os.listdir(outDirectory) if '.jpg' in x]
                     try:
