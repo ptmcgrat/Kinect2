@@ -570,7 +570,7 @@ class VideoProcessor:
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull, stdout = self.fnull, stderr = self.fnull)
+            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stdout = self.fnull, stderr = self.fnull)
         if mlClips:
             print(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory])
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
