@@ -670,7 +670,7 @@ class VideoProcessor:
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
 
-    def predictLabels(self, modelLocation, modelIDs, classIndFile):
+    def predictLabels(self, modelLocation, modelIDs, classIndFile, GPU):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
         self.loadClusterClips(allClips = True, mlClips = False)
@@ -678,9 +678,12 @@ class VideoProcessor:
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
 
+        if GPU is None:
+            GPU = 0
+
         MLobj = MLM(modelIDs, self.localVideoDirectory, modelLocation, [self.localAllClipsDirectory], classIndFile)
         MLobj.prepareData()
-        labels = MLobj.predictLabels()
+        labels = MLobj.predictLabels(GPU)
 
         for label in labels:
             for c in label.columns:

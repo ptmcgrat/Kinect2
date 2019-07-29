@@ -298,7 +298,7 @@ class MachineLearningMaker:
 
         return True
 
-    def predictLabels(self, GPU = 0):
+    def predictLabels(self, GPU):
 
         processes = []
         for modelID in self.modelIDs:
@@ -360,18 +360,6 @@ class MachineLearningMaker:
             shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
             os.makedirs(localModelDir + resultsDirectory) 
 
-
-            result = subprocess.check_output(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,nounits,noheader'])
-            result = result.decode('utf-8')
-            gpu_memory = [int(x) for x in result.strip().split('\n')]
-            GPU = -1
-            for i in len(gpu_memory):
-                if gpu_memory == 0:
-                    GPU = i
-                    break
-            if GPU == -1:
-                raise Exception('Cant find GPU')
-
             trainEnv = os.environ.copy()
             trainEnv['CUDA_VISIBLE_DEVICES'] = str(GPU)
             command['--result_path'] = modelID + '/' + resultsDirectory
@@ -382,6 +370,8 @@ class MachineLearningMaker:
             [outCommand.extend([str(a),str(b)]) for a,b in zip(command.keys(), command.values())] + ['--no_train']
             print(outCommand)
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDir + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDir + resultsDirectory + 'RunningLogError.txt', 'w')))
+
+            GPU += 1
 
         for process in processes:
             process.communicate()

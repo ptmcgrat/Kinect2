@@ -146,7 +146,7 @@ class DataAnalyzer:
             vo.countFish(self.rewriteFlag, cloudCountDirectory, self.videoCrop)
 
 
-    def predictLabels(self, index, modelLocation, modelIDs, classIndFile):
+    def predictLabels(self, index, modelLocation, modelIDs, classIndFile, GPU):
         self._loadRegistration()
 
         print(modelLocation)
@@ -154,7 +154,7 @@ class DataAnalyzer:
         clusterData = []
         for x in index:
             vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
-            clusterData.append(vo.predictLabels(modelLocation, modelIDs, classIndFile))
+            clusterData.append(vo.predictLabels(modelLocation, modelIDs, classIndFile, GPU))
             vo.cleanup()
 
         fullClusterData = pd.concat(clusterData, ignore_index=True)

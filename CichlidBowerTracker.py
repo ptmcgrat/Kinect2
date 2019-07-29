@@ -92,6 +92,7 @@ predictParser.add_argument('classIndFile', type = str, help = 'Name of class fil
 predictParser.add_argument('ModelNames', type = str, nargs = '+', help = 'Machine Learning Models to use to predict the cluster labels')
 predictParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 predictParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
+predictParser.add_argument('-g', '--GPU', type = int, help = 'Use this flag to specify the GPU card')
 
 summarizeParser = subparsers.add_parser('SummarizeProjects', help='This command summarizes data for the entire project')
 summarizeParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
@@ -169,7 +170,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/', args.ModelNames, args.classIndFile)
+                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/', args.ModelNames, args.classIndFile, args.GPU)
                 
     elif args.command == 'CreateModel':
         #if socket.gethostname() != 'biocomputesrg':
