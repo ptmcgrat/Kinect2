@@ -298,7 +298,7 @@ class MachineLearningMaker:
 
         return True
 
-    def predictLabels(self):
+    def predictLabels(self, GPU = 0):
 
         processes = []
         for modelID in self.modelIDs:
