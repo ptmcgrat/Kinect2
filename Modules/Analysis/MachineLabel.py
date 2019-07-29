@@ -351,6 +351,8 @@ class MachineLearningMaker:
             command['--pretrain_path'] = localModelDir + 'model.pth'
             command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
             command['--annotation_file'] = localModelDir + 'AnnotationFile.csv'
+            command['--annotation_path'] = modelID + '/cichlids.json'
+
 
             resultsDirectory = 'prediction/'
             shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
