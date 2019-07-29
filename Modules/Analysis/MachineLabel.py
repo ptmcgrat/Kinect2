@@ -352,7 +352,7 @@ class MachineLearningMaker:
             command['--mean_file'] = self.localMasterDirectory + 'Means.csv'
             command['--annotation_file'] = localModelDir + 'AnnotationFile.csv'
             command['--annotation_path'] = modelID + '/cichlids.json'
-
+            command['--batch_size'] = str(int(int(command['--batch_size'])*1.8))
 
             resultsDirectory = 'prediction/'
             shutil.rmtree(localModelDir + resultsDirectory) if os.path.exists(localModelDir + resultsDirectory) else None
@@ -407,9 +407,9 @@ class MachineLearningMaker:
 
             for row in prediction.itertuples():
                 LID, N = row.LID, row.N
-                if LID + '_' + str(N) in trains:
+                if str(LID) + '_' + str(N) in trains:
                     predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Train'
-                if LID + '_' + str(N) in tests:
+                if str(LID) + '_' + str(N) in tests:
                     predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Tests'
 
             predictions.append(prediction)
