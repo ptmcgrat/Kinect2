@@ -53,7 +53,7 @@ class MachineLearningMaker:
  
         # Download clips
         self._print('Converting mp4s into jpgs and creating train/test datasets', log = False)
-        #self._convertClips()
+        self._convertClips()
 
         # Run cichlids_json script to create json info for all clips
  
@@ -67,7 +67,7 @@ class MachineLearningMaker:
         for modelID in self.modelIDs:
             localModelDirectory = self.localMasterDirectory + modelID + '/'
             os.makedirs(localModelDirectory) if not os.path.exists(localModelDirectory) else None
-            """
+            
             with open(localModelDirectory + 'cichlids_train_list.txt', 'w') as f, open(localModelDirectory + 'cichlids_test_list.txt', 'w') as g, open(localModelDirectory + 'AnnotationFile.csv', 'w') as h:
                 print('Location,Dataset,Label,MeanID', file = h)
                 for clipsDirectory in self.localClipsDirectories:
@@ -107,11 +107,10 @@ class MachineLearningMaker:
             subprocess.call(['cp', self.localMasterDirectory + 'MeansAll.csv', localModelDirectory])
 
             subprocess.call(['cp', self.classIndFile, localModelDirectory + 'classInd.txt'])
-            """
+            
             self._print('modelCreation: GPU:' + str(GPU))
 
             resultsDirectory = 'resnet10_tstride1_batchsize8/'
-            GPU = 1
             command = OrderedDict()
             command['python'] = self.resnetDirectory + 'main.py'
             command['--root_path'] = self.localMasterDirectory
@@ -148,8 +147,6 @@ class MachineLearningMaker:
             self._print(' '.join(outCommand))
             processes.append(subprocess.Popen(outCommand, env = trainEnv, stdout = open(localModelDirectory + resultsDirectory + 'RunningLogOut.txt', 'w'), stderr = open(localModelDirectory + resultsDirectory + 'RunningLogError.txt', 'w')))
             
-            break
-
             resultsDirectory = 'resnet18_tstride2_batchsize14/'
             shutil.rmtree(localModelDirectory + resultsDirectory) if os.path.exists(localModelDirectory + resultsDirectory) else None
             os.makedirs(localModelDirectory + resultsDirectory)
