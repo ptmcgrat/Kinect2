@@ -155,6 +155,7 @@ class DataAnalyzer:
         for x in index:
             vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
             clusterData.append(vo.predictLabels(modelLocation, modelIDs, classIndFile))
+            vo.cleanup()
 
         fullClusterData = pd.concat(clusterData, ignore_index=True)
 
