@@ -465,7 +465,7 @@ class MachineLearningMaker:
                     try:
                         subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
                     except AttributeError:
-                        projectID, videoID, label = '','',self.classes[0]
+                        projectID, videoID, label = '.','.',self.classes[0]
                         #print(label + '/' + clip.replace('.mp4',''), file = g)
                         #print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
                     else:
@@ -505,7 +505,10 @@ class MachineLearningMaker:
         with open(self.localMasterDirectory + 'Means.csv', 'w') as f:
             print('meanID,redMean,greenMean,blueMean,redStd,greenStd,blueStd', file = f)
             for row in means.itertuples():
-                print(row.Index[0] + ':' + row.Index[1] + ',' + str(row.MeanR) + ',' + str(row.MeanG) + ',' + str(row.MeanB) + ',' + str(row.StdR) + ',' + str(row.StdG) + ',' + str(row.StdB), file = f)
+                if row.Index[0] == '.':
+                    print(':,' + str(row.MeanR) + ',' + str(row.MeanG) + ',' + str(row.MeanB) + ',' + str(row.StdR) + ',' + str(row.StdG) + ',' + str(row.StdB), file = f)
+                else:
+                    print(row.Index[0] + ':' + row.Index[1] + ',' + str(row.MeanR) + ',' + str(row.MeanG) + ',' + str(row.MeanB) + ',' + str(row.StdR) + ',' + str(row.StdG) + ',' + str(row.StdB), file = f)
     
     def _summarizeModel(self):
         with open(self.localOutputDirectory + 'ConfusionMatrix.csv') as f, open(self.localOutputDirectory + 'ConfusionMatrixHeaders.csv', 'w') as g:
