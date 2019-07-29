@@ -322,8 +322,7 @@ class MachineLearningMaker:
                             LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
                         except ValueError:
                             self._print('ClipError: ' + str(clip))
-                            continue
-                            #LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
                         projectID, videoID, label = '','',self.classes[0]
                         print(label + '/' + clip.replace('.mp4',''), file = g)
@@ -465,7 +464,6 @@ class MachineLearningMaker:
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
                     except ValueError:
                         self._print('ClipError: ' + str(clip))
-                        pdb.set_trace()
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
                     try:
