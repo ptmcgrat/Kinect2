@@ -464,8 +464,8 @@ class MachineLearningMaker:
                         subTable = self.labeledData.loc[(self.labeledData.LID == LID) & (self.labeledData.t == t) & (self.labeledData.X == x) & (self.labeledData.Y == y)]
                     except AttributeError:
                         projectID, videoID, label = '','',self.classes[0]
-                        print(label + '/' + clip.replace('.mp4',''), file = g)
-                        print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
+                        #print(label + '/' + clip.replace('.mp4',''), file = g)
+                        #print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
                     else:
                         if len(subTable) == 0:
                             print('No label for: ' + clipsDirectory + clip)
