@@ -407,9 +407,9 @@ class MachineLearningMaker:
 
             for row in prediction.itertuples():
                 LID, N = row.LID, row.N
-                if LID + '_' + N in trains:
+                if LID + '_' + str(N) in trains:
                     predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Train'
-                if LID + '_' + N in tests:
+                if LID + '_' + str(N) in tests:
                     predictions.loc[predictions.LID == LID,modelID + '_type'] = 'Tests'
 
             predictions.append(prediction)
