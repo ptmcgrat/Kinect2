@@ -319,14 +319,14 @@ class MachineLearningMaker:
                             LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
                         except ValueError:
                             self._print('ClipError: ' + str(clip))
-                            LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
+                            continue
+                            #LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
                         projectID, videoID, label = '','',self.classes[0]
                         print(label + '/' + clip.replace('.mp4',''), file = g)
                         print(clip.replace('.mp4','') + ',Test,' + label + ',' + projectID + ':' + videoID, file = h)
 
             self._print('modelPrediction: GPU:' + str(GPU) + ',,modelID:' + modelID)
-
 
             subprocess.call(['rclone', 'copy', cloudModelDir + 'model.pth', localModelDir])
             assert os.path.exists(localModelDir + 'model.pth')
@@ -460,6 +460,7 @@ class MachineLearningMaker:
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
                     except ValueError:
                         self._print('ClipError: ' + str(clip))
+                        pdb.set_trace()
                         LID,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:4]]
 
                     try:
