@@ -312,6 +312,9 @@ class MachineLearningMaker:
                     clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
                     assert len(clips) != 0
                     for clip in clips:
+                        if clip[0] == '.':
+                            continue #Not sure how these were created but they are errors
+
                         try:
                             LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
                         except IndexError: #MC6_5
@@ -453,6 +456,8 @@ class MachineLearningMaker:
                 clips = [x for x in os.listdir(clipsDirectory) if '.mp4' in x]
                 assert len(clips) != 0
                 for clip in clips:
+                    if clip[0] == '.':
+                        continue #Not sure how these were created but they are errors
                     try:
                         LID,N,t,x,y = [int(x) for x in clip.split('/')[-1].split('.')[0].split('_')[0:5]]
                     except IndexError: #MC6_5
