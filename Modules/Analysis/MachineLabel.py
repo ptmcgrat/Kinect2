@@ -301,7 +301,7 @@ class MachineLearningMaker:
     def predictLabels(self):
 
         processes = []
-        for modelID in modelIDs:
+        for modelID in self.modelIDs:
             cloudModelDir = self.cloudMasterDirectory + modelID + '/'
             localModelDir = self.localMasterDirectory + modelID + '/'
             os.makedirs(localModelDir) if not os.path.exists(localModelDir) else None
