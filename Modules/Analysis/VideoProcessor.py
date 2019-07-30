@@ -85,7 +85,7 @@ class VideoProcessor:
 
         if self.projectID == 'MC16_2':
             self.frame_rate = 25
-        elif self.projectID == 'TI2_4' and (self.baseName != '0001_vid' or self.baseName != '0004_vid' or self.baseName != '0009_vid' or self.baseName != '0010_vid'):
+        elif self.projectID == 'TI2_4' and (self.baseName != '0001_vid' and self.baseName != '0004_vid' and self.baseName != '0009_vid' and self.baseName and '0010_vid'):
             self.frame_rate = 25
         else:
             self.frame_rate = videoObj.framerate
