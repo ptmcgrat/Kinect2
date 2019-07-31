@@ -674,6 +674,7 @@ class VideoProcessor:
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
         self.loadClusterClips(allClips = True, mlClips = False)
+        return self.clusterData
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
@@ -899,6 +900,25 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
+        if self.projectID == 'MC6_5' and self.baseName == '0005_vid':
+            self.loadClusterSummary()
+            self.depthObj.loadSmoothedArray()
+
+            self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            for row in self.clusterData.itertuples(): # Randomly go through the dataframe
+                LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
+                try:
+                    currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
+                except IndexError: # x and y values are outside of depth field of view
+                    currentDepth = np.nan
+                self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
+
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
+
+        return
 
         if self.projectID == 'TI2_4' and self.baseName == '0004_vid':
             return
@@ -916,6 +936,8 @@ class VideoProcessor:
                     clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
                     #print(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
                     subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+
+
 
         return
         delta_xy = 100
