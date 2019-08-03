@@ -463,6 +463,8 @@ class VideoProcessor:
         })
         )
         self._print('Calculating X and Y positions with respect to Kinect coordinate system', log = False)
+        #self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+        #self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
@@ -900,17 +902,19 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
-        if self.projectID == 'MC6_5' and self.baseName == '0005_vid':
+        if self.projectID == self.projectID:
             self.loadClusterSummary()
             self.depthObj.loadSmoothedArray()
 
-            self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
-            self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
             for row in self.clusterData.itertuples(): # Randomly go through the dataframe
                 LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
                 try:
                     currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
                 except IndexError: # x and y values are outside of depth field of view
+                    currentDepth = np.nan
+                if xDepth < 0 or yDepth < 0:
                     currentDepth = np.nan
                 self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
 
