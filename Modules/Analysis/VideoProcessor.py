@@ -676,7 +676,7 @@ class VideoProcessor:
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
         self.loadClusterClips(allClips = True, mlClips = False)
-        return self.clusterData
+        #return self.clusterData
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
