@@ -2,13 +2,11 @@
 # usage: python GetFiles.py Projects Filename [Filename Filename ...] [options]
 # example: python GetFiles.py MethodsData.xlsx Logfile.txt
 #
-# for each project in Projects file,
-# search dropbox folder named project for filename
-# rclone copy file to Temp folder
 # 
 # Options:
 # #-r --run Execute command on each file individually after downloading
 # #-c --cleanup delete all downloaded files at the end of all processes
+# #-i --include only process files with INCLUDE=TRUE in MethodsData
 ##
 
 import argparse, subprocess, os
@@ -20,7 +18,6 @@ parser.add_argument('query', type=str, nargs="+", help='Name of files to downloa
 parser.add_argument('-c', '--cleanup', action="store_true", help="delete downloaded files at the end (for use with -r)")
 parser.add_argument('-r', '--run', nargs="*", help="run a command on each downloaded. Uses same file order")
 parser.add_argument('-i', '--include', action="store_true", help="only donwload INCLUDE=TRUE files")
-parser.add_argument('-u',)
 args = parser.parse_args()
 
 cloudMasterDirectory = 'cichlidVideo:BioSci-McGrath/Apps/CichlidPiData/'
