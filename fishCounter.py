@@ -31,11 +31,11 @@ def prepareData():
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.ToTensor(),
-    transforms.Normalize([65,65,65],[65,65,65])]),
+    transforms.Normalize([0.25,0.25,0.25],[0.25,0.25,0.25])]),
     'val': transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize([65,65,65],[65,65,65])])
+    transforms.Normalize([0.25,0.25,0.25],[0.25,0.25,0.25])])
     }
 
     image_data = {}
