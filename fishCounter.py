@@ -68,13 +68,14 @@ def createModel(args):
     return model_ft
 
 def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_epochs=100):
-
+    
+    pdb.set_trace()
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
-    pdb.set_trace()
+    
     for e in range(num_epochs):
         print('Epoch {}/{}'.format(e, num_epochs - 1))
         print('-' * 10)
@@ -161,7 +162,6 @@ if args.gpu is None:
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
-pdb.set_trace()
 model = model.to(device)
 
 # Set criterion:
