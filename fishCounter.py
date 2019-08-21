@@ -16,7 +16,6 @@ class CountingDataset(Dataset):
        
         with open(self.data_list[index], 'rb') as f:
             img = Image.open(f).convert('RGB')
-            pdb.set_trace()
 
         return self.transforms(img), self.data_dict[self.data_list[index]]
 
@@ -32,11 +31,11 @@ def prepareData():
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.ToTensor(),
-    transforms.Normalize([100,100,100],[0.5,0.5,0.5])]),
+    transforms.Normalize([65,65,65],[65,65,65])]),
     'val': transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize([100,100,100],[0.5,0.5,0.5])])
+    transforms.Normalize([65,65,65],[65,65,65])])
     }
 
     image_data = {}
