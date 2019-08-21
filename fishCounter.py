@@ -52,7 +52,7 @@ def prepareData():
                         else:
                             image_data['train']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
 
-    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x]), batch_size=4, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x], transforms = data_transforms[x]), batch_size=4, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
     return dataloaders
 
 def createModel(args):
