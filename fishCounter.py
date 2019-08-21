@@ -106,6 +106,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     #output = outputs[:, -1] ###only use for L1 or MSELoss
+                    pdb.set_trace()
                     loss = criterion(outputs, labels) #should be labels.float() for L1 or MSELoss
                     #backward pass / optimization only in training
                     if phase == 'train':
