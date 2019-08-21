@@ -52,7 +52,7 @@ def prepareData():
                         else:
                             image_data['train']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
 
-    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x], transforms = data_transforms[x]), batch_size=4, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x], transforms = data_transforms[x]), batch_size=24, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
     return dataloaders
 
 def createModel(args):
@@ -104,12 +104,13 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                 #track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
 
                     if type(criterion) == torch.nn.modules.CrossEntropyLoss:
                         loss = criterion(outputs, labels)
+                        _, preds = torch.max(outputs, 1)
                     else:
                         loss = criterion(outputs[:,-1], labels.float())
+                        preds = outputs.int()
 
                     if phase == 'train':
                         loss.backward()
