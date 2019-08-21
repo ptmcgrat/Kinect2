@@ -14,7 +14,7 @@ class CountingDataset(Dataset):
 
     def __getitem__(self, index):
        
-        with open(self.data_list[i], 'rb') as f:
+        with open(self.data_list[index], 'rb') as f:
             img = Image.open(f).convert('RGB')
 
         return self.transforms(img), self.data_dict[self.data_list[index]]
@@ -61,9 +61,9 @@ def createModel(args):
         for param in model_ft.parameters():
             param.requires_grad = False
     if args.LossFunction == 'CE':
-        model_ft.fc = nn.Linear(num_ftrs, 1)
-    else:
         model_ft.fc = nn.Linear(num_ftrs, 6)
+    else:
+        model_ft.fc = nn.Linear(num_ftrs, 1)
     return model_ft
 
 parser = argparse.ArgumentParser()
@@ -93,11 +93,12 @@ if args.LossFunction == 'L1':
     criterion = nn.L1Loss()
 elif args.LossFunction == 'L2':
     criterion = nn.MSELoss()
-else:
+elif args.LossFunction == 'CE':
     cweights = [0.6035, 0.6137, 0.8485, 0.9499, 0.9851, 1] #class weights for samples 3942:3841:1506:498:148:8
     class_weights = torch.FloatTensor(cweights).to(device)
     criterion = nn.CrossEntropyLoss(weight = class_weights)
-
+else:
+    raise Exception('Not sure how to handle ' + args.LossFunction)
 # Set Optimizers:
 #optimizer_ft = torch.optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.0001)
