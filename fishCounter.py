@@ -152,7 +152,7 @@ dataLoaders = prepareData()
 
 # Create model
 model = createModel(args)
-
+model = model.to(device)
 # Identify GPU device to run code on
 if args.gpu is None:
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
