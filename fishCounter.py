@@ -52,7 +52,7 @@ def prepareData():
                         else:
                             image_data['train']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
 
-    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x], transforms = data_transforms[x]), batch_size=96, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(CountingDataset(image_data[x], transforms = data_transforms[x]), batch_size=48, shuffle=True, num_workers=4, sampler=None) for x in ['train', 'val']}
     return dataloaders
 
 def createModel(args):
@@ -179,6 +179,6 @@ else:
 optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.0001)
 
 # Decay LR by a factor of 0.1 every 7 epoch_loss
-exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
+exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.001)
 
 model = trainModel(dataLoaders, model, criterion, optimizer_ft, exp_lr_scheduler, device, num_epochs=100)
