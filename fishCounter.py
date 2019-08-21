@@ -67,7 +67,7 @@ def createModel(args):
         model_ft.fc = nn.Linear(num_ftrs, 1)
     return model_ft
 
-def trainModel(dataloaders, model, criterion, optimizer, scheduler, num_epochs=100):
+def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_epochs=100):
 
     since = time.time()
 
@@ -103,11 +103,12 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, num_epochs=1
                 #forward pass
                 #track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
+                    pdb.set_trace()
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     #output = outputs[:, -1] ###only use for L1 or MSELoss
                     loss = criterion(outputs, labels) #should be labels.float() for L1 or MSELoss
-
+                    pdb.set_
                     #backward pass / optimization only in training
                     if phase == 'train':
                         loss.backward()
@@ -178,4 +179,4 @@ optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.0001)
 # Decay LR by a factor of 0.1 every 7 epoch_loss
 exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-model = trainModel(dataLoaders, model, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=100)
+model = trainModel(dataLoaders, model, criterion, optimizer_ft, exp_lr_scheduler, device, num_epochs=100)
