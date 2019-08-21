@@ -103,12 +103,10 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                 #forward pass
                 #track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    pdb.set_trace()
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     #output = outputs[:, -1] ###only use for L1 or MSELoss
                     loss = criterion(outputs, labels) #should be labels.float() for L1 or MSELoss
-                    pdb.set_
                     #backward pass / optimization only in training
                     if phase == 'train':
                         loss.backward()
