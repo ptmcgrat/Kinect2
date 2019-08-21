@@ -46,7 +46,7 @@ def prepareData():
         for video in [x for x in os.listdir('CountingData/' + project) if x[0] != '.']:
             for label in [x for x in os.listdir('CountingData/' + project + '/' + video) if x[0] != '.']:
                 if label != 'p':
-                    for videofile in [x for x in os.listdir('CountingData/' + project + '/' + video + '/' + label) if x[0] != '.']:
+                    for videofile in [x for x in os.listdir('CountingData/' + project + '/' + video + '/' + label) if x[-3:] != 'jpg']:
                         if random.randint(0,4) == 0:
                             image_data['val']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
                         else:
