@@ -1,5 +1,6 @@
 import argparse, subprocess, os, random
 from torch.utils.data import Dataset, DataLoader
+from torchvision import models, transforms
 from PIL import Image
 
 class CountingDataset(Dataset):
