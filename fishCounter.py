@@ -1,4 +1,4 @@
-import argparse, subprocess, os, random, torch
+import argparse, subprocess, os, random, torch, pdb
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 import torch.nn as nn
@@ -16,6 +16,7 @@ class CountingDataset(Dataset):
        
         with open(self.data_list[index], 'rb') as f:
             img = Image.open(f).convert('RGB')
+            pdb.set_trace()
 
         return self.transforms(img), self.data_dict[self.data_list[index]]
 
