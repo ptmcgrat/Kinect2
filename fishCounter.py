@@ -60,5 +60,6 @@ for project in [x for x in os.listdir('CountingData/') if x[0] != '.']:
                 for videofile in [x for x in os.listdir('CountingData/' + project + '/' + video + '/' + label) if x[0] != '.']:
                     if random.randint(0,4) == '0':
                         image_data['val']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
-
+                    else:
+                        image_data['train']['CountingData/' + project + '/' + video + '/' + label + '/' + videofile] = int(label)
 
