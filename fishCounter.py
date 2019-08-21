@@ -105,10 +105,12 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
-                    #output = outputs[:, -1] ###only use for L1 or MSELoss
-                    pdb.set_trace()
-                    loss = criterion(outputs, labels) #should be labels.float() for L1 or MSELoss
-                    #backward pass / optimization only in training
+
+                    if type(criterion) == torch.nn.modules.CrossEntropyLoss:
+                        loss = criterion(outputs, labels)
+                    else:
+                        loss = criterion(outputs[:,-1], labels.float())
+
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
@@ -118,8 +120,8 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                 running_corrects += torch.sum(preds == labels.data)
 
 
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects.double() / dataset_sizes[phase]
+            epoch_loss = running_loss / len(dataloaders[phase])
+            epoch_acc = running_corrects.double() / len(dataloaders[phase])
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
