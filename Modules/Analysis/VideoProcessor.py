@@ -579,11 +579,19 @@ class VideoProcessor:
             print(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'])
             subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
-    def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
+    def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number, initials):
+
+        if initials is None:
+            initials = ''
+        else:
+            initials = '_' + initials
 
         self._print('ManualLabelCreation: ClustersRequested: ' + str(number))
         self.loadClusterSummary()
         self.loadClusterClips(allClips = False, mlClips = True)
+
+        if initials != '' and 'MLabel' + initials not in self.clusterData:
+            self.clusterData['MLabel' + initials] = ''
 
         if 'MLabeler' not in self.clusterData:
             self.clusterData['MLabeler'] = ''
@@ -613,7 +621,7 @@ class VideoProcessor:
 
             # If already labeled and rewrite = False, then skip
             if not rewrite:
-                label = self.clusterData.loc[self.clusterData.LID == clusterID].ManualLabel.values[0]
+                label = self.clusterData.loc[self.clusterData.LID == clusterID]['ManualLabel' + initials].values[0]
                 if label == label:
                     # is not np.nan
                     if label in ''.join(categories):
@@ -643,16 +651,23 @@ class VideoProcessor:
             if info == ord('k'):
                 continue #skip
 
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
+            if initials == '':
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
+            else:
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel' + initials] = chr(info)
+
             self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
 
-            newClips.append(f.replace('_ManualLabel',''))
+            if initials == '':
+                newClips.append(f.replace('_ManualLabel',''))
+                print(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+                subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+    
             annotatedClips += 1
 
-            print(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-            subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+    
             if number is not None and annotatedClips > number:
                 break
 
@@ -661,14 +676,15 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-        subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
-        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
-        tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
+        if initials == '':
+            subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
+            tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
+            tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
         
-        tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
+            tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
 
-        tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
+            tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
 

@@ -79,6 +79,7 @@ MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command a
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 MlabelParser.add_argument('-n', '--Number', type = int, help = 'Number of clips for each video you would like to annotate')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
+MlabelParser.add_argument('-i', '--Initials', type = str, help = 'Add your initials if you want to make a separate label')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
 MlabelParser = subparsers.add_parser('CountFish', help='This command allows a user to manually label videos')
@@ -154,7 +155,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(inputData.manPredData)
         for projectID, videos in inputData.manPredData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, args.Number)
+                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, args.Number, args.Initials)
                 da_obj.cleanup()
 
     elif args.command == 'CountFish':

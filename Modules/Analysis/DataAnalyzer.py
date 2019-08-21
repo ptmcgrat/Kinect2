@@ -125,13 +125,13 @@ class DataAnalyzer:
         # Create Video objects (low overhead even if video is not processed)
     
             
-    def labelVideos(self, index, mainDT, cloudMLDirectory, number):
+    def labelVideos(self, index, mainDT, cloudMLDirectory, number, initials):
         self._loadRegistration()
 
         # Create Video objects (low overhead even if video is not processed)            
         for x in index:
             vo = VP(self.projectID, self.lp.movies[x-1], self.localMasterDirectory, self.cloudMasterDirectory, self.transM, self.depthObj)
-            vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory, number)
+            vo.labelClusters(self.rewriteFlag, mainDT, cloudMLDirectory, number, initials)
 
     def countFish(self, index, cloudCountDirectory):
         self._loadVideoCrop()
