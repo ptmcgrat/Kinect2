@@ -1,6 +1,7 @@
 import argparse, subprocess, os, random, torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
+import torch.nn as nn
 from PIL import Image
 
 class CountingDataset(Dataset):
@@ -75,13 +76,31 @@ args = parser.parse_args()
 # Download data
 subprocess.call(['rclone', 'copy', 'cichlidVideo:McGrath/Apps/CichlidPiData/__Counting/', 'CountingData'])
 
+# Prepare data to create training sets
 trainDataset, valDataset = prepareData()
 
+# Create model
 model = createModel(args)
 
+# Identify GPU device to run code on
 if args.gpu is None:
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
 
+# Set criterion:
+if args.LossFunction == 'L1':
+    criterion = nn.L1Loss()
+elif args.LossFunction == 'L2':
+    criterion = nn.MSELoss()
+else:
+    cweights = [0.6035, 0.6137, 0.8485, 0.9499, 0.9851, 1] #class weights for samples 3942:3841:1506:498:148:8
+    class_weights = torch.FloatTensor(cweights).to(device)
+    criterion = nn.CrossEntropyLoss(weight = class_weights)
 
+# Set Optimizers:
+#optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
+optimizer_ft = optim.Adam(model_ft.parameters(), lr=0.0001)
+
+# Decay LR by a factor of 0.1 every 7 epoch_loss
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
