@@ -1,4 +1,4 @@
-import argparse, subprocess, os, random
+import argparse, subprocess, os, random, torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
@@ -37,6 +37,10 @@ def prepareData():
     transforms.Normalize([100,100,100],[0.5,0.5,0.5])])
     }
 
+    image_data = {}
+    image_data['val'] = {}
+    image_data['train'] = {}
+    
     for project in [x for x in os.listdir('CountingData/') if x[0] != '.']:
         for video in [x for x in os.listdir('CountingData/' + project) if x[0] != '.']:
             for label in [x for x in os.listdir('CountingData/' + project + '/' + video) if x[0] != '.']:
@@ -49,6 +53,18 @@ def prepareData():
 
     return CountingDataset(image_data['train'], data_transforms['train']), CountingDataset(image_data['val'], data_transforms['val']),
 
+def createModel(args):
+    model_ft = models.resnet50(pretrained=True)
+    num_ftrs = model_ft.fc.in_features
+    if not args.unfreeze:
+        for param in model_ft.parameters():
+            param.requires_grad = False
+    if args.LossFunction == 'CE':
+        model_ft.fc = nn.Linear(num_ftrs, 1)
+    else:
+        model_ft.fc = nn.Linear(num_ftrs, 6)
+    return model_ft
+
 parser = argparse.ArgumentParser()
 parser.add_argument('LossFunction', type = str, choices=['L1','L2','CE'], help = 'Loss functions L1, L2, or cross entropy')
 parser.add_argument('-u', '--unfreeze', action = 'store_true', help = 'Use if you want to fit all parameters')
@@ -60,4 +76,12 @@ args = parser.parse_args()
 subprocess.call(['rclone', 'copy', 'cichlidVideo:McGrath/Apps/CichlidPiData/__Counting/', 'CountingData'])
 
 trainDataset, valDataset = prepareData()
+
+model = createModel()
+
+if args.gpu is None:
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+else:
+    device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
+
 
