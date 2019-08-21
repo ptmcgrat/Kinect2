@@ -40,7 +40,7 @@ def prepareData():
     image_data = {}
     image_data['val'] = {}
     image_data['train'] = {}
-    
+
     for project in [x for x in os.listdir('CountingData/') if x[0] != '.']:
         for video in [x for x in os.listdir('CountingData/' + project) if x[0] != '.']:
             for label in [x for x in os.listdir('CountingData/' + project + '/' + video) if x[0] != '.']:
@@ -77,7 +77,7 @@ subprocess.call(['rclone', 'copy', 'cichlidVideo:McGrath/Apps/CichlidPiData/__Co
 
 trainDataset, valDataset = prepareData()
 
-model = createModel()
+model = createModel(args)
 
 if args.gpu is None:
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
