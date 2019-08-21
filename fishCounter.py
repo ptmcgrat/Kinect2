@@ -110,6 +110,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
                         _, preds = torch.max(outputs, 1)
                     else:
                         loss = criterion(outputs[:,-1], labels.float())
+                        pdb.set_trace()
                         preds = outputs.int()
 
                     if phase == 'train':
