@@ -69,10 +69,9 @@ def createModel(args):
 
 def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_epochs=100):
     
-    pdb.set_trace()
     since = time.time()
 
-    best_model_wts = copy.deepcopy(model.state_dict())
+    #best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
     
@@ -130,7 +129,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
             #deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
+                #best_model_wts = copy.deepcopy(model.state_dict())
 
         print() #empty line
 
@@ -138,7 +137,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best val accuracy: {:.4f}'.format(best_acc))
 
-    model.load_state_dict(best_model_wts)
+    #model.load_state_dict(best_model_wts)
 
     return model
 
