@@ -74,6 +74,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
+    pdb.set_trace()
     for e in range(num_epochs):
         print('Epoch {}/{}'.format(e, num_epochs - 1))
         print('-' * 10)
@@ -91,7 +92,6 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
 
             #iterate over data
             for inputs, labels in dataloaders[phase]:
-
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
