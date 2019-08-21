@@ -152,12 +152,13 @@ dataLoaders = prepareData()
 
 # Create model
 model = createModel(args)
-model = model.to(device)
 # Identify GPU device to run code on
 if args.gpu is None:
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
+
+model = model.to(device)
 
 # Set criterion:
 if args.LossFunction == 'L1':
