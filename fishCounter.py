@@ -97,6 +97,8 @@ class FishCounter:
         if depth == '50':
             model = models.resnet50(pretrained=True)
    
+        num_ftrs = model.fc.in_features
+
         if lastLayerFlag:
             for param in model.parameters():
                 param.requires_grad = False
