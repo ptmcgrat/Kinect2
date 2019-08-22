@@ -82,7 +82,7 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
         #training/validation
         for phase in ['train', 'val']:
             if phase == 'train':
-                scheduler.step()
+                #scheduler.step()
                 model.train() #set model to training mode
             else:
                 model.eval() #set model to evaluation mode
@@ -141,6 +141,16 @@ def trainModel(dataloaders, model, criterion, optimizer, scheduler, device, num_
 
     return model
 
+class FishCounter:
+    def __init__(self, lossFunction, unfreezeFlag, gpu):
+        self.args = args
+
+        self.prepareData()
+        
+        self.createModel()
+
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('LossFunction', type = str, choices=['L1','L2','CE'], help = 'Loss functions L1, L2, or cross entropy')
 parser.add_argument('-u', '--unfreeze', action = 'store_true', help = 'Use if you want to fit all parameters')
@@ -176,9 +186,9 @@ else:
     raise Exception('Not sure how to handle ' + args.LossFunction)
 # Set Optimizers:
 #optimizer_ft = torch.optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
-optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.0001)
+optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Decay LR by a factor of 0.1 every 7 epoch_loss
-exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.001)
+#exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model = trainModel(dataLoaders, model, criterion, optimizer_ft, exp_lr_scheduler, device, num_epochs=100)
