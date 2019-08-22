@@ -26,7 +26,7 @@ class CountingDataset(Dataset):
 class FishCounter:
     def __init__(self, dataLoader, lossFunction, modelDepth, lastLayerFlag, optimizer, device=2, lr = 0.001):
 
-        self.device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:" + str(device) if torch.cuda.is_available() else "cpu")
 
         self.prepareData(dataLoader)
         self.createModel(lossFunction, modelDepth, lastLayerFlag)
@@ -217,3 +217,4 @@ parser = argparse.ArgumentParser()
 
 args = parser.parse_args()
 
+fc = FishCounter('Normal', 'L1', '50', True, 'adam', 0, 0.001)
