@@ -141,7 +141,7 @@ class FishCounter:
     def trainModel(self, num_epochs = 100):
     
         since = time.time()
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
         #best_model_wts = copy.deepcopy(model.state_dict())
         best_acc = 0.0
     
@@ -157,48 +157,48 @@ class FishCounter:
                 else:
                     self.model.eval() #set model to evaluation mode
 
-            running_loss,running_corrects = 0.0,0
+                running_loss,running_corrects = 0.0,0
 
-            #iterate over data
-            for inputs, labels in self.dataloaders[phase]:
-                inputs = inputs.to(self.device)
-                labels = labels.to(self.device)
+                #iterate over data
+                for inputs, labels in self.dataloaders[phase]:
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device)
 
-                #pdb.set_trace()
+                    #pdb.set_trace()
 
-                #zero parameter gradients
-                self.optimizer.zero_grad()
+                    #zero parameter gradients
+                    self.optimizer.zero_grad()
 
-                #forward pass
-                #track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = self.model(inputs)
+                    # forward pass
+                    #track history if only in train
+                    with torch.set_grad_enabled(phase == 'train'):
+                        outputs = self.model(inputs)
 
-                    if type(self.criterion) == torch.nn.modules.CrossEntropyLoss:
-                        loss = self.criterion(outputs, labels)
-                        _, preds = torch.max(outputs, 1)
-                    else:
-                        loss = self.criterion(outputs[:,-1], labels.float())
-                        preds = outputs.int()[:,-1].type(torch.int64)
+                        if type(self.criterion) == torch.nn.modules.CrossEntropyLoss:
+                            loss = self.criterion(outputs, labels)
+                            _, preds = torch.max(outputs, 1)
+                        else:
+                            loss = self.criterion(outputs[:,-1], labels.float())
+                            preds = outputs.int()[:,-1].type(torch.int64)
 
-                    if phase == 'train':
-                        loss.backward()
-                        self.optimizer.step()
+                        if phase == 'train':
+                            loss.backward()
+                            self.optimizer.step()
 
-                #stats
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                    #stats
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += torch.sum(preds == labels.data)
 
 
-            epoch_loss = running_loss / len(dataloaders[phase])
-            epoch_acc = running_corrects.double() / len(dataloaders[phase])
+                epoch_loss = running_loss / len(dataloaders[phase])
+                epoch_acc = running_corrects.double() / len(dataloaders[phase])
 
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+                print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
-            #deep copy the model
-            if phase == 'val' and epoch_acc > best_acc:
-                best_acc = epoch_acc
-                #best_model_wts = copy.deepcopy(model.state_dict())
+                #deep copy the model
+                if phase == 'val' and epoch_acc > best_acc:
+                    best_acc = epoch_acc
+                    #best_model_wts = copy.deepcopy(model.state_dict())
 
         print() #empty line
 
