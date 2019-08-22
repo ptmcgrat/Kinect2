@@ -151,7 +151,7 @@ class FishCounter:
             #training/validation
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    self.scheduler.step()
+                    self.lr_scheduler.step()
                     self.model.train() #set model to training mode
                 else:
                     self.model.eval() #set model to evaluation mode
@@ -201,11 +201,11 @@ class FishCounter:
 
         print() #empty line
 
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val accuracy: {:.4f}'.format(best_acc))
+        time_elapsed = time.time() - since
+        print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+        print('Best val accuracy: {:.4f}'.format(best_acc))
 
-    #model.load_state_dict(best_model_wts)
+        #model.load_state_dict(best_model_wts)
 
 
 
