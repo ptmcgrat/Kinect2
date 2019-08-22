@@ -101,7 +101,7 @@ class FishCounter:
             for param in model.parameters():
                 param.requires_grad = False
 
-        if args.LossFunction == 'CE':
+        if command == 'CE':
             model.fc = nn.Linear(num_ftrs, 6)
         else:
             model.fc = nn.Linear(num_ftrs, 1)
