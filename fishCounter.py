@@ -33,7 +33,6 @@ class FishCounter:
         self.createCriterion(lossFunction)
         self.setOptimizer(optimizer, lr)
         
-        self.device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
         
     def prepareData(self, command):
         commands = ['Normal']
