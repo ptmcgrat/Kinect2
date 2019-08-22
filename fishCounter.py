@@ -189,6 +189,6 @@ else:
 optimizer_ft = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Decay LR by a factor of 0.1 every 7 epoch_loss
-#exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
+exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model = trainModel(dataLoaders, model, criterion, optimizer_ft, exp_lr_scheduler, device, num_epochs=100)
