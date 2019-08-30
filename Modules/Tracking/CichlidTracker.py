@@ -102,6 +102,12 @@ class CichlidTracker:
             self._reinstructError(command + ' is not a valid command. Options are ' + str(self.commands))
             
         if command == 'Stop':
+            
+            if self.piCamera:
+                if self.camera.recording:
+                    self.camera.stop_recording()
+                    self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',,File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
+                    
             try:
                 if self.device == 'kinect2':
                     self.K2device.stop()
@@ -110,14 +116,11 @@ class CichlidTracker:
                     freenect.shutdown(self.a)
             except:
                 self._print('ErrorStopping kinect')
-            if self.piCamera:
-                if self.camera.recording:
-                    self.camera.stop_recording()
-                    self._print('PiCameraStopped: Time: ' + str(datetime.datetime.now()) + ',,File: Videos/' + str(self.videoCounter).zfill(4) + "_vid.h264")
-                    command = ['python3', 'Modules/processVideo.py', self.videoDirectory + str(self.videoCounter).zfill(4) + '_vid.h264']
-                    command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
-                    self._print(command)
-                    self.processes.append(subprocess.Popen(command))
+                
+            command = ['python3', 'Modules/processVideo.py', self.videoDirectory + str(self.videoCounter).zfill(4) + '_vid.h264']
+            command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
+            self._print(command)
+            self.processes.append(subprocess.Popen(command))
 
             self._closeFiles()
 
@@ -662,6 +665,16 @@ class CichlidTracker:
         for p in self.processes:
             p.communicate()
         
+        for movieFile in os.listdir(self.videoDirectory):
+            if '.h264' in movieFile:
+                command = ['python3', 'Modules/processVideo.py', movieFile]
+                command += [self.loggerFile, self.projectDirectory, self.cloudVideoDirectory]
+                self._print(command)
+                self.processes.append(subprocess.Popen(command))
+
+        for p in self.processes:
+            p.communicate()
+
         self._modifyPiGS(status = 'Finishing upload of frames and backgrounds')
 
         # Move files around as appropriate
@@ -680,26 +693,49 @@ class CichlidTracker:
 
 
         subprocess.call(['cp', self.projectDirectory + depthObj.pic_file, prepDirectory + 'DepthRGB.jpg'])
+
+        if not os.path.isdir(self.frameDirectory):
+            self._modifyPiGS(status = 'Error: ' + self.frameDirectory + ' does not exist.')
+            return
+
+        if not os.path.isdir(self.backgroundDirectory):
+            self._modifyPiGS(status = 'Error: ' + self.backgroundDirectory + ' does not exist.')
+            return
+
+
         subprocess.call(['cp', self.frameDirectory + 'Frame_000001.npy', prepDirectory + 'FirstDepth.npy'])
         subprocess.call(['cp', self.frameDirectory + 'Frame_' + str(self.frameCounter-1).zfill(6) + '.npy', prepDirectory + 'LastDepth.npy'])
         subprocess.call(['tar', '-cvf', self.projectDirectory + 'Frames.tar', '-C', self.projectDirectory, 'Frames'])
         subprocess.call(['tar', '-cvf', self.projectDirectory + 'Backgrounds.tar', '-C', self.projectDirectory, 'Backgrounds'])
 
-        shutil.rmtree(self.frameDirectory) if os.path.exists(self.frameDirectory) else None
-        shutil.rmtree(self.backgroundDirectory) if os.path.exists(self.backgroundDirectory) else None
+        #shutil.rmtree(self.frameDirectory) if os.path.exists(self.frameDirectory) else None
+        #shutil.rmtree(self.backgroundDirectory) if os.path.exists(self.backgroundDirectory) else None
         
         #        subprocess.call(['python3', '/home/pi/Kinect2/Modules/UploadData.py', self.projectDirectory, self.projectID])
         print(['rclone', 'copy', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'])
-        subprocess.call(['rclone', 'copy', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'Frames.tar', self.cloudMasterDirectory + self.projectID + '/'])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'Backgrounds.tar', self.cloudMasterDirectory + self.projectID + '/'])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'PrepFiles/', self.cloudMasterDirectory + self.projectID + '/PrepFiles/'])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'Videos/', self.cloudMasterDirectory + self.projectID + '/Videos/'])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'Logfile.txt/', self.cloudMasterDirectory + self.projectID])
+        subprocess.call(['rclone', 'copy', self.projectDirectory + 'ProcessLog.txt/', self.cloudMasterDirectory + self.projectID])
+
         
         try:
+            self._modifyPiGS(status = 'Checking upload to see if it worked')
             """
             The 'rclone check' command checks for differences between the hashes of both
             source and destination files, after the files have been uploaded. If the
             check fails, the program returns non-zero exit status and the error is stored
             in CalledProcessError class of the subprocess module.
             """
-            subprocess.run(['rclone', 'check', self.projectDirectory, self.cloudMasterDirectory + self.projectID + '/'], check=True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'Frames.tar', self.cloudMasterDirectory + self.projectID + '/'], check = True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'Backgrounds.tar', self.cloudMasterDirectory + self.projectID + '/'], check = True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'PrepFiles/', self.cloudMasterDirectory + self.projectID + '/PrepFiles/'], check = True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'Videos/', self.cloudMasterDirectory + self.projectID + '/Videos/'], check = True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'Logfile.txt/', self.cloudMasterDirectory + self.projectID], check = True)
+            subprocess.run(['rclone', 'check', self.projectDirectory + 'ProcessLog.txt/', self.cloudMasterDirectory + self.projectID], check = True)
+
             self._modifyPiGS(status = 'UploadSuccessful, ready for delete')
         except subprocess.CalledProcessError:
             self._modifyPiGS(status = 'UploadFailed, Need to rerun')
