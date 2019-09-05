@@ -33,7 +33,10 @@ def createClip(row, videofile, outputDirectory, frame_rate, delta_xy, delta_t):
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_rate*(t) - delta_t))
     for i in range(delta_t*2):
         ret, frame = cap.read()
-        outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+        if ret:
+            outAll.write(frame[x-delta_xy:x+delta_xy, y-delta_xy:y+delta_xy])
+        else:
+            print('VideoError: BadFrame for ' + LID)
     outAll.release()
     # return mean and std
     return True
@@ -82,7 +85,7 @@ class VideoProcessor:
 
         if self.projectID == 'MC16_2':
             self.frame_rate = 25
-        elif self.projectID == 'TI2_4' and self.baseName != '0004_vid':
+        elif self.projectID == 'TI2_4' and (self.baseName != '0001_vid' and self.baseName != '0004_vid' and self.baseName != '0009_vid' and self.baseName and '0010_vid'):
             self.frame_rate = 25
         else:
             self.frame_rate = videoObj.framerate
@@ -276,6 +279,9 @@ class VideoProcessor:
             self.clusterData
         except AttributeError:
             #if not os.path.isfile(self.localClusterDirectory + self.clusterFile):
+            if os.path.isfile(self.localClusterDirectory + self.clusterFile):
+                #Make backup
+                subprocess.call(['cp', self.localClusterDirectory + self.clusterFile, self.localClusterDirectory + self.clusterFile + '~'])
             print(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory])
             subprocess.call(['rclone', 'copy', self.cloudClusterDirectory + self.clusterFile, self.localClusterDirectory], stderr = self.fnull)
                 
@@ -457,6 +463,8 @@ class VideoProcessor:
         })
         )
         self._print('Calculating X and Y positions with respect to Kinect coordinate system', log = False)
+        #self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+        #self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['Y_depth'] = clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['X_depth'] = clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
         clusterData['TimeStamp'] = clusterData.apply(lambda row: (self.startTime + datetime.timedelta(seconds = int(row.t))), axis=1)
@@ -564,18 +572,26 @@ class VideoProcessor:
     def loadClusterClips(self, allClips = True, mlClips = False):
         if allClips:
             subprocess.call(['rclone', 'copy', self.cloudAllClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
-            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
+            subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localAllClipsDirectory[:-1] + '.tar'], stdout = self.fnull, stderr = self.fnull)
         if mlClips:
             print(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory])
             subprocess.call(['rclone', 'copy', self.cloudManualLabelClipsDirectory, self.localClusterDirectory], stderr = self.fnull)
             print(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'])
             subprocess.call(['tar', '-C', self.localClusterDirectory, '-xvf', self.localManualLabelClipsDirectory[:-1] + '.tar'], stderr = self.fnull)
 
-    def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number):
+    def labelClusters(self, rewrite, mainDT, cloudMLDirectory, number, initials):
+
+        if initials is None:
+            initials = ''
+        else:
+            initials = '_' + initials
 
         self._print('ManualLabelCreation: ClustersRequested: ' + str(number))
         self.loadClusterSummary()
         self.loadClusterClips(allClips = False, mlClips = True)
+
+        if initials != '' and 'MLabel' + initials not in self.clusterData:
+            self.clusterData['MLabel' + initials] = ''
 
         if 'MLabeler' not in self.clusterData:
             self.clusterData['MLabeler'] = ''
@@ -605,7 +621,7 @@ class VideoProcessor:
 
             # If already labeled and rewrite = False, then skip
             if not rewrite:
-                label = self.clusterData.loc[self.clusterData.LID == clusterID].ManualLabel.values[0]
+                label = self.clusterData.loc[self.clusterData.LID == clusterID]['ManualLabel' + initials].values[0]
                 if label == label:
                     # is not np.nan
                     if label in ''.join(categories):
@@ -635,16 +651,23 @@ class VideoProcessor:
             if info == ord('k'):
                 continue #skip
 
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
-            self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
+            if initials == '':
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel'] = chr(info)
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabeler'] = socket.gethostname()
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'MLabelTime'] = str(datetime.datetime.now())
+            else:
+                self.clusterData.loc[self.clusterData.LID == clusterID, 'ManualLabel' + initials] = chr(info)
+
             self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
 
-            newClips.append(f.replace('_ManualLabel',''))
+            if initials == '':
+                newClips.append(f.replace('_ManualLabel',''))
+                print(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
+                subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+    
             annotatedClips += 1
 
-            print(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
-            subprocess.Popen(['rclone', 'copy', self.localManualLabelClipsDirectory + f.replace('_ManualLabel',''), cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+    
             if number is not None and annotatedClips > number:
                 break
 
@@ -653,30 +676,39 @@ class VideoProcessor:
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
         subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
 
-        subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
-        tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
-        tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
+        if initials == '':
+            subprocess.call(['rclone', 'copy', cloudMLDirectory + mainDT, self.localClusterDirectory], stderr = self.fnull)
+            tempData = pd.read_csv(self.localClusterDirectory + mainDT, sep = ',', header = 0, index_col = 0)
+            tempData2 = pd.concat([tempData, self.clusterData[self.clusterData.ManualLabel != ''].dropna(subset=['ManualLabel'])], sort = False)
         
-        tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
+            tempData2.drop_duplicates(subset=['projectID', 'videoID', 'LID'], inplace=True, keep='last')
 
-        tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
-        subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
+            tempData2.to_csv(self.localClusterDirectory + mainDT, sep = ',')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + mainDT, cloudMLDirectory], stderr = self.fnull)
 
         self._print('ManualLabelCreation: ClustersLabeled: ' + str(annotatedClips))
 
-    def predictLabels(self, modelLocation, modelIDs):
+    def predictLabels(self, modelLocation, modelIDs, classIndFile, GPU):
         from Modules.Analysis.MachineLabel import MachineLearningMaker as MLM
         self.loadClusterSummary()
-        return self.clusterData
+        self.loadClusterClips(allClips = True, mlClips = False)
+        #return self.clusterData
         print('Creating model object')
         #subprocess.call(['rclone', 'copy', modelLocation + 'classInd.txt', self.localVideoDirectory], stderr = self.fnull)
         #subprocess.call(['rclone', 'copy', modelLocation + 'model.pth', self.localVideoDirectory], stderr = self.fnull)
-        
-        MLobj = MLM('', [''], self.localVideoDirectory, modelLocation, self.cloudAllClipsDirectory, labeledClusterFile = None, classIndFile = None)
+
+        if GPU is None:
+            GPU = 0
+
+        MLobj = MLM(modelIDs, self.localVideoDirectory, modelLocation, [self.localAllClipsDirectory], classIndFile)
         MLobj.prepareData()
-        labels = MLobj.predictLabels(modelIDs)
+        labels = MLobj.predictLabels(GPU)
 
         for label in labels:
+            for c in label.columns:
+                if 'model' in c:
+                    if c in self.clusterData.columns:
+                        del self.clusterData[c]
             self.clusterData = pd.merge(self.clusterData, label, on = ['LID', 'N'], how = 'left')
         
         self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
@@ -693,10 +725,12 @@ class VideoProcessor:
 
         subprocess.call(['rclone', 'copy', self.localVideoDirectory + 'VideoAnalysisLog.txt', self.cloudVideoDirectory])
          
-    def countFish(self, rewrite, cloudCountDirectory, nFrames = 500):
+    def countFish(self, rewrite, cloudCountDirectory, videoCrop, nFrames = 500):
+
+        self.videoCrop = videoCrop
         print(cloudCountDirectory)
         self.loadVideo()
-        categories = list(range(0,10))
+        categories = list(range(0,10)) + ['p', 'q']
         frames = set()
         counts = defaultdict(int)
         total = 0
@@ -714,13 +748,13 @@ class VideoProcessor:
                 continue
             frames.add(frame)
             #pic = self._retFrame(frame, noBackground = False)
-            pic, num = self._retFrame(frame, noBackground = True)
+            pic, num = self._retFrame(frame, noBackground = True, crop = True)
             if counts['0'] ==200 and counts[1] == 200 and num < 18000:
                 continue
             elif counts['1'] == 200 and num > 8000 and num < 18000:
                 continue
-            pic2 = self._retFrame(frame, noBackground = False)
-            cv2.imshow("How many fish are in frame " + str(frame) + "? Pixels = " + str(num) + ". 'q': quit",cv2.resize(pic,(0,0),fx=4, fy=4))
+            pic2 = self._retFrame(frame, noBackground = False, crop = True)
+            cv2.imshow("How many fish are in frame " + str(frame) + "? Pixels = " + str(num) + ". 'q': quit",cv2.resize(pic,(0,0),fx=0.5, fy=0.5))
             info = cv2.waitKey(25)
             while info not in [ord(str(x)) for x in categories]:
                 info = cv2.waitKey(25)
@@ -728,20 +762,23 @@ class VideoProcessor:
             for j in range(1,10):
                 cv2.destroyAllWindows()
                 cv2.waitKey(1)
+            if info == ord('q'):
+                break
             count = chr(info)
             if counts[count] == 200:
                 continue
             counts[count] += 1
-            total += 1
+            if count != 'p':
+                total += 1
             outDirectory = self.localCountDirectory + str(chr(info)) + '/'
             os.makedirs(outDirectory) if not os.path.exists(outDirectory) else None
             cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + '.jpg', pic2)
-            if info == ord('q'):
-                break
-
+            #cv2.imwrite(outDirectory + 'Frame_'+ self.projectID + '_' + self.baseName + '_' + str(frame) + 'HMM.jpg', self._retFrame(frame,crop=True,diffOnly=True))
+        
+        print('Syncing local counting directory with cloud')    
         subprocess.call(['rclone', 'copy', self.localCountDirectory, cloudCountDirectory + self.projectID + '/' + self.baseName + '/'])
 
-    def _retFrame(self, frameNum, noBackground = True, cutoff = 15):
+    def _retFrame(self, frameNum, noBackground = True, crop = True, diffOnly = False, cutoff = 15):
         try:
             self.cap
         except AttributeError:
@@ -756,15 +793,26 @@ class VideoProcessor:
         if not ret:
             raise Exception('Cant read frame number: ' + str(frameNum))
 
-        if noBackground:
-            frame = 0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0]
+        frame = 0.2125 * frame[:,:,2] + 0.7154 * frame[:,:,1] + 0.0721 * frame[:,:,0]
+        if noBackground or diffOnly:
             HMMChanges = self.obj.ret_image(frameNum)
             diff = frame - HMMChanges
+            if diffOnly:
+                if crop:
+                    HMMChanges[~self.videoCrop] = 0
+                return HMMChanges
+
             diff[(diff>cutoff) | (diff < -1*cutoff)] = 125
             diff[diff!=125] = 0
             #pdb.set_trace()
+            if crop:
+                diff[~self.videoCrop] = 0
+                frame[~self.videoCrop] = 0
             return np.concatenate((frame.astype("uint8"),diff.astype("uint8")), axis = 1), np.count_nonzero(diff)
         else:
+            if crop:
+                frame[~self.videoCrop] = 0
+                
             return frame
 
     def _readBlock(self, block):
@@ -870,6 +918,27 @@ class VideoProcessor:
         print(outtext, file = sys.stderr)
 
     def _fixData(self, cloudMLDirectory):
+        if self.projectID == self.projectID:
+            self.loadClusterSummary()
+            self.depthObj.loadSmoothedArray()
+
+            self.clusterData['X_depth'] = self.clusterData.apply(lambda row: (self.transM[0][0]*row.Y + self.transM[0][1]*row.X + self.transM[0][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            self.clusterData['Y_depth'] = self.clusterData.apply(lambda row: (self.transM[1][0]*row.Y + self.transM[1][1]*row.X + self.transM[1][2])/(self.transM[2][0]*row.Y + self.transM[2][1]*row.X + self.transM[2][2]), axis=1)
+            for row in self.clusterData.itertuples(): # Randomly go through the dataframe
+                LID, N, t, x, y, time, xDepth, yDepth = row.LID, row.N, row.t, row.X, row.Y, datetime.datetime.strptime(row.TimeStamp, '%Y-%m-%d %H:%M:%S.%f'), int(row.X_depth), int(row.Y_depth)
+                try:
+                    currentDepth = self.depthObj._returnHeightChange(self.depthObj.lp.frames[0].time, time)[xDepth,yDepth]
+                except IndexError: # x and y values are outside of depth field of view
+                    currentDepth = np.nan
+                if xDepth < 0 or yDepth < 0:
+                    currentDepth = np.nan
+                self.clusterData.loc[self.clusterData.LID == LID,'DepthChange'] = currentDepth
+
+            self.clusterData.to_csv(self.localClusterDirectory + self.clusterFile, sep = ',')
+            subprocess.call(['rclone', 'copy', self.localClusterDirectory + self.clusterFile, self.cloudClusterDirectory], stderr = self.fnull)
+
+
+        return
 
         if self.projectID == 'TI2_4' and self.baseName == '0004_vid':
             return
@@ -887,6 +956,8 @@ class VideoProcessor:
                     clip = str(LID) + '_' + str(N) + '_' + str(t) + '_' + str(x) + '_' + str(y) + '.mp4'
                     #print(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName])
                     subprocess.call(['rclone', 'copy', self.localManualLabelClipsDirectory + clip, cloudMLDirectory + 'Clips/' + self.projectID + '/' + self.baseName], stderr = self.fnull)
+
+
 
         return
         delta_xy = 100

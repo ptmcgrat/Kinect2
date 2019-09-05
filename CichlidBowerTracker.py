@@ -79,6 +79,7 @@ MlabelParser = subparsers.add_parser('ManuallyLabelVideos', help='This command a
 MlabelParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
 MlabelParser.add_argument('-n', '--Number', type = int, help = 'Number of clips for each video you would like to annotate')
 MlabelParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
+MlabelParser.add_argument('-i', '--Initials', type = str, help = 'Add your initials if you want to make a separate label')
 MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
 
 MlabelParser = subparsers.add_parser('CountFish', help='This command allows a user to manually label videos')
@@ -88,9 +89,11 @@ MlabelParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use 
 
 predictParser = subparsers.add_parser('PredictLabels', help='This command using machine learning to predict labels for each cluster')
 predictParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
+predictParser.add_argument('classIndFile', type = str, help = 'Name of class file that contains info on labels')
 predictParser.add_argument('ModelNames', type = str, nargs = '+', help = 'Machine Learning Models to use to predict the cluster labels')
 predictParser.add_argument('-p', '--ProjectIDs', nargs = '+', type = str, help = 'Filter the name of the projects you would like to label.')
 predictParser.add_argument('-r', '--Rewrite', action = 'store_true', help = 'Use this flag if you would like to redo the labeling of the videos')
+predictParser.add_argument('-g', '--GPU', type = int, help = 'Use this flag to specify the GPU card')
 
 summarizeParser = subparsers.add_parser('SummarizeProjects', help='This command summarizes data for the entire project')
 summarizeParser.add_argument('InputFile', type = str, help = 'Excel file containing information on each project')
@@ -152,7 +155,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(inputData.manPredData)
         for projectID, videos in inputData.manPredData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, args.Number)
+                da_obj.labelVideos(videos, manualLabelFile, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory, args.Number, args.Initials)
                 da_obj.cleanup()
 
     elif args.command == 'CountFish':
@@ -168,7 +171,7 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         print(os.environ['CONDA_DEFAULT_ENV'])
         for projectID, videos in inputData.clusterData.items():
             with DA(projectID, rcloneRemote, localMasterDirectory, cloudMasterDirectory, args.Rewrite) as da_obj:
-                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/', args.ModelNames)
+                da_obj.predictLabels(videos, rcloneRemote + ':' + cloudMasterDirectory + machineLearningDirectory + 'Models/', args.ModelNames, args.classIndFile, args.GPU)
                 
     elif args.command == 'CreateModel':
         #if socket.gethostname() != 'biocomputesrg':
@@ -187,8 +190,9 @@ elif args.command in ['DepthAnalysis', 'VideoAnalysis', 'ManuallyLabelVideos', '
         subprocess.call(['rclone', 'copy', cloudMasterMLDirectory + manualLabelFile, localMasterMLDirectory])
         processes = []
         for projectID in projects:
-            processes.append(subprocess.Popen(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID], stderr=open(os.devnull, 'w')))
-        [p.communicate() for p in processes]
+            print(projectID)
+            processes.append(subprocess.call(['rclone', 'copy', cloudMasterMLDirectory + 'Clips/' + projectID + '/', localMasterMLDirectory + 'Clips/' + projectID]))
+        #[p.communicate() for p in processes]
 
         clipDirectories = []
         for projectID in projects:
